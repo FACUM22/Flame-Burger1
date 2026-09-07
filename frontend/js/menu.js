@@ -3,7 +3,7 @@
 // =====================================================
 
 // POR AHORA estamos trabajando en local.
-const API_BASE = "http://localhost:3000";
+const API_BASE = "https://flame-burger1.onrender.com";
 
 const API_PRODUCTOS =
     `${API_BASE}/api/productos`;
