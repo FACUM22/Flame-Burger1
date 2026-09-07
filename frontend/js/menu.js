@@ -3,13 +3,10 @@
 // =====================================================
 
 // POR AHORA estamos trabajando en local.
-const API_BASE = "https://flame-burger1.onrender.com";
+const API_BASE = "";
 
-const API_PRODUCTOS =
-    `${API_BASE}/api/productos`;
-
-const API_CATEGORIAS =
-    `${API_BASE}/api/categorias`;
+const API_PRODUCTOS = "/api/productos";
+const API_CATEGORIAS = "/api/categorias";
 
 
 // =====================================================
