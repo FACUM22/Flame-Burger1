@@ -1,12 +1,15 @@
+
 // =====================================================
 // CONFIGURACIÓN API
 // =====================================================
 
-// POR AHORA estamos trabajando en local.
-const API_BASE = "";
+const API_BASE = "https://flame-burger1.onrender.com";
 
-const API_PRODUCTOS = "/api/productos";
-const API_CATEGORIAS = "/api/categorias";
+const API_PRODUCTOS =
+    `${API_BASE}/api/productos`;
+
+const API_CATEGORIAS =
+    `${API_BASE}/api/categorias`;
 
 
 // =====================================================
@@ -132,9 +135,6 @@ async function cargarCategorias() {
             error
         );
 
-        // Aunque falle la API,
-        // dejamos el botón Todos.
-
         contenedorCategorias.innerHTML = "";
 
         crearBotonTodos();
@@ -196,12 +196,7 @@ function mostrarCategorias() {
     contenedorCategorias.innerHTML =
         "";
 
-    // TODOS
-
     crearBotonTodos();
-
-
-    // RESTO DE CATEGORÍAS
 
     categorias.forEach(
         categoria => {
@@ -315,8 +310,6 @@ async function cargarProductos() {
 
         }
 
-        // Solo productos disponibles
-
         productos =
             datos.filter(
                 producto =>
@@ -427,7 +420,9 @@ function mostrarProductos() {
         [...productos];
 
 
+    // =================================================
     // FILTRAR POR CATEGORÍA
+    // =================================================
 
     if (
         categoriaActual !== "todas"
@@ -447,7 +442,9 @@ function mostrarProductos() {
     }
 
 
+    // =================================================
     // SIN PRODUCTOS
+    // =================================================
 
     if (
         filtrados.length === 0
@@ -479,7 +476,9 @@ function mostrarProductos() {
     }
 
 
+    // =================================================
     // CREAR TARJETAS
+    // =================================================
 
     filtrados.forEach(
         producto => {
@@ -525,20 +524,55 @@ function crearTarjetaProducto(
     if (producto.imagen) {
 
         let imagenURL =
-            String(producto.imagen);
+            String(producto.imagen).trim();
 
 
+        // =================================================
+        // CORREGIR URLS ANTIGUAS DE LOCALHOST
+        // =================================================
+
+        if (
+            imagenURL.includes(
+                "http://localhost:3000"
+            )
+        ) {
+
+            imagenURL =
+                imagenURL.replace(
+                    "http://localhost:3000",
+                    API_BASE
+                );
+
+        } else if (
+            imagenURL.includes(
+                "https://localhost:3000"
+            )
+        ) {
+
+            imagenURL =
+                imagenURL.replace(
+                    "https://localhost:3000",
+                    API_BASE
+                );
+
+        }
+
+
+        // =================================================
         // URL COMPLETA
+        // =================================================
 
         if (
             imagenURL.startsWith("http://") ||
             imagenURL.startsWith("https://")
         ) {
 
-            // No hacemos nada.
+            // Ya es una URL completa.
 
 
+        // =================================================
         // RUTA /uploads/...
+        // =================================================
 
         } else if (
             imagenURL.startsWith("/")
@@ -548,7 +582,9 @@ function crearTarjetaProducto(
                 `${API_BASE}${imagenURL}`;
 
 
-        // uploads/...
+        // =================================================
+        // RUTA uploads/...
+        // =================================================
 
         } else {
 
@@ -1031,7 +1067,9 @@ function cambiarCantidad(
         cambio;
 
 
+    // =================================================
     // ELIMINAR SI LLEGA A 0
+    // =================================================
 
     if (
         item.cantidad <= 0
@@ -1209,18 +1247,9 @@ if (botonCheckout) {
 
 async function iniciar() {
 
-    // Primero mostramos el carrito
-    // guardado anteriormente.
-
     actualizarCarrito();
 
-
-    // Cargamos categorías.
-
     await cargarCategorias();
-
-
-    // Cargamos productos.
 
     await cargarProductos();
 
