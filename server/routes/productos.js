@@ -2,73 +2,19 @@ const express = require("express");
 const router = express.Router();
 
 const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
 
 const pool = require("../database");
-
-
-// =====================================================
-// CARPETA DE IMÁGENES
-// =====================================================
-
-const uploadDir = path.join(
-    __dirname,
-    "../uploads"
-);
-
-if (!fs.existsSync(uploadDir)) {
-
-    fs.mkdirSync(
-        uploadDir,
-        {
-            recursive: true
-        }
-    );
-
-}
+const { subirImagen, eliminarImagen } = require("../supabasecliente");
 
 
 // =====================================================
 // CONFIGURACIÓN DE MULTER
 // =====================================================
+// Guardamos el archivo en memoria (no en disco), porque
+// Render no conserva archivos entre reinicios/redeploys.
+// Desde acá lo subimos directo a Supabase Storage.
 
-const storage = multer.diskStorage({
-
-    destination: (req, file, cb) => {
-
-        cb(
-            null,
-            uploadDir
-        );
-
-    },
-
-    filename: (req, file, cb) => {
-
-        const extension =
-            path.extname(
-                file.originalname
-            ).toLowerCase();
-
-
-        const nombreArchivo =
-            Date.now() +
-            "-" +
-            Math.round(
-                Math.random() * 1000000000
-            ) +
-            extension;
-
-
-        cb(
-            null,
-            nombreArchivo
-        );
-
-    }
-
-});
+const storage = multer.memoryStorage();
 
 
 // =====================================================
@@ -447,7 +393,7 @@ router.post(
             if (req.file) {
 
                 imagen =
-                    `/uploads/${req.file.filename}`;
+                    await subirImagen(req.file);
 
             }
 
@@ -739,14 +685,14 @@ router.put(
             ) {
 
                 imagen =
-                    `/uploads/${req.file.filename}`;
+                    await subirImagen(req.file);
 
 
                 // -----------------------------
                 // BORRAR IMAGEN ANTERIOR
                 // -----------------------------
 
-                eliminarImagenGuardada(
+                await eliminarImagen(
                     productoAnterior.imagen
                 );
 
@@ -1032,7 +978,7 @@ router.delete(
             // ELIMINAR IMAGEN
             // =========================================
 
-            eliminarImagenGuardada(
+            await eliminarImagen(
                 productoActual.imagen
             );
 
@@ -1087,116 +1033,18 @@ router.delete(
 
 
 // =====================================================
-// FUNCIÓN: ELIMINAR ARCHIVO SUBIDO
+// FUNCIÓN: ELIMINAR ARCHIVO SUBIDO (compatibilidad)
 // =====================================================
+// Con memoryStorage el archivo vive en RAM (req.file.buffer),
+// no en disco, así que no hay nada físico que borrar acá.
+// Se deja la función vacía para no romper las llamadas
+// existentes en las validaciones de arriba.
 
 function eliminarArchivo(
     archivo
 ) {
 
-    if (
-        !archivo ||
-        !archivo.path
-    ) {
-
-        return;
-
-    }
-
-
-    try {
-
-        if (
-            fs.existsSync(
-                archivo.path
-            )
-        ) {
-
-            fs.unlinkSync(
-                archivo.path
-            );
-
-        }
-
-    } catch (error) {
-
-        console.error(
-            "No se pudo eliminar archivo:",
-            error
-        );
-
-    }
-
-}
-
-
-// =====================================================
-// FUNCIÓN: ELIMINAR IMAGEN DE PRODUCTO
-// =====================================================
-
-function eliminarImagenGuardada(
-    imagen
-) {
-
-    if (
-        !imagen
-    ) {
-
-        return;
-
-    }
-
-
-    // Solo procesamos imágenes locales
-    if (
-        !imagen.startsWith(
-            "/uploads/"
-        )
-    ) {
-
-        return;
-
-    }
-
-
-    const ruta =
-        path.join(
-            __dirname,
-            "..",
-            imagen.replace(
-                /^\//,
-                ""
-            )
-        );
-
-
-    try {
-
-        if (
-            fs.existsSync(
-                ruta
-            )
-        ) {
-
-            fs.unlinkSync(
-                ruta
-            );
-
-            console.log(
-                "Imagen eliminada:",
-                ruta
-            );
-
-        }
-
-    } catch (error) {
-
-        console.error(
-            "No se pudo eliminar imagen:",
-            error
-        );
-
-    }
+    return;
 
 }
 
