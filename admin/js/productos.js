@@ -1,8 +1,8 @@
 const API_PRODUCTOS =
-    "http://localhost:3000/api/productos";
+    "/api/productos";
 
 const API_CATEGORIAS =
-    "http://localhost:3000/api/categorias";
+    "/api/categorias";
 
 let productos = [];
 let categorias = [];
@@ -313,7 +313,7 @@ function crearURLImagen(
     ) {
 
         return (
-            "http://localhost:3000" +
+            window.location.origin +
             imagen
         );
 
@@ -321,7 +321,7 @@ function crearURLImagen(
 
 
     return (
-        "http://localhost:3000/" +
+        window.location.origin + "/" +
         imagen
     );
 
