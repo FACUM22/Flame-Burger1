@@ -12,6 +12,9 @@ const confirmarPedidoBtn = document.getElementById("confirmarPedido");
 const mensaje = document.getElementById("mensaje");
 const resumenProductos = document.getElementById("resumenProductos");
 const totalElemento = document.getElementById("total");
+const opcionCambio = document.getElementById("opcionCambio");
+const campoCambio = document.getElementById("campoCambio");
+const cambioInput = document.getElementById("cambio");
 
 
 // =====================================================
@@ -64,6 +67,68 @@ function obtenerPago() {
     );
 
     return seleccionado ? seleccionado.value : null;
+}
+// =====================================================
+// ACTUALIZAR OPCIÓN DE CAMBIO
+// =====================================================
+
+function actualizarCambio() {
+
+    const pago = obtenerPago();
+
+    // Si no es efectivo, ocultar todo
+    if (pago !== "efectivo") {
+
+        if (opcionCambio) {
+            opcionCambio.style.display = "none";
+        }
+
+        if (campoCambio) {
+            campoCambio.style.display = "none";
+        }
+
+        if (cambioInput) {
+            cambioInput.value = "";
+            cambioInput.required = false;
+        }
+
+        return;
+    }
+
+    // Si es efectivo, mostrar "¿Necesitás cambio?"
+    if (opcionCambio) {
+        opcionCambio.style.display = "block";
+    }
+
+    const necesitaCambio =
+        document.querySelector(
+            'input[name="necesitaCambio"]:checked'
+        );
+
+    if (
+        necesitaCambio &&
+        necesitaCambio.value === "si"
+    ) {
+
+        if (campoCambio) {
+            campoCambio.style.display = "block";
+        }
+
+        if (cambioInput) {
+            cambioInput.required = true;
+        }
+
+    } else {
+
+        if (campoCambio) {
+            campoCambio.style.display = "none";
+        }
+
+        if (cambioInput) {
+            cambioInput.value = "";
+            cambioInput.required = false;
+        }
+    }
 }
 
 
@@ -155,7 +220,32 @@ document
         );
 
     });
+// =====================================================
+// EVENTOS PAGO
+// =====================================================
 
+document
+    .querySelectorAll('input[name="pago"]')
+    .forEach((radio) => {
+
+        radio.addEventListener(
+            "change",
+            actualizarCambio
+        );
+
+    });
+
+
+document
+    .querySelectorAll('input[name="necesitaCambio"]')
+    .forEach((radio) => {
+
+        radio.addEventListener(
+            "change",
+            actualizarCambio
+        );
+
+    });
 
 // =====================================================
 // VALIDAR DIRECCIÓN
@@ -399,7 +489,64 @@ function validarFormulario() {
         return false;
     }
 
+// =================================================
+// CAMBIO - EFECTIVO
+// =================================================
 
+if (pago === "efectivo") {
+
+    const necesitaCambio =
+        document.querySelector(
+            'input[name="necesitaCambio"]:checked'
+        );
+
+    if (!necesitaCambio) {
+
+        mostrarMensaje(
+            "Indica si necesitas cambio."
+        );
+
+        return false;
+    }
+
+
+    if (necesitaCambio.value === "si") {
+
+        const cambio =
+            cambioInput?.value.trim() || "";
+
+        if (!cambio) {
+
+            mostrarMensaje(
+                "Indica con cuánto vas a pagar para poder preparar el cambio."
+            );
+
+            cambioInput?.focus();
+
+            return false;
+        }
+
+
+        const montoCambio =
+            Number(cambio);
+
+        if (
+            !Number.isFinite(montoCambio) ||
+            montoCambio <= 0
+        ) {
+
+            mostrarMensaje(
+                "Ingresa un monto válido para el cambio."
+            );
+
+            cambioInput?.focus();
+
+            return false;
+        }
+
+    }
+
+}
     // =================================================
     // CARRITO
     // =================================================
@@ -465,43 +612,67 @@ async function confirmarPedido() {
 
         const pago =
             obtenerPago();
+        let necesitaCambio = false;
+let cambio = null;
+
+if (pago === "efectivo") {
+
+    const cambioSeleccionado =
+        document.querySelector(
+            'input[name="necesitaCambio"]:checked'
+        );
+
+    necesitaCambio =
+        cambioSeleccionado?.value === "si";
+
+    if (necesitaCambio) {
+
+        cambio =
+            Number(cambioInput.value);
+
+    }
+}
 
 
         // =================================================
         // PREPARAR PEDIDO
         // =================================================
 
-        const pedido = {
+const pedido = {
 
-            cliente: {
+    cliente: {
 
-                nombre,
+        nombre,
 
-                telefono,
+        telefono,
 
-                direccion,
+        direccion,
 
-                comentarios
+        comentarios
 
-            },
+    },
 
-            entrega,
+    entrega,
 
-            pago,
+    pago,
 
-            productos: carrito.map(
-                (producto) => ({
+    necesitaCambio,
 
-                    producto_id:
-                        producto.producto_id,
+    cambio,
 
-                    cantidad:
-                        Number(producto.cantidad)
+    productos: carrito.map(
+        (producto) => ({
 
-                })
-            )
+            producto_id:
+                producto.producto_id,
 
-        };
+            cantidad:
+                Number(producto.cantidad)
+
+        })
+    )
+
+};
 
 
         console.log(
@@ -807,5 +978,7 @@ function procesarResultadoMercadoPago() {
 renderizarCarrito();
 
 actualizarDireccion();
+
+actualizarCambio();
 
 procesarResultadoMercadoPago();
