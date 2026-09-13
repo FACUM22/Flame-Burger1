@@ -4,648 +4,744 @@ let pedidos = [];
 let filtroActual = "todos";
 
 const ordersList =
-document.getElementById("ordersList");
+    document.getElementById("ordersList");
 
 const pedidosNuevos =
-document.getElementById("pedidosNuevos");
+    document.getElementById("pedidosNuevos");
 
 async function cargarPedidos() {
 
-try {
+    try {
 
-const respuesta =
-    await fetch(API_PEDIDOS);
+        const respuesta =
+            await fetch(API_PEDIDOS);
 
-if (!respuesta.ok) {
+        if (!respuesta.ok) {
 
-    throw new Error(
-        "No se pudieron cargar los pedidos."
-    );
+            throw new Error(
+                "No se pudieron cargar los pedidos."
+            );
 
-}
+        }
 
-pedidos =
-    await respuesta.json();
+        pedidos =
+            await respuesta.json();
 
-mostrarPedidos();
+        mostrarPedidos();
 
-} catch (error) {
+    } catch (error) {
 
-console.error(
-    "❌ ERROR PEDIDOS:",
-    error
-);
+        console.error(
+            "❌ ERROR PEDIDOS:",
+            error
+        );
 
-ordersList.innerHTML = `
+        ordersList.innerHTML = `
 
-    <div class="empty-orders">
+            <div class="empty-orders">
 
-        <div class="empty-icon">
-            ⚠️
-        </div>
+                <div class="empty-icon">
+                    ⚠️
+                </div>
 
-        <h3>
-            Error al cargar los pedidos
-        </h3>
+                <h3>
+                    Error al cargar los pedidos
+                </h3>
 
-        <p>
-            ${escaparHTML(error.message)}
-        </p>
+                <p>
+                    ${escaparHTML(error.message)}
+                </p>
 
-    </div>
+            </div>
 
-`;
+        `;
 
-}
+    }
 
 }
 
 function mostrarPedidos() {
 
-ordersList.innerHTML = "";
+    ordersList.innerHTML = "";
 
-const cantidadNuevos =
-pedidos.filter(
-pedido =>
-pedido.estado === "nuevo"
-).length;
-pedidosNuevos.textContent =
-    `${cantidadNuevos} pedido${cantidadNuevos !== 1 ? "s" : ""} nuevo${cantidadNuevos !== 1 ? "s" : ""}`;
+    const cantidadNuevos =
+        pedidos.filter(
+            pedido =>
+                pedido.estado === "nuevo"
+        ).length;
 
-let pedidosFiltrados =
-pedidos.filter(
-pedido =>
-pedido.estado !== "en_proceso_pago"
-);
+    pedidosNuevos.textContent =
+        `${cantidadNuevos} pedido${cantidadNuevos !== 1 ? "s" : ""} nuevo${cantidadNuevos !== 1 ? "s" : ""}`;
 
-if (
-filtroActual !== "todos"
-) {
-
-pedidosFiltrados =
-    pedidosFiltrados.filter(
-        pedido =>
-            pedido.estado ===
-            filtroActual
-    );
-
-}
-
-if (
-pedidosFiltrados.length === 0
-) {
-
-ordersList.innerHTML = `
-
-    <div class="empty-orders">
-
-        <div class="empty-icon">
-            🛒
-        </div>
-
-        <h3>
-            No hay pedidos
-        </h3>
-
-        <p>
-            No hay pedidos en esta categoría.
-        </p>
-
-    </div>
-
-`;
-
-return;
-
-}
-
-pedidosFiltrados.forEach(
-pedido => {
-
-    const tarjeta =
-        crearTarjetaPedido(
-            pedido
+    let pedidosFiltrados =
+        pedidos.filter(
+            pedido =>
+                pedido.estado !== "en_proceso_pago"
         );
 
-    ordersList.appendChild(
-        tarjeta
+    if (
+        filtroActual !== "todos"
+    ) {
+
+        pedidosFiltrados =
+            pedidosFiltrados.filter(
+                pedido =>
+                    pedido.estado ===
+                    filtroActual
+            );
+
+    }
+
+    if (
+        pedidosFiltrados.length === 0
+    ) {
+
+        ordersList.innerHTML = `
+
+            <div class="empty-orders">
+
+                <div class="empty-icon">
+                    🛒
+                </div>
+
+                <h3>
+                    No hay pedidos
+                </h3>
+
+                <p>
+                    No hay pedidos en esta categoría.
+                </p>
+
+            </div>
+
+        `;
+
+        return;
+
+    }
+
+    pedidosFiltrados.forEach(
+        pedido => {
+
+            const tarjeta =
+                crearTarjetaPedido(
+                    pedido
+                );
+
+            ordersList.appendChild(
+                tarjeta
+            );
+
+        }
     );
-
-}
-
-);
 
 }
 
 function crearTarjetaPedido(
-pedido
+    pedido
 ) {
 
-const tarjeta =
-document.createElement(
-"div"
-);
+    const tarjeta =
+        document.createElement(
+            "div"
+        );
 
-tarjeta.className =
-"order-card";
+    tarjeta.className =
+        "order-card";
 
-if (
-pedido.estado === "nuevo"
-) {
+    if (
+        pedido.estado === "nuevo"
+    ) {
 
-tarjeta.classList.add(
-    "new-order"
-);
+        tarjeta.classList.add(
+            "new-order"
+        );
 
-}
+    }
 
-const fecha =
-formatearFecha(
-pedido.creado_en
-);
+    const fecha =
+        formatearFecha(
+            pedido.creado_en
+        );
 
-const estadoTexto =
-obtenerTextoEstado(
-pedido.estado
-);
+    const estadoTexto =
+        obtenerTextoEstado(
+            pedido.estado
+        );
 
-const claseEstado =
-    `status-${pedido.estado}`;
+    const claseEstado =
+        `status-${pedido.estado}`;
 
-tarjeta.innerHTML = `
+    // =====================================================
+    // INFORMACIÓN DE CAMBIO
+    // =====================================================
 
-<div class="order-top">
+    let informacionCambio = "";
 
-    <div>
+    if (
+        pedido.forma_pago === "efectivo"
+    ) {
 
-        <div class="order-number">
+        if (
+            pedido.necesita_cambio === true ||
+            pedido.necesita_cambio === "true"
+        ) {
 
-            Pedido #${pedido.id}
+            const total =
+                Number(
+                    pedido.total || 0
+                );
+
+            const cambioDe =
+                Number(
+                    pedido.cambio_de || 0
+                );
+
+            const vuelto =
+                cambioDe - total;
+
+            informacionCambio = `
+
+                <div class="order-info">
+
+                    <span>
+                        CAMBIO
+                    </span>
+
+                    <strong>
+                        💵 Sí
+                    </strong>
+
+                </div>
+
+                <div class="order-info">
+
+                    <span>
+                        PAGA CON
+                    </span>
+
+                    <strong>
+                        $${cambioDe.toLocaleString(
+                            "es-UY"
+                        )}
+                    </strong>
+
+                </div>
+
+                <div class="order-info">
+
+                    <span>
+                        VUELTO
+                    </span>
+
+                    <strong>
+                        $${vuelto.toLocaleString(
+                            "es-UY"
+                        )}
+                    </strong>
+
+                </div>
+
+            `;
+
+        } else {
+
+            informacionCambio = `
+
+                <div class="order-info">
+
+                    <span>
+                        CAMBIO
+                    </span>
+
+                    <strong>
+                        ❌ No necesita
+                    </strong>
+
+                </div>
+
+            `;
+
+        }
+
+    }
+
+    tarjeta.innerHTML = `
+
+        <div class="order-top">
+
+            <div>
+
+                <div class="order-number">
+
+                    Pedido #${pedido.id}
+
+                </div>
+
+                <div class="order-date">
+
+                    ${fecha}
+
+                </div>
+
+                ${
+                    pedido.estado === "nuevo"
+                    ?
+                    `
+                    <span class="new-label">
+                        🔔 NUEVO PEDIDO
+                    </span>
+                    `
+                    :
+                    ""
+                }
+
+            </div>
+
+            <span
+                class="order-status ${claseEstado}"
+            >
+
+                ${estadoTexto}
+
+            </span>
 
         </div>
 
-        <div class="order-date">
+        <div class="order-info-grid">
 
-            ${fecha}
+            <div class="order-info">
+
+                <span>
+                    CLIENTE
+                </span>
+
+                <strong>
+                    ${escaparHTML(
+                        pedido.cliente_nombre ||
+                        "Sin nombre"
+                    )}
+                </strong>
+
+            </div>
+
+            <div class="order-info">
+
+                <span>
+                    TELÉFONO
+                </span>
+
+                <strong>
+                    ${escaparHTML(
+                        pedido.cliente_telefono ||
+                        pedido.telefono ||
+                        "Sin teléfono"
+                    )}
+                </strong>
+
+            </div>
+
+            <div class="order-info">
+
+                <span>
+                    ENTREGA
+                </span>
+
+                <strong>
+                    ${obtenerTextoEntrega(
+                        pedido.tipo_entrega
+                    )}
+                </strong>
+
+            </div>
+
+            <div class="order-info">
+
+                <span>
+                    DIRECCIÓN
+                </span>
+
+                <strong>
+                    ${escaparHTML(
+                        pedido.cliente_direccion ||
+                        pedido.direccion ||
+                        "—"
+                    )}
+                </strong>
+
+            </div>
+
+            <div class="order-info">
+
+                <span>
+                    PAGO
+                </span>
+
+                <strong>
+                    ${obtenerTextoPago(
+                        pedido.forma_pago
+                    )}
+                </strong>
+
+            </div>
+
+            <div class="order-info">
+
+                <span>
+                    ESTADO
+                </span>
+
+                <strong>
+                    ${estadoTexto}
+                </strong>
+
+            </div>
+
+            ${informacionCambio}
+
+        </div>
+
+        <div
+            class="order-products"
+            id="productos-${pedido.id}"
+        >
+
+            <div>
+                ⏳ Cargando productos...
+            </div>
 
         </div>
 
         ${
-            pedido.estado === "nuevo"
+            pedido.observaciones
             ?
             `
-            <span class="new-label">
-                🔔 NUEVO PEDIDO
-            </span>
+            <div class="order-observation">
+
+                <strong>
+                    📝 Comentarios:
+                </strong>
+
+                <br>
+
+                ${escaparHTML(
+                    pedido.observaciones
+                )}
+
+            </div>
             `
             :
             ""
         }
 
-    </div>
-
-    <span
-        class="order-status ${claseEstado}"
-    >
-
-        ${estadoTexto}
-
-    </span>
-
-</div>
-
-<div class="order-info-grid">
-
-    <div class="order-info">
-
-        <span>
-            CLIENTE
-        </span>
-
-        <strong>
-            ${escaparHTML(
-                pedido.cliente_nombre ||
-                "Sin nombre"
-            )}
-        </strong>
-
-    </div>
-
-    <div class="order-info">
-
-        <span>
-            TELÉFONO
-        </span>
-
-        <strong>
-            ${escaparHTML(
-                pedido.cliente_telefono ||
-                pedido.telefono ||
-                "Sin teléfono"
-            )}
-        </strong>
-
-    </div>
-
-    <div class="order-info">
-
-        <span>
-            ENTREGA
-        </span>
-
-        <strong>
-            ${obtenerTextoEntrega(
-                pedido.tipo_entrega
-            )}
-        </strong>
-
-    </div>
-
-    <div class="order-info">
-
-        <span>
-            DIRECCIÓN
-        </span>
-
-        <strong>
-            ${escaparHTML(
-                pedido.cliente_direccion ||
-                pedido.direccion ||
-                "—"
-            )}
-        </strong>
-
-    </div>
-
-    <div class="order-info">
-
-        <span>
-            PAGO
-        </span>
-
-        <strong>
-            ${obtenerTextoPago(
-                pedido.forma_pago
-            )}
-        </strong>
-
-    </div>
-
-    <div class="order-info">
-
-        <span>
-            ESTADO
-        </span>
-
-        <strong>
-            ${estadoTexto}
-        </strong>
-
-    </div>
-
-</div>
-
-<div
-    class="order-products"
-    id="productos-${pedido.id}"
->
-
-    <div>
-        ⏳ Cargando productos...
-    </div>
-
-</div>
-
-${
-    pedido.observaciones
-    ?
-    `
-    <div class="order-observation">
-
-        <strong>
-            📝 Comentarios:
-        </strong>
-
-        <br>
-
-        ${escaparHTML(
-            pedido.observaciones
-        )}
-
-    </div>
-    `
-    :
-    ""
-}
-
-<div class="order-bottom">
-
-    <div>
-
-        <div class="order-total-label">
-            TOTAL
-        </div>
-
-        <div class="order-total">
-
-            $${Number(
-                pedido.total || 0
-            ).toLocaleString(
-                "es-UY"
-            )}
-
-        </div>
-
-    </div>
-
-    <div class="order-actions">
-
-        ${crearBotonesEstado(
-            pedido
-        )}
-
-    </div>
-
-</div>
-
-`;
-
-cargarDetallePedido(
-pedido.id
-);
-
-return tarjeta;
-
-}
-
-function crearBotonesEstado(
-pedido
-) {
-
-const estado =
-pedido.estado;
-
-const botonImprimir = `
-
-<button
-    class="btn-print"
-    onclick="imprimirPedido(${pedido.id})"
->
-    🖨️ Imprimir pedido
-</button>
-
-`;
-
-if (
-estado === "cancelado"
-) {
-
-return `
-
-    ${botonImprimir}
-
-    <button
-        class="btn-confirm"
-        onclick="cambiarEstado(${pedido.id}, 'nuevo')"
-    >
-        ↩️ Reactivar
-    </button>
-
-`;
-
-}
-
-if (
-estado === "entregado"
-) {
-
-return `
-
-    ${botonImprimir}
-
-    <button
-        class="btn-cancel"
-        onclick="cambiarEstado(${pedido.id}, 'cancelado')"
-    >
-        ❌ Cancelar
-    </button>
-
-`;
-
-}
-
-if (
-estado === "nuevo"
-) {
-
-return `
-
-    ${botonImprimir}
-
-    <button
-        class="btn-preparing"
-        onclick="cambiarEstado(${pedido.id}, 'preparando')"
-    >
-        👨‍🍳 Comenzar a preparar
-    </button>
-
-    <button
-        class="btn-cancel"
-        onclick="cambiarEstado(${pedido.id}, 'cancelado')"
-    >
-        ❌ Cancelar
-    </button>
-
-`;
-
-}
-
-if (
-estado === "preparando"
-) {
-
-return `
-
-    ${botonImprimir}
-
-    <button
-        class="btn-ready"
-        onclick="cambiarEstado(${pedido.id}, 'listo')"
-    >
-        🍔 Listo
-    </button>
-
-    <button
-        class="btn-cancel"
-        onclick="cambiarEstado(${pedido.id}, 'cancelado')"
-    >
-        ❌ Cancelar
-    </button>
-
-`;
-
-}
-
-if (
-estado === "listo"
-) {
-
-return `
-
-    ${botonImprimir}
-
-    <button
-        class="btn-delivered"
-        onclick="cambiarEstado(${pedido.id}, 'entregado')"
-    >
-        🛵 Entregado
-    </button>
-
-    <button
-        class="btn-cancel"
-        onclick="cambiarEstado(${pedido.id}, 'cancelado')"
-    >
-        ❌ Cancelar
-    </button>
-
-`;
-
-}
-
-return botonImprimir;
-
-}
-
-async function cargarDetallePedido(
-pedidoId
-) {
-
-try {
-
-const respuesta =
-    await fetch(
-        `${API_PEDIDOS}/${pedidoId}`
-    );
-
-if (
-    !respuesta.ok
-) {
-
-    throw new Error(
-        "No se pudo obtener el detalle."
-    );
-
-}
-
-const resultado =
-    await respuesta.json();
-
-const contenedor =
-    document.getElementById(
-        `productos-${pedidoId}`
-    );
-
-if (!contenedor) {
-    return;
-}
-
-if (
-    !resultado.productos ||
-    resultado.productos.length === 0
-) {
-
-    contenedor.innerHTML = `
-        <div>
-            Sin productos
-        </div>
-    `;
-
-    return;
-
-}
-
-contenedor.innerHTML = "";
-
-resultado.productos.forEach(
-    producto => {
-
-        const elemento =
-            document.createElement(
-                "div"
-            );
-
-        elemento.className =
-            "order-product";
-
-        elemento.innerHTML = `
+        <div class="order-bottom">
 
             <div>
 
-                <strong>
-                    ${escaparHTML(
-                        producto.nombre ||
-                        "Producto"
-                    )}
-                </strong>
+                <div class="order-total-label">
+                    TOTAL
+                </div>
 
-                <small>
+                <div class="order-total">
 
-                    ${producto.cantidad}
-                    x
                     $${Number(
-                        producto.precio_unitario ||
-                        0
+                        pedido.total || 0
                     ).toLocaleString(
                         "es-UY"
                     )}
 
-                </small>
+                </div>
 
             </div>
 
-            <strong>
+            <div class="order-actions">
 
-                $${Number(
-                    producto.subtotal ||
-                    0
-                ).toLocaleString(
-                    "es-UY"
+                ${crearBotonesEstado(
+                    pedido
                 )}
 
-            </strong>
+            </div>
+
+        </div>
+
+    `;
+
+    cargarDetallePedido(
+        pedido.id
+    );
+
+    return tarjeta;
+
+}
+
+function crearBotonesEstado(
+    pedido
+) {
+
+    const estado =
+        pedido.estado;
+
+    const botonImprimir = `
+
+        <button
+            class="btn-print"
+            onclick="imprimirPedido(${pedido.id})"
+        >
+            🖨️ Imprimir pedido
+        </button>
+
+    `;
+
+    if (
+        estado === "cancelado"
+    ) {
+
+        return `
+
+            ${botonImprimir}
+
+            <button
+                class="btn-confirm"
+                onclick="cambiarEstado(${pedido.id}, 'nuevo')"
+            >
+                ↩️ Reactivar
+            </button>
 
         `;
 
-        contenedor.appendChild(
-            elemento
-        );
+    }
+
+    if (
+        estado === "entregado"
+    ) {
+
+        return `
+
+            ${botonImprimir}
+
+            <button
+                class="btn-cancel"
+                onclick="cambiarEstado(${pedido.id}, 'cancelado')"
+            >
+                ❌ Cancelar
+            </button>
+
+        `;
 
     }
-);
 
-} catch (error) {
+    if (
+        estado === "nuevo"
+    ) {
 
-console.error(
-    "ERROR DETALLE:",
-    error
-);
+        return `
 
-const contenedor =
-    document.getElementById(
-        `productos-${pedidoId}`
-    );
+            ${botonImprimir}
 
-if (contenedor) {
+            <button
+                class="btn-preparing"
+                onclick="cambiarEstado(${pedido.id}, 'preparando')"
+            >
+                👨‍🍳 Comenzar a preparar
+            </button>
 
-    contenedor.innerHTML = `
-        <div>
-            ⚠️ No se pudo cargar el detalle
-        </div>
-    `;
+            <button
+                class="btn-cancel"
+                onclick="cambiarEstado(${pedido.id}, 'cancelado')"
+            >
+                ❌ Cancelar
+            </button>
+
+        `;
+
+    }
+
+    if (
+        estado === "preparando"
+    ) {
+
+        return `
+
+            ${botonImprimir}
+
+            <button
+                class="btn-ready"
+                onclick="cambiarEstado(${pedido.id}, 'listo')"
+            >
+                🍔 Listo
+            </button>
+
+            <button
+                class="btn-cancel"
+                onclick="cambiarEstado(${pedido.id}, 'cancelado')"
+            >
+                ❌ Cancelar
+            </button>
+
+        `;
+
+    }
+
+    if (
+        estado === "listo"
+    ) {
+
+        return `
+
+            ${botonImprimir}
+
+            <button
+                class="btn-delivered"
+                onclick="cambiarEstado(${pedido.id}, 'entregado')"
+            >
+                🛵 Entregado
+            </button>
+
+            <button
+                class="btn-cancel"
+                onclick="cambiarEstado(${pedido.id}, 'cancelado')"
+            >
+                ❌ Cancelar
+            </button>
+
+        `;
+
+    }
+
+    return botonImprimir;
 
 }
 
-}
+async function cargarDetallePedido(
+    pedidoId
+) {
+
+    try {
+
+        const respuesta =
+            await fetch(
+                `${API_PEDIDOS}/${pedidoId}`
+            );
+
+        if (
+            !respuesta.ok
+        ) {
+
+            throw new Error(
+                "No se pudo obtener el detalle."
+            );
+
+        }
+
+        const resultado =
+            await respuesta.json();
+
+        const contenedor =
+            document.getElementById(
+                `productos-${pedidoId}`
+            );
+
+        if (!contenedor) {
+            return;
+        }
+
+        if (
+            !resultado.productos ||
+            resultado.productos.length === 0
+        ) {
+
+            contenedor.innerHTML = `
+                <div>
+                    Sin productos
+                </div>
+            `;
+
+            return;
+
+        }
+
+        contenedor.innerHTML = "";
+
+        resultado.productos.forEach(
+            producto => {
+
+                const elemento =
+                    document.createElement(
+                        "div"
+                    );
+
+                elemento.className =
+                    "order-product";
+
+                elemento.innerHTML = `
+
+                    <div>
+
+                        <strong>
+                            ${escaparHTML(
+                                producto.nombre ||
+                                "Producto"
+                            )}
+                        </strong>
+
+                        <small>
+
+                            ${producto.cantidad}
+                            x
+                            $${Number(
+                                producto.precio_unitario ||
+                                0
+                            ).toLocaleString(
+                                "es-UY"
+                            )}
+
+                        </small>
+
+                    </div>
+
+                    <strong>
+
+                        $${Number(
+                            producto.subtotal ||
+                            0
+                        ).toLocaleString(
+                            "es-UY"
+                        )}
+
+                    </strong>
+
+                `;
+
+                contenedor.appendChild(
+                    elemento
+                );
+
+            }
+        );
+
+    } catch (error) {
+
+        console.error(
+            "ERROR DETALLE:",
+            error
+        );
+
+        const contenedor =
+            document.getElementById(
+                `productos-${pedidoId}`
+            );
+
+        if (contenedor) {
+
+            contenedor.innerHTML = `
+                <div>
+                    ⚠️ No se pudo cargar el detalle
+                </div>
+            `;
+
+        }
+
+    }
 
 }
 
@@ -654,715 +750,842 @@ if (contenedor) {
 // =====================================================
 
 async function imprimirPedido(
-pedidoId
+    pedidoId
 ) {
 
-try {
+    try {
 
-const respuesta =
-    await fetch(
-        `${API_PEDIDOS}/${pedidoId}`
-    );
+        const respuesta =
+            await fetch(
+                `${API_PEDIDOS}/${pedidoId}`
+            );
 
-if (
-    !respuesta.ok
-) {
+        if (
+            !respuesta.ok
+        ) {
 
-    throw new Error(
-        "No se pudo obtener el pedido."
-    );
-
-}
-
-const resultado =
-    await respuesta.json();
-
-const pedido =
-    resultado.pedido;
-
-const productos =
-    resultado.productos || [];
-
-if (!pedido) {
-
-    throw new Error(
-        "No se encontró la información del pedido."
-    );
-
-}
-
-const ventana =
-    window.open(
-        "",
-        "_blank",
-        "width=400,height=700"
-    );
-
-if (!ventana) {
-
-    alert(
-        "⚠️ El navegador bloqueó la ventana de impresión. Permití las ventanas emergentes."
-    );
-
-    return;
-
-}
-
-const numeroPedido =
-    pedido.id;
-
-const cliente =
-    pedido.cliente_nombre ||
-    pedido.nombre ||
-    "Sin nombre";
-
-const telefono =
-    pedido.cliente_telefono ||
-    pedido.telefono ||
-    "Sin teléfono";
-
-const direccion =
-    pedido.cliente_direccion ||
-    pedido.direccion ||
-    "—";
-
-const entrega =
-    obtenerTextoEntrega(
-        pedido.tipo_entrega
-    );
-
-const pago =
-    obtenerTextoPago(
-        pedido.forma_pago
-    );
-
-const estado =
-    obtenerTextoEstado(
-        pedido.estado
-    );
-
-const fecha =
-    formatearFecha(
-        pedido.creado_en
-    );
-
-const total =
-    Number(
-        pedido.total || 0
-    ).toLocaleString(
-        "es-UY",
-        {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        }
-    );
-
-const productosHTML =
-    productos.map(
-        producto => {
-
-            const nombre =
-                escaparHTML(
-                    producto.nombre ||
-                    "Producto"
-                );
-
-            const cantidad =
-                Number(
-                    producto.cantidad || 0
-                );
-
-            const precioUnitario =
-                Number(
-                    producto.precio_unitario || 0
-                ).toLocaleString(
-                    "es-UY",
-                    {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                    }
-                );
-
-            const subtotal =
-                Number(
-                    producto.subtotal || 0
-                ).toLocaleString(
-                    "es-UY",
-                    {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                    }
-                );
-
-            return `
-
-                <div class="producto">
-
-                    <div class="producto-principal">
-
-                        <div class="producto-nombre">
-                            ${cantidad}x ${nombre}
-                        </div>
-
-                        <div class="producto-unitario">
-                            $${precioUnitario} c/u
-                        </div>
-
-                    </div>
-
-                    <div class="producto-subtotal">
-                        $${subtotal}
-                    </div>
-
-                </div>
-
-            `;
+            throw new Error(
+                "No se pudo obtener el pedido."
+            );
 
         }
-    ).join("");
 
-const observaciones =
-    pedido.observaciones
-    ?
-    `
-        <div class="observaciones">
+        const resultado =
+            await respuesta.json();
 
-            <div class="titulo-seccion">
-                📝 COMENTARIOS
-            </div>
+        const pedido =
+            resultado.pedido;
 
-            <div class="texto-observaciones">
-                ${escaparHTML(
-                    pedido.observaciones
-                )}
-            </div>
+        const productos =
+            resultado.productos || [];
 
-        </div>
-    `
-    :
-    "";
+        if (!pedido) {
 
-ventana.document.write(`
+            throw new Error(
+                "No se encontró la información del pedido."
+            );
 
-    <!DOCTYPE html>
+        }
 
-    <html lang="es">
+        const ventana =
+            window.open(
+                "",
+                "_blank",
+                "width=400,height=700"
+            );
 
-    <head>
+        if (!ventana) {
 
-        <meta charset="UTF-8">
+            alert(
+                "⚠️ El navegador bloqueó la ventana de impresión. Permití las ventanas emergentes."
+            );
 
-        <title>
-            Pedido #${numeroPedido}
-        </title>
+            return;
 
-        <style>
+        }
 
-            * {
-                box-sizing: border-box;
-            }
+        const numeroPedido =
+            pedido.id;
 
-            html,
-            body {
-                margin: 0;
-                padding: 0;
-                width: 80mm;
-                background: #fff;
-                color: #000;
-            }
+        const cliente =
+            pedido.cliente_nombre ||
+            pedido.nombre ||
+            "Sin nombre";
 
-            body {
+        const telefono =
+            pedido.cliente_telefono ||
+            pedido.telefono ||
+            "Sin teléfono";
 
-                font-family:
-                    Arial,
-                    Helvetica,
-                    sans-serif;
+        const direccion =
+            pedido.cliente_direccion ||
+            pedido.direccion ||
+            "—";
 
-                font-size: 12px;
+        const entrega =
+            obtenerTextoEntrega(
+                pedido.tipo_entrega
+            );
 
-                line-height: 1.25;
+        const pago =
+            obtenerTextoPago(
+                pedido.forma_pago
+            );
 
-            }
+        const estado =
+            obtenerTextoEstado(
+                pedido.estado
+            );
 
-            .ticket {
+        const fecha =
+            formatearFecha(
+                pedido.creado_en
+            );
 
-                width: 72mm;
+        const totalNumero =
+            Number(
+                pedido.total || 0
+            );
 
-                margin: 0 auto;
-
-                padding: 3mm 0 5mm 0;
-
-            }
-
-            .cabecera {
-
-                text-align: center;
-
-                padding-bottom: 3mm;
-
-                border-bottom:
-                    1px dashed #000;
-
-                margin-bottom: 3mm;
-
-            }
-
-            .logo {
-
-                font-size: 20px;
-
-                font-weight: 900;
-
-                letter-spacing: 0.5px;
-
-            }
-
-            .subtitulo {
-
-                font-size: 10px;
-
-                margin-top: 1mm;
-
-            }
-
-            .numero-pedido {
-
-                font-size: 22px;
-
-                font-weight: 900;
-
-                margin-top: 3mm;
-
-            }
-
-            .fecha {
-
-                font-size: 10px;
-
-                margin-top: 1mm;
-
-            }
-
-            .seccion {
-
-                border-bottom:
-                    1px dashed #000;
-
-                padding-bottom: 3mm;
-
-                margin-bottom: 3mm;
-
-            }
-
-            .fila {
-
-                display: block;
-
-                margin-bottom: 2mm;
-
-            }
-
-            .fila:last-child {
-                margin-bottom: 0;
-            }
-
-            .etiqueta {
-
-                font-size: 9px;
-
-                font-weight: bold;
-
-                text-transform: uppercase;
-
-            }
-
-            .valor {
-
-                font-size: 12px;
-
-                font-weight: bold;
-
-                word-break: break-word;
-
-            }
-
-            .titulo-seccion {
-
-                font-size: 12px;
-
-                font-weight: 900;
-
-                margin-bottom: 2mm;
-
-            }
-
-            .producto {
-
-                display: flex;
-
-                justify-content:
-                    space-between;
-
-                align-items:
-                    flex-start;
-
-                gap: 3mm;
-
-                padding: 2mm 0;
-
-                border-bottom:
-                    1px dotted #999;
-
-            }
-
-            .producto:last-child {
-                border-bottom: none;
-            }
-
-            .producto-principal {
-
-                flex: 1;
-
-                min-width: 0;
-
-            }
-
-            .producto-nombre {
-
-                font-size: 12px;
-
-                font-weight: bold;
-
-                line-height: 1.25;
-
-                word-break: break-word;
-
-            }
-
-            .producto-unitario {
-
-                font-size: 9px;
-
-                margin-top: 1mm;
-
-            }
-
-            .producto-subtotal {
-
-                font-size: 12px;
-
-                font-weight: bold;
-
-                white-space: nowrap;
-
-            }
-
-            .total {
-
-                display: flex;
-
-                justify-content:
-                    space-between;
-
-                align-items:
-                    center;
-
-                border-top:
-                    2px solid #000;
-
-                margin-top: 3mm;
-
-                padding-top: 3mm;
-
-                font-size: 19px;
-
-                font-weight: 900;
-
-            }
-
-            .observaciones {
-
-                border:
-                    1px solid #000;
-
-                padding: 3mm;
-
-                margin-bottom: 3mm;
-
-            }
-
-            .texto-observaciones {
-
-                font-size: 11px;
-
-                font-weight: bold;
-
-                margin-top: 2mm;
-
-                word-break: break-word;
-
-            }
-
-            .estado {
-
-                text-align: center;
-
-                font-size: 13px;
-
-                font-weight: 900;
-
-                border:
-                    2px solid #000;
-
-                padding: 2mm;
-
-                margin-bottom: 3mm;
-
-            }
-
-            .footer {
-
-                text-align: center;
-
-                border-top:
-                    1px dashed #000;
-
-                padding-top: 3mm;
-
-                font-size: 10px;
-
-            }
-
-            .footer strong {
-
-                display: block;
-
-                font-size: 12px;
-
-                margin-top: 1mm;
-
-            }
-
-            @media print {
-
-                @page {
-
-                    size: 80mm auto;
-
-                    margin: 0;
-
+        const total =
+            totalNumero.toLocaleString(
+                "es-UY",
+                {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
                 }
+            );
 
-                html,
-                body {
+        // =================================================
+        // INFORMACIÓN DE CAMBIO PARA EL TICKET
+        // =================================================
 
-                    width: 80mm;
+        let cambioHTML = "";
 
-                    margin: 0;
+        if (
+            pedido.forma_pago === "efectivo"
+        ) {
 
-                    padding: 0;
+            const necesitaCambio =
+                pedido.necesita_cambio === true ||
+                pedido.necesita_cambio === "true";
 
-                }
+            if (necesitaCambio) {
 
-                .ticket {
+                const cambioDe =
+                    Number(
+                        pedido.cambio_de || 0
+                    );
 
-                    width: 72mm;
+                const vuelto =
+                    cambioDe -
+                    totalNumero;
 
-                    margin: 0 auto;
+                cambioHTML = `
 
-                    padding:
-                        3mm 0 5mm 0;
+                    <div class="seccion pago-efectivo">
 
-                }
-
-            }
-
-        </style>
-
-    </head>
-
-    <body>
-
-        <div class="ticket">
-
-            <div class="cabecera">
-
-                <div class="logo">
-                    🔥 FLAME BURGER
-                </div>
-
-                <div class="subtitulo">
-                    PEDIDO
-                </div>
-
-                <div class="numero-pedido">
-                    #${numeroPedido}
-                </div>
-
-                <div class="fecha">
-                    ${fecha}
-                </div>
-
-            </div>
-
-
-            <div class="seccion">
-
-                <div class="fila">
-
-                    <div class="etiqueta">
-                        Cliente
-                    </div>
-
-                    <div class="valor">
-                        ${escaparHTML(cliente)}
-                    </div>
-
-                </div>
-
-                <div class="fila">
-
-                    <div class="etiqueta">
-                        Teléfono
-                    </div>
-
-                    <div class="valor">
-                        ${escaparHTML(telefono)}
-                    </div>
-
-                </div>
-
-                <div class="fila">
-
-                    <div class="etiqueta">
-                        Entrega
-                    </div>
-
-                    <div class="valor">
-                        ${entrega}
-                    </div>
-
-                </div>
-
-                ${
-                    pedido.tipo_entrega === "delivery"
-                    ?
-                    `
-                    <div class="fila">
-
-                        <div class="etiqueta">
-                            Dirección
+                        <div class="titulo-seccion">
+                            💵 EFECTIVO
                         </div>
 
-                        <div class="valor">
-                            ${escaparHTML(direccion)}
+                        <div class="fila">
+
+                            <div class="etiqueta">
+                                Necesita cambio
+                            </div>
+
+                            <div class="valor">
+                                SÍ
+                            </div>
+
+                        </div>
+
+                        <div class="fila">
+
+                            <div class="etiqueta">
+                                Paga con
+                            </div>
+
+                            <div class="valor">
+                                $${cambioDe.toLocaleString(
+                                    "es-UY",
+                                    {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
+                                    }
+                                )}
+                            </div>
+
+                        </div>
+
+                        <div class="fila">
+
+                            <div class="etiqueta">
+                                Vuelto
+                            </div>
+
+                            <div class="valor vuelto">
+                                $${vuelto.toLocaleString(
+                                    "es-UY",
+                                    {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
+                                    }
+                                )}
+                            </div>
+
                         </div>
 
                     </div>
-                    `
-                    :
-                    ""
+
+                `;
+
+            } else {
+
+                cambioHTML = `
+
+                    <div class="seccion pago-efectivo">
+
+                        <div class="titulo-seccion">
+                            💵 EFECTIVO
+                        </div>
+
+                        <div class="fila">
+
+                            <div class="etiqueta">
+                                Necesita cambio
+                            </div>
+
+                            <div class="valor">
+                                NO
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                `;
+
+            }
+
+        }
+
+        const productosHTML =
+            productos.map(
+                producto => {
+
+                    const nombre =
+                        escaparHTML(
+                            producto.nombre ||
+                            "Producto"
+                        );
+
+                    const cantidad =
+                        Number(
+                            producto.cantidad || 0
+                        );
+
+                    const precioUnitario =
+                        Number(
+                            producto.precio_unitario || 0
+                        ).toLocaleString(
+                            "es-UY",
+                            {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                            }
+                        );
+
+                    const subtotal =
+                        Number(
+                            producto.subtotal || 0
+                        ).toLocaleString(
+                            "es-UY",
+                            {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                            }
+                        );
+
+                    return `
+
+                        <div class="producto">
+
+                            <div class="producto-principal">
+
+                                <div class="producto-nombre">
+                                    ${cantidad}x ${nombre}
+                                </div>
+
+                                <div class="producto-unitario">
+                                    $${precioUnitario} c/u
+                                </div>
+
+                            </div>
+
+                            <div class="producto-subtotal">
+                                $${subtotal}
+                            </div>
+
+                        </div>
+
+                    `;
+
                 }
+            ).join("");
 
-                <div class="fila">
+        const observaciones =
+            pedido.observaciones
+            ?
+            `
+                <div class="observaciones">
 
-                    <div class="etiqueta">
-                        Pago
+                    <div class="titulo-seccion">
+                        📝 COMENTARIOS
                     </div>
 
-                    <div class="valor">
-                        ${pago}
+                    <div class="texto-observaciones">
+                        ${escaparHTML(
+                            pedido.observaciones
+                        )}
+                    </div>
+
+                </div>
+            `
+            :
+            "";
+
+        ventana.document.write(`
+
+            <!DOCTYPE html>
+
+            <html lang="es">
+
+            <head>
+
+                <meta charset="UTF-8">
+
+                <title>
+                    Pedido #${numeroPedido}
+                </title>
+
+                <style>
+
+                    * {
+                        box-sizing: border-box;
+                    }
+
+                    html,
+                    body {
+                        margin: 0;
+                        padding: 0;
+                        width: 80mm;
+                        background: #fff;
+                        color: #000;
+                    }
+
+                    body {
+
+                        font-family:
+                            Arial,
+                            Helvetica,
+                            sans-serif;
+
+                        font-size: 12px;
+
+                        line-height: 1.25;
+
+                    }
+
+                    .ticket {
+
+                        width: 72mm;
+
+                        margin: 0 auto;
+
+                        padding: 3mm 0 5mm 0;
+
+                    }
+
+                    .cabecera {
+
+                        text-align: center;
+
+                        padding-bottom: 3mm;
+
+                        border-bottom:
+                            1px dashed #000;
+
+                        margin-bottom: 3mm;
+
+                    }
+
+                    .logo {
+
+                        font-size: 20px;
+
+                        font-weight: 900;
+
+                        letter-spacing: 0.5px;
+
+                    }
+
+                    .subtitulo {
+
+                        font-size: 10px;
+
+                        margin-top: 1mm;
+
+                    }
+
+                    .numero-pedido {
+
+                        font-size: 22px;
+
+                        font-weight: 900;
+
+                        margin-top: 3mm;
+
+                    }
+
+                    .fecha {
+
+                        font-size: 10px;
+
+                        margin-top: 1mm;
+
+                    }
+
+                    .seccion {
+
+                        border-bottom:
+                            1px dashed #000;
+
+                        padding-bottom: 3mm;
+
+                        margin-bottom: 3mm;
+
+                    }
+
+                    .fila {
+
+                        display: block;
+
+                        margin-bottom: 2mm;
+
+                    }
+
+                    .fila:last-child {
+                        margin-bottom: 0;
+                    }
+
+                    .etiqueta {
+
+                        font-size: 9px;
+
+                        font-weight: bold;
+
+                        text-transform: uppercase;
+
+                    }
+
+                    .valor {
+
+                        font-size: 12px;
+
+                        font-weight: bold;
+
+                        word-break: break-word;
+
+                    }
+
+                    .vuelto {
+
+                        font-size: 16px;
+
+                    }
+
+                    .titulo-seccion {
+
+                        font-size: 12px;
+
+                        font-weight: 900;
+
+                        margin-bottom: 2mm;
+
+                    }
+
+                    .producto {
+
+                        display: flex;
+
+                        justify-content:
+                            space-between;
+
+                        align-items:
+                            flex-start;
+
+                        gap: 3mm;
+
+                        padding: 2mm 0;
+
+                        border-bottom:
+                            1px dotted #999;
+
+                    }
+
+                    .producto:last-child {
+                        border-bottom: none;
+                    }
+
+                    .producto-principal {
+
+                        flex: 1;
+
+                        min-width: 0;
+
+                    }
+
+                    .producto-nombre {
+
+                        font-size: 12px;
+
+                        font-weight: bold;
+
+                        line-height: 1.25;
+
+                        word-break: break-word;
+
+                    }
+
+                    .producto-unitario {
+
+                        font-size: 9px;
+
+                        margin-top: 1mm;
+
+                    }
+
+                    .producto-subtotal {
+
+                        font-size: 12px;
+
+                        font-weight: bold;
+
+                        white-space: nowrap;
+
+                    }
+
+                    .total {
+
+                        display: flex;
+
+                        justify-content:
+                            space-between;
+
+                        align-items:
+                            center;
+
+                        border-top:
+                            2px solid #000;
+
+                        margin-top: 3mm;
+
+                        padding-top: 3mm;
+
+                        font-size: 19px;
+
+                        font-weight: 900;
+
+                    }
+
+                    .observaciones {
+
+                        border:
+                            1px solid #000;
+
+                        padding: 3mm;
+
+                        margin-bottom: 3mm;
+
+                    }
+
+                    .texto-observaciones {
+
+                        font-size: 11px;
+
+                        font-weight: bold;
+
+                        margin-top: 2mm;
+
+                        word-break: break-word;
+
+                    }
+
+                    .estado {
+
+                        text-align: center;
+
+                        font-size: 13px;
+
+                        font-weight: 900;
+
+                        border:
+                            2px solid #000;
+
+                        padding: 2mm;
+
+                        margin-bottom: 3mm;
+
+                    }
+
+                    .footer {
+
+                        text-align: center;
+
+                        border-top:
+                            1px dashed #000;
+
+                        padding-top: 3mm;
+
+                        font-size: 10px;
+
+                    }
+
+                    .footer strong {
+
+                        display: block;
+
+                        font-size: 12px;
+
+                        margin-top: 1mm;
+
+                    }
+
+                    @media print {
+
+                        @page {
+
+                            size: 80mm auto;
+
+                            margin: 0;
+
+                        }
+
+                        html,
+                        body {
+
+                            width: 80mm;
+
+                            margin: 0;
+
+                            padding: 0;
+
+                        }
+
+                        .ticket {
+
+                            width: 72mm;
+
+                            margin: 0 auto;
+
+                            padding:
+                                3mm 0 5mm 0;
+
+                        }
+
+                    }
+
+                </style>
+
+            </head>
+
+            <body>
+
+                <div class="ticket">
+
+                    <div class="cabecera">
+
+                        <div class="logo">
+                            🔥 FLAME BURGER
+                        </div>
+
+                        <div class="subtitulo">
+                            PEDIDO
+                        </div>
+
+                        <div class="numero-pedido">
+                            #${numeroPedido}
+                        </div>
+
+                        <div class="fecha">
+                            ${fecha}
+                        </div>
+
+                    </div>
+
+
+                    <div class="seccion">
+
+                        <div class="fila">
+
+                            <div class="etiqueta">
+                                Cliente
+                            </div>
+
+                            <div class="valor">
+                                ${escaparHTML(cliente)}
+                            </div>
+
+                        </div>
+
+                        <div class="fila">
+
+                            <div class="etiqueta">
+                                Teléfono
+                            </div>
+
+                            <div class="valor">
+                                ${escaparHTML(telefono)}
+                            </div>
+
+                        </div>
+
+                        <div class="fila">
+
+                            <div class="etiqueta">
+                                Entrega
+                            </div>
+
+                            <div class="valor">
+                                ${entrega}
+                            </div>
+
+                        </div>
+
+                        ${
+                            pedido.tipo_entrega === "delivery"
+                            ?
+                            `
+                            <div class="fila">
+
+                                <div class="etiqueta">
+                                    Dirección
+                                </div>
+
+                                <div class="valor">
+                                    ${escaparHTML(direccion)}
+                                </div>
+
+                            </div>
+                            `
+                            :
+                            ""
+                        }
+
+                        <div class="fila">
+
+                            <div class="etiqueta">
+                                Pago
+                            </div>
+
+                            <div class="valor">
+                                ${pago}
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="seccion">
+
+                        <div class="titulo-seccion">
+                            PRODUCTOS
+                        </div>
+
+                        ${productosHTML}
+
+                        <div class="total">
+
+                            <span>
+                                TOTAL
+                            </span>
+
+                            <span>
+                                $${total}
+                            </span>
+
+                        </div>
+
+                    </div>
+
+
+                    ${cambioHTML}
+
+
+                    ${observaciones}
+
+
+                    <div class="estado">
+
+                        ${estado}
+
+                    </div>
+
+
+                    <div class="footer">
+
+                        Gracias por elegir
+
+                        <strong>
+                            Flame Burger 🔥
+                        </strong>
+
                     </div>
 
                 </div>
 
-            </div>
 
+                <script>
 
-            <div class="seccion">
+                    window.onload = function() {
 
-                <div class="titulo-seccion">
-                    PRODUCTOS
-                </div>
+                        setTimeout(
+                            function() {
 
-                ${productosHTML}
+                                window.print();
 
-                <div class="total">
+                            },
+                            250
+                        );
 
-                    <span>
-                        TOTAL
-                    </span>
+                    };
 
-                    <span>
-                        $${total}
-                    </span>
+                </script>
 
-                </div>
+            </body>
 
-            </div>
+            </html>
 
+        `);
 
-            ${observaciones}
+        ventana.document.close();
 
+    } catch (error) {
 
-            <div class="estado">
+        console.error(
+            "❌ ERROR IMPRIMIENDO PEDIDO:",
+            error
+        );
 
-                ${estado}
+        alert(
+            "❌ " +
+            error.message
+        );
 
-            </div>
-
-
-            <div class="footer">
-
-                Gracias por elegir
-
-                <strong>
-                    Flame Burger 🔥
-                </strong>
-
-            </div>
-
-        </div>
-
-
-        <script>
-
-            window.onload = function() {
-
-                setTimeout(
-                    function() {
-
-                        window.print();
-
-                    },
-                    250
-                );
-
-            };
-
-        </script>
-
-    </body>
-
-    </html>
-
-`);
-
-ventana.document.close();
-
-} catch (error) {
-
-console.error(
-    "❌ ERROR IMPRIMIENDO PEDIDO:",
-    error
-);
-
-alert(
-    "❌ " +
-    error.message
-);
-
-}
+    }
 
 }
 
@@ -1371,90 +1594,90 @@ alert(
 // =====================================================
 
 async function cambiarEstado(
-pedidoId,
-nuevoEstado
+    pedidoId,
+    nuevoEstado
 ) {
 
-try {
+    try {
 
-const confirmar =
-    confirm(
-        `¿Cambiar el pedido #${pedidoId} a "${obtenerTextoEstado(nuevoEstado)}"?`
-    );
+        const confirmar =
+            confirm(
+                `¿Cambiar el pedido #${pedidoId} a "${obtenerTextoEstado(nuevoEstado)}"?`
+            );
 
-if (!confirmar) {
-    return;
-}
+        if (!confirmar) {
+            return;
+        }
 
-const respuesta =
-    await fetch(
-        `${API_PEDIDOS}/${pedidoId}/estado`,
-        {
+        const respuesta =
+            await fetch(
+                `${API_PEDIDOS}/${pedidoId}/estado`,
+                {
 
-            method:
-                "PATCH",
+                    method:
+                        "PATCH",
 
-            headers: {
+                    headers: {
 
-                "Content-Type":
-                    "application/json"
+                        "Content-Type":
+                            "application/json"
 
-            },
+                    },
 
-            body:
-                JSON.stringify({
+                    body:
+                        JSON.stringify({
 
-                    estado:
-                        nuevoEstado
+                            estado:
+                                nuevoEstado
 
-                })
+                        })
+
+                }
+            );
+
+        const resultado =
+            await respuesta.json();
+
+        if (
+            !respuesta.ok
+        ) {
+
+            throw new Error(
+                resultado.error ||
+                "No se pudo cambiar el estado."
+            );
 
         }
-    );
 
-const resultado =
-    await respuesta.json();
+        const pedido =
+            pedidos.find(
+                p =>
+                    Number(p.id) ===
+                    Number(pedidoId)
+            );
 
-if (
-    !respuesta.ok
-) {
+        if (pedido) {
 
-    throw new Error(
-        resultado.error ||
-        "No se pudo cambiar el estado."
-    );
+            pedido.estado =
+                nuevoEstado;
 
-}
+        }
 
-const pedido =
-    pedidos.find(
-        p =>
-            Number(p.id) ===
-            Number(pedidoId)
-    );
+        mostrarPedidos();
 
-if (pedido) {
+    } catch (error) {
 
-    pedido.estado =
-        nuevoEstado;
+        console.error(
+            "ERROR CAMBIANDO ESTADO:",
+            error
+        );
 
-}
+        alert(
+            "❌ " +
+            error.message
+        );
 
-mostrarPedidos();
-
-} catch (error) {
-
-console.error(
-    "ERROR CAMBIANDO ESTADO:",
-    error
-);
-
-alert(
-    "❌ " +
-    error.message
-);
-
-}
+    }
 
 }
 
@@ -1463,82 +1686,80 @@ alert(
 // =====================================================
 
 document
-.querySelectorAll(
-".order-filter"
-)
-.forEach(
-boton => {
+    .querySelectorAll(
+        ".order-filter"
+    )
+    .forEach(
+        boton => {
 
-    boton.addEventListener(
-        "click",
-        () => {
+            boton.addEventListener(
+                "click",
+                () => {
 
-            document
-                .querySelectorAll(
-                    ".order-filter"
-                )
-                .forEach(
-                    b =>
-                        b.classList.remove(
-                            "active"
+                    document
+                        .querySelectorAll(
+                            ".order-filter"
                         )
-                );
+                        .forEach(
+                            b =>
+                                b.classList.remove(
+                                    "active"
+                                )
+                        );
 
-            boton.classList.add(
-                "active"
+                    boton.classList.add(
+                        "active"
+                    );
+
+                    filtroActual =
+                        boton.dataset.filter;
+
+                    mostrarPedidos();
+
+                }
             );
-
-            filtroActual =
-                boton.dataset.filter;
-
-            mostrarPedidos();
 
         }
     );
-
-}
-
-);
 
 // =====================================================
 // FORMATEAR FECHA
 // =====================================================
 
 function formatearFecha(
-fecha
+    fecha
 ) {
 
-if (!fecha) {
-return "";
-}
+    if (!fecha) {
+        return "";
+    }
 
-const fechaObjeto =
-new Date(
-fecha
-);
+    const fechaObjeto =
+        new Date(
+            fecha
+        );
 
-return fechaObjeto.toLocaleString(
-"es-UY",
-{
+    return fechaObjeto.toLocaleString(
+        "es-UY",
+        {
 
-    day:
-        "2-digit",
+            day:
+                "2-digit",
 
-    month:
-        "2-digit",
+            month:
+                "2-digit",
 
-    year:
-        "numeric",
+            year:
+                "numeric",
 
-    hour:
-        "2-digit",
+            hour:
+                "2-digit",
 
-    minute:
-        "2-digit"
+            minute:
+                "2-digit"
 
-}
-
-);
+        }
+    );
 
 }
 
@@ -1547,34 +1768,34 @@ return fechaObjeto.toLocaleString(
 // =====================================================
 
 function obtenerTextoEstado(
-estado
+    estado
 ) {
 
-const estados = {
+    const estados = {
 
-en_proceso_pago:
-    "🟡 En proceso de pago",
+        en_proceso_pago:
+            "🟡 En proceso de pago",
 
-nuevo:
-    "🆕 Nuevo",
+        nuevo:
+            "🆕 Nuevo",
 
-preparando:
-    "👨‍🍳 Preparando",
+        preparando:
+            "👨‍🍳 Preparando",
 
-listo:
-    "🍔 Listo",
+        listo:
+            "🍔 Listo",
 
-entregado:
-    "🛵 Entregado",
+        entregado:
+            "🛵 Entregado",
 
-cancelado:
-    "❌ Cancelado"
+        cancelado:
+            "❌ Cancelado"
 
-};
+    };
 
-return estados[estado] ||
-estado ||
-"Desconocido";
+    return estados[estado] ||
+        estado ||
+        "Desconocido";
 
 }
 
@@ -1583,26 +1804,26 @@ estado ||
 // =====================================================
 
 function obtenerTextoEntrega(
-entrega
+    entrega
 ) {
 
-if (
-entrega === "delivery"
-) {
+    if (
+        entrega === "delivery"
+    ) {
 
-return "🛵 Delivery";
+        return "🛵 Delivery";
 
-}
+    }
 
-if (
-entrega === "retiro"
-) {
+    if (
+        entrega === "retiro"
+    ) {
 
-return "🏪 Retiro";
+        return "🏪 Retiro";
 
-}
+    }
 
-return entrega || "—";
+    return entrega || "—";
 
 }
 
@@ -1611,26 +1832,26 @@ return entrega || "—";
 // =====================================================
 
 function obtenerTextoPago(
-pago
+    pago
 ) {
 
-if (
-pago === "efectivo"
-) {
+    if (
+        pago === "efectivo"
+    ) {
 
-return "💵 Efectivo";
+        return "💵 Efectivo";
 
-}
+    }
 
-if (
-pago === "mercado_pago"
-) {
+    if (
+        pago === "mercado_pago"
+    ) {
 
-return "💳 Mercado Pago";
+        return "💳 Mercado Pago";
 
-}
+    }
 
-return pago || "—";
+    return pago || "—";
 
 }
 
@@ -1639,18 +1860,18 @@ return pago || "—";
 // =====================================================
 
 function escaparHTML(
-texto
+    texto
 ) {
 
-const div =
-document.createElement(
-"div"
-);
+    const div =
+        document.createElement(
+            "div"
+        );
 
-div.textContent =
-texto ?? "";
+    div.textContent =
+        texto ?? "";
 
-return div.innerHTML;
+    return div.innerHTML;
 
 }
 
@@ -1659,8 +1880,8 @@ return div.innerHTML;
 // =====================================================
 
 setInterval(
-cargarPedidos,
-10000
+    cargarPedidos,
+    10000
 );
 
 // =====================================================
