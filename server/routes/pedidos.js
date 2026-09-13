@@ -9,12 +9,12 @@ const pool = require("../database");
 // =====================================================
 
 const ESTADOS_PERMITIDOS = [
-    "en_proceso_pago",
-    "nuevo",
-    "preparando",
-    "listo",
-    "entregado",
-    "cancelado"
+"en_proceso_pago",
+"nuevo",
+"preparando",
+"listo",
+"entregado",
+"cancelado"
 ];
 
 // =====================================================
@@ -24,494 +24,474 @@ const ESTADOS_PERMITIDOS = [
 
 router.post("/", async (req, res) => {
 
-    const client = await pool.connect();
 
-    try {
+const client = await pool.connect();
 
-        const {
-            cliente,
-            entrega,
-            pago,
-            necesitaCambio,
-            cambio,
-            productos
-        } = req.body;
+try {
 
-        // =================================================
-        // VALIDAR CLIENTE
-        // =================================================
+    const {
+        cliente,
+        entrega,
+        pago,
+        productos
+    } = req.body;
 
-        if (!cliente) {
-            return res.status(400).json({
-                error: "Faltan los datos del cliente."
-            });
-        }
 
-        if (!cliente.nombre) {
-            return res.status(400).json({
-                error: "El nombre es obligatorio."
-            });
-        }
+    // =================================================
+    // VALIDAR CLIENTE
+    // =================================================
 
-        if (!cliente.telefono) {
-            return res.status(400).json({
-                error: "El teléfono es obligatorio."
-            });
-        }
+    if (!cliente) {
+        return res.status(400).json({
+            error: "Faltan los datos del cliente."
+        });
+    }
 
-        // =================================================
-        // VALIDAR PRODUCTOS
-        // =================================================
+    if (!cliente.nombre) {
+        return res.status(400).json({
+            error: "El nombre es obligatorio."
+        });
+    }
 
-        if (
-            !productos ||
-            !Array.isArray(productos) ||
-            productos.length === 0
-        ) {
-            return res.status(400).json({
-                error: "El pedido no tiene productos."
-            });
-        }
+    if (!cliente.telefono) {
+        return res.status(400).json({
+            error: "El teléfono es obligatorio."
+        });
+    }
 
-        // =================================================
-        // VALIDAR ENTREGA
-        // =================================================
 
-        const tipoEntrega =
-            entrega === "retiro"
-                ? "retiro"
-                : "delivery";
+    // =================================================
+    // VALIDAR PRODUCTOS
+    // =================================================
 
-        // =================================================
-        // VALIDAR FORMA DE PAGO
-        // =================================================
+    if (
+        !productos ||
+        !Array.isArray(productos) ||
+        productos.length === 0
+    ) {
+        return res.status(400).json({
+            error: "El pedido no tiene productos."
+        });
+    }
 
-        const formasPagoPermitidas = [
-            "efectivo",
-            "mercado_pago"
-        ];
 
-        const formaPago =
-            formasPagoPermitidas.includes(pago)
-                ? pago
-                : "efectivo";
+    // =================================================
+    // VALIDAR ENTREGA
+    // =================================================
 
-        // =================================================
-        // VALIDAR CAMBIO
-        // =================================================
+    const tipoEntrega =
+        entrega === "retiro"
+            ? "retiro"
+            : "delivery";
 
-        let necesitaCambioFinal = false;
-        let cambioFinal = null;
 
-        if (formaPago === "efectivo") {
+    // =================================================
+    // VALIDAR FORMA DE PAGO
+    // =================================================
 
-            necesitaCambioFinal =
-                necesitaCambio === true;
+    const formasPagoPermitidas = [
+        "efectivo",
+        "mercado_pago"
+    ];
 
-            if (necesitaCambioFinal) {
+    const formaPago =
+        formasPagoPermitidas.includes(pago)
+            ? pago
+            : "efectivo";
 
-                cambioFinal = Number(cambio);
 
-                if (
-                    !Number.isFinite(cambioFinal) ||
-                    cambioFinal <= 0
-                ) {
-                    return res.status(400).json({
-                        error:
-                            "Debes indicar con cuánto vas a pagar para preparar el cambio."
-                    });
-                }
+    // =================================================
+    // ESTADO INICIAL
+    // =================================================
 
-                cambioFinal =
-                    Number(cambioFinal.toFixed(2));
-            }
-        }
+    const estadoInicial =
+        formaPago === "mercado_pago"
+            ? "en_proceso_pago"
+            : "nuevo";
 
-        // =================================================
-        // MERCADO PAGO
-        // =================================================
 
-        // Mercado Pago queda inicialmente:
-        //
-        // en_proceso_pago
-        //
-        // Solamente la confirmación de Mercado Pago
-        // podrá activar posteriormente el pedido.
+    // =================================================
+    // INICIAR TRANSACCIÓN
+    // =================================================
 
-        const estadoInicial =
-            formaPago === "mercado_pago"
-                ? "en_proceso_pago"
-                : "nuevo";
+    await client.query("BEGIN");
 
-        // =================================================
-        // INICIAR TRANSACCIÓN
-        // =================================================
 
-        await client.query("BEGIN");
+    // =================================================
+    // BUSCAR CLIENTE
+    // =================================================
 
-        // =================================================
-        // BUSCAR CLIENTE
-        // =================================================
+    const clienteExistente =
+        await client.query(
+            `
+            SELECT id
+            FROM clientes
+            WHERE telefono = $1
+            LIMIT 1
+            `,
+            [
+                cliente.telefono
+            ]
+        );
 
-        const clienteExistente =
+
+    let clienteId;
+
+
+    // =================================================
+    // CLIENTE EXISTENTE
+    // =================================================
+
+    if (clienteExistente.rows.length > 0) {
+
+        clienteId =
+            clienteExistente.rows[0].id;
+
+
+        await client.query(
+            `
+            UPDATE clientes
+            SET
+                nombre = $1,
+                direccion = $2
+            WHERE id = $3
+            `,
+            [
+                cliente.nombre,
+                cliente.direccion || "",
+                clienteId
+            ]
+        );
+
+    }
+
+
+    // =================================================
+    // NUEVO CLIENTE
+    // =================================================
+
+    else {
+
+        const nuevoCliente =
             await client.query(
                 `
-                SELECT id
-                FROM clientes
-                WHERE telefono = $1
-                LIMIT 1
-                `,
-                [
-                    cliente.telefono
-                ]
-            );
-
-        let clienteId;
-
-        // =================================================
-        // CLIENTE EXISTENTE
-        // =================================================
-
-        if (clienteExistente.rows.length > 0) {
-
-            clienteId =
-                clienteExistente.rows[0].id;
-
-            await client.query(
-                `
-                UPDATE clientes
-                SET
-                    nombre = $1,
-                    direccion = $2
-                WHERE id = $3
+                INSERT INTO clientes
+                (
+                    nombre,
+                    telefono,
+                    direccion
+                )
+                VALUES
+                (
+                    $1,
+                    $2,
+                    $3
+                )
+                RETURNING id
                 `,
                 [
                     cliente.nombre,
-                    cliente.direccion || "",
-                    clienteId
+                    cliente.telefono,
+                    cliente.direccion || ""
                 ]
             );
 
-        }
 
-        // =================================================
-        // NUEVO CLIENTE
-        // =================================================
+        clienteId =
+            nuevoCliente.rows[0].id;
 
-        else {
+    }
 
-            const nuevoCliente =
-                await client.query(
-                    `
-                    INSERT INTO clientes
-                    (
-                        nombre,
-                        telefono,
-                        direccion
-                    )
-                    VALUES
-                    (
-                        $1,
-                        $2,
-                        $3
-                    )
-                    RETURNING id
-                    `,
-                    [
-                        cliente.nombre,
-                        cliente.telefono,
-                        cliente.direccion || ""
-                    ]
-                );
 
-            clienteId =
-                nuevoCliente.rows[0].id;
-        }
+    // =================================================
+    // PRODUCTOS Y TOTAL
+    // =================================================
 
-        // =================================================
-        // PRODUCTOS Y TOTAL
-        // =================================================
+    let total = 0;
 
-        let total = 0;
+    const productosFinales = [];
 
-        const productosFinales = [];
 
-        for (const producto of productos) {
+    for (const producto of productos) {
 
-            const productoId =
-                Number(producto.producto_id);
+        const productoId =
+            Number(producto.producto_id);
 
-            const cantidad =
-                Number(producto.cantidad);
+        const cantidad =
+            Number(producto.cantidad);
 
-            // =================================================
-            // VALIDAR PRODUCTO
-            // =================================================
-
-            if (
-                !productoId ||
-                !Number.isInteger(cantidad) ||
-                cantidad <= 0
-            ) {
-                throw new Error(
-                    "Hay un producto inválido en el pedido."
-                );
-            }
-
-            // =================================================
-            // BUSCAR PRODUCTO
-            // =================================================
-
-            const resultado =
-                await client.query(
-                    `
-                    SELECT
-                        id,
-                        nombre,
-                        precio,
-                        disponible
-                    FROM productos
-                    WHERE id = $1
-                    `,
-                    [
-                        productoId
-                    ]
-                );
-
-            if (resultado.rows.length === 0) {
-
-                throw new Error(
-                    `El producto con ID ${productoId} no existe.`
-                );
-            }
-
-            const productoBD =
-                resultado.rows[0];
-
-            // =================================================
-            // COMPROBAR DISPONIBILIDAD
-            // =================================================
-
-            if (productoBD.disponible !== true) {
-
-                throw new Error(
-                    `El producto "${productoBD.nombre}" no está disponible.`
-                );
-            }
-
-            // =================================================
-            // PRECIO REAL DE LA BASE DE DATOS
-            // =================================================
-
-            const precio =
-                Number(productoBD.precio);
-
-            const subtotal =
-                precio * cantidad;
-
-            total += subtotal;
-
-            productosFinales.push({
-                id: productoBD.id,
-                nombre: productoBD.nombre,
-                cantidad: cantidad,
-                precio: precio,
-                subtotal: subtotal
-            });
-        }
-
-        // =================================================
-        // REDONDEAR TOTAL
-        // =================================================
-
-        total =
-            Number(total.toFixed(2));
-
-        // =================================================
-        // VALIDAR MONTO DE CAMBIO CONTRA EL TOTAL
-        // =================================================
 
         if (
-            formaPago === "efectivo" &&
-            necesitaCambioFinal &&
-            cambioFinal < total
+            !productoId ||
+            !Number.isInteger(cantidad) ||
+            cantidad <= 0
         ) {
 
-            await client.query("ROLLBACK");
+            throw new Error(
+                "Hay un producto inválido en el pedido."
+            );
 
-            return res.status(400).json({
-                error:
-                    `El monto con el que paga debe ser igual o mayor al total de $${total.toFixed(2)}.`
-            });
         }
 
+
         // =================================================
-        // CREAR PEDIDO
+        // BUSCAR PRODUCTO
         // =================================================
 
-        const nuevoPedido =
+        const resultado =
             await client.query(
                 `
-                INSERT INTO pedidos
-                (
-                    cliente_id,
-                    tipo_entrega,
-                    forma_pago,
-                    estado,
-                    total,
-                    observaciones,
-                    necesita_cambio,
-                    cambio_de
-                )
-                VALUES
-                (
-                    $1,
-                    $2,
-                    $3,
-                    $4,
-                    $5,
-                    $6,
-                    $7,
-                    $8
-                )
-                RETURNING
+                SELECT
                     id,
-                    total,
-                    estado,
-                    necesita_cambio,
-                    cambio_de,
-                    creado_en
+                    nombre,
+                    precio,
+                    disponible
+                FROM productos
+                WHERE id = $1
                 `,
                 [
-                    clienteId,
-                    tipoEntrega,
-                    formaPago,
-                    estadoInicial,
-                    total,
-                    cliente.comentarios || "",
-                    necesitaCambioFinal,
-                    cambioFinal
+                    productoId
                 ]
             );
 
-        const pedido =
-            nuevoPedido.rows[0];
 
-        // =================================================
-        // GUARDAR DETALLE DEL PEDIDO
-        // =================================================
+        if (resultado.rows.length === 0) {
 
-        for (const producto of productosFinales) {
-
-            await client.query(
-                `
-                INSERT INTO detalle_pedidos
-                (
-                    pedido_id,
-                    producto_id,
-                    cantidad,
-                    precio_unitario,
-                    subtotal
-                )
-                VALUES
-                (
-                    $1,
-                    $2,
-                    $3,
-                    $4,
-                    $5
-                )
-                `,
-                [
-                    pedido.id,
-                    producto.id,
-                    producto.cantidad,
-                    producto.precio,
-                    producto.subtotal
-                ]
+            throw new Error(
+                `El producto con ID ${productoId} no existe.`
             );
+
         }
 
+
+        const productoBD =
+            resultado.rows[0];
+
+
         // =================================================
-        // CONFIRMAR TRANSACCIÓN
+        // COMPROBAR DISPONIBILIDAD
         // =================================================
 
-        await client.query("COMMIT");
+        if (productoBD.disponible !== true) {
+
+            throw new Error(
+                `El producto "${productoBD.nombre}" no está disponible.`
+            );
+
+        }
+
 
         // =================================================
-        // RESPUESTA
+        // PRECIO REAL DE LA BASE DE DATOS
         // =================================================
 
-        res.status(201).json({
+        const precio =
+            Number(productoBD.precio);
 
-            ok: true,
 
-            mensaje:
-                "Pedido creado correctamente.",
+        const subtotal =
+            precio * cantidad;
+
+
+        total += subtotal;
+
+
+        productosFinales.push({
 
             id:
-                pedido.id,
+                productoBD.id,
 
-            total:
-                Number(
-                    Number(pedido.total).toFixed(2)
-                ),
+            nombre:
+                productoBD.nombre,
 
-            estado:
-                pedido.estado,
+            cantidad:
+                cantidad,
 
-            forma_pago:
+            precio:
+                precio,
+
+            subtotal:
+                subtotal
+
+        });
+
+    }
+
+
+    // =================================================
+    // REDONDEAR TOTAL
+    // =================================================
+
+    total =
+        Number(total.toFixed(2));
+
+
+    // =================================================
+    // CREAR PEDIDO
+    // =================================================
+
+    const nuevoPedido =
+        await client.query(
+            `
+            INSERT INTO pedidos
+            (
+                cliente_id,
+                tipo_entrega,
+                forma_pago,
+                estado,
+                total,
+                observaciones
+            )
+            VALUES
+            (
+                $1,
+                $2,
+                $3,
+                $4,
+                $5,
+                $6
+            )
+            RETURNING
+                id,
+                total,
+                estado,
+                creado_en
+            `,
+            [
+                clienteId,
+                tipoEntrega,
                 formaPago,
 
-            tipo_entrega:
-                tipoEntrega,
+                // IMPORTANTE:
+                // Mercado Pago = en_proceso_pago
+                // Efectivo = nuevo
+                estadoInicial,
 
-            necesita_cambio:
-                pedido.necesita_cambio,
+                total,
 
-            cambio_de:
-                pedido.cambio_de,
-
-            creado_en:
-                pedido.creado_en
-        });
-
-    } catch (error) {
-
-        // =================================================
-        // ROLLBACK
-        // =================================================
-
-        try {
-
-            await client.query("ROLLBACK");
-
-        } catch (rollbackError) {
-
-            console.error(
-                "ERROR ROLLBACK:",
-                rollbackError
-            );
-        }
-
-        console.error(
-            "❌ ERROR CREANDO PEDIDO:",
-            error
+                cliente.comentarios || ""
+            ]
         );
 
-        res.status(500).json({
 
-            ok: false,
+    const pedido =
+        nuevoPedido.rows[0];
 
-            error:
-                error.message ||
-                "Error interno del servidor."
-        });
 
-    } finally {
+    // =================================================
+    // GUARDAR DETALLE DEL PEDIDO
+    // =================================================
 
-        client.release();
+    for (const producto of productosFinales) {
+
+        await client.query(
+            `
+            INSERT INTO detalle_pedidos
+            (
+                pedido_id,
+                producto_id,
+                cantidad,
+                precio_unitario,
+                subtotal
+            )
+            VALUES
+            (
+                $1,
+                $2,
+                $3,
+                $4,
+                $5
+            )
+            `,
+            [
+                pedido.id,
+                producto.id,
+                producto.cantidad,
+                producto.precio,
+                producto.subtotal
+            ]
+        );
+
     }
+
+
+    // =================================================
+    // CONFIRMAR TRANSACCIÓN
+    // =================================================
+
+    await client.query("COMMIT");
+
+
+    // =================================================
+    // RESPUESTA
+    // =================================================
+
+    res.status(201).json({
+
+        ok: true,
+
+        mensaje:
+            "Pedido creado correctamente.",
+
+        id:
+            pedido.id,
+
+        total:
+            Number(
+                Number(pedido.total).toFixed(2)
+            ),
+
+        estado:
+            pedido.estado,
+
+        forma_pago:
+            formaPago,
+
+        tipo_entrega:
+            tipoEntrega,
+
+        creado_en:
+            pedido.creado_en
+
+    });
+
+
+} catch (error) {
+
+    try {
+        await client.query("ROLLBACK");
+    } catch (rollbackError) {
+        console.error(
+            "ERROR ROLLBACK:",
+            rollbackError
+        );
+    }
+
+
+    console.error(
+        "❌ ERROR CREANDO PEDIDO:",
+        error
+    );
+
+
+    res.status(500).json({
+
+        ok: false,
+
+        error:
+            error.message ||
+            "Error interno del servidor."
+
+    });
+
+
+} finally {
+
+    client.release();
+
+}
+
+
 });
 
 // =====================================================
@@ -521,53 +501,59 @@ router.post("/", async (req, res) => {
 
 router.get("/", async (req, res) => {
 
-    try {
 
-        const resultado =
-            await pool.query(
-                `
-                SELECT
-                    p.id,
-                    p.cliente_id,
-                    c.nombre AS cliente_nombre,
-                    c.telefono,
-                    c.direccion,
-                    p.tipo_entrega,
-                    p.forma_pago,
-                    p.estado,
-                    p.total,
-                    p.observaciones,
-                    p.necesita_cambio,
-                    p.cambio_de,
-                    p.creado_en
+try {
 
-                FROM pedidos p
+    const resultado =
+        await pool.query(
+            `
+            SELECT
+                p.id,
+                p.cliente_id,
+                c.nombre AS cliente_nombre,
+                c.telefono,
+                c.direccion,
+                p.tipo_entrega,
+                p.forma_pago,
+                p.estado,
+                p.total,
+                p.observaciones,
+                p.creado_en
 
-                LEFT JOIN clientes c
-                    ON c.id = p.cliente_id
+            FROM pedidos p
 
-                ORDER BY
-                    p.creado_en DESC
-                `
-            );
+            LEFT JOIN clientes c
+                ON c.id = p.cliente_id
 
-        res.json(
-            resultado.rows
+            ORDER BY
+                p.creado_en DESC
+            `
         );
 
-    } catch (error) {
 
-        console.error(
-            "❌ ERROR OBTENIENDO PEDIDOS:",
-            error
-        );
+    res.json(
+        resultado.rows
+    );
 
-        res.status(500).json({
 
-            error:
-                "No se pudieron obtener los pedidos."
-        });
-    }
+} catch (error) {
+
+    console.error(
+        "❌ ERROR OBTENIENDO PEDIDOS:",
+        error
+    );
+
+
+    res.status(500).json({
+
+        error:
+            "No se pudieron obtener los pedidos."
+
+    });
+
+}
+
+
 });
 
 // =====================================================
@@ -577,10 +563,157 @@ router.get("/", async (req, res) => {
 
 router.get("/:id", async (req, res) => {
 
+
+try {
+
+    const pedidoId =
+        Number(req.params.id);
+
+
+    if (
+        !Number.isInteger(pedidoId) ||
+        pedidoId <= 0
+    ) {
+
+        return res.status(400).json({
+
+            error:
+                "ID de pedido inválido."
+
+        });
+
+    }
+
+
+    // =================================================
+    // DATOS DEL PEDIDO
+    // =================================================
+
+    const pedido =
+        await pool.query(
+            `
+            SELECT
+                p.id,
+                p.cliente_id,
+                c.nombre AS cliente_nombre,
+                c.telefono,
+                c.direccion,
+                p.tipo_entrega,
+                p.forma_pago,
+                p.estado,
+                p.total,
+                p.observaciones,
+                p.creado_en
+
+            FROM pedidos p
+
+            LEFT JOIN clientes c
+                ON c.id = p.cliente_id
+
+            WHERE p.id = $1
+            `,
+            [
+                pedidoId
+            ]
+        );
+
+
+    if (pedido.rows.length === 0) {
+
+        return res.status(404).json({
+
+            error:
+                "Pedido no encontrado."
+
+        });
+
+    }
+
+
+    // =================================================
+    // PRODUCTOS DEL PEDIDO
+    // =================================================
+
+    const detalles =
+        await pool.query(
+            `
+            SELECT
+                d.id,
+                d.producto_id,
+                pr.nombre,
+                pr.imagen,
+                d.cantidad,
+                d.precio_unitario,
+                d.subtotal
+
+            FROM detalle_pedidos d
+
+            LEFT JOIN productos pr
+                ON pr.id = d.producto_id
+
+            WHERE d.pedido_id = $1
+
+            ORDER BY d.id
+            `,
+            [
+                pedidoId
+            ]
+        );
+
+
+    // =================================================
+    // RESPUESTA
+    // =================================================
+
+    res.json({
+
+        pedido:
+            pedido.rows[0],
+
+        productos:
+            detalles.rows
+
+    });
+
+
+} catch (error) {
+
+    console.error(
+        "❌ ERROR OBTENIENDO PEDIDO:",
+        error
+    );
+
+
+    res.status(500).json({
+
+        error:
+            "No se pudo obtener el pedido."
+
+    });
+
+}
+
+});
+
+// =====================================================
+// CAMBIAR ESTADO
+// PATCH /api/pedidos/:id/estado
+// =====================================================
+
+router.patch(
+"/:id/estado",
+async (req, res) => {
+
     try {
 
         const pedidoId =
             Number(req.params.id);
+
+
+        const {
+            estado
+        } = req.body;
+
 
         // =================================================
         // VALIDAR ID
@@ -595,81 +728,203 @@ router.get("/:id", async (req, res) => {
 
                 error:
                     "ID de pedido inválido."
+
             });
+
         }
 
+
         // =================================================
-        // DATOS DEL PEDIDO
+        // VALIDAR ESTADO
         // =================================================
 
-        const pedido =
+        if (!estado) {
+
+            return res.status(400).json({
+
+                error:
+                    "Falta el estado."
+
+            });
+
+        }
+
+
+        if (
+            !ESTADOS_PERMITIDOS.includes(
+                estado
+            )
+        ) {
+
+            return res.status(400).json({
+
+                error:
+                    "Estado de pedido inválido.",
+
+                estados_permitidos:
+                    ESTADOS_PERMITIDOS
+
+            });
+
+        }
+
+
+        // =================================================
+        // OBTENER ESTADO ACTUAL
+        // =================================================
+
+        const pedidoActual =
             await pool.query(
                 `
                 SELECT
-                    p.id,
-                    p.cliente_id,
-                    c.nombre AS cliente_nombre,
-                    c.telefono,
-                    c.direccion,
-                    p.tipo_entrega,
-                    p.forma_pago,
-                    p.estado,
-                    p.total,
-                    p.observaciones,
-                    p.necesita_cambio,
-                    p.cambio_de,
-                    p.creado_en
+                    id,
+                    estado,
+                    forma_pago
 
-                FROM pedidos p
+                FROM pedidos
 
-                LEFT JOIN clientes c
-                    ON c.id = p.cliente_id
+                WHERE id = $1
 
-                WHERE p.id = $1
+                LIMIT 1
                 `,
                 [
                     pedidoId
                 ]
             );
 
-        if (pedido.rows.length === 0) {
+
+        if (
+            pedidoActual.rows.length === 0
+        ) {
 
             return res.status(404).json({
 
                 error:
                     "Pedido no encontrado."
+
             });
+
         }
 
+
+        const estadoActual =
+            pedidoActual.rows[0].estado;
+
+
         // =================================================
-        // PRODUCTOS DEL PEDIDO
+        // PROTEGER MERCADO PAGO
         // =================================================
 
-        const detalles =
+        if (
+            estadoActual === "en_proceso_pago"
+        ) {
+
+            return res.status(403).json({
+
+                error:
+                    "Este pedido está esperando la confirmación de Mercado Pago. No puede activarse manualmente."
+
+            });
+
+        }
+
+
+        // =================================================
+        // EVITAR ESTADO ANTIGUO
+        // =================================================
+
+        if (
+            estado === "confirmado"
+        ) {
+
+            return res.status(400).json({
+
+                error:
+                    "El estado confirmado ya no se utiliza."
+
+            });
+
+        }
+
+
+        // =================================================
+        // TRANSICIONES PERMITIDAS
+        // =================================================
+
+        const transicionesPermitidas = {
+
+            nuevo: [
+                "preparando",
+                "cancelado"
+            ],
+
+            preparando: [
+                "listo",
+                "cancelado"
+            ],
+
+            listo: [
+                "entregado",
+                "cancelado"
+            ],
+
+            entregado: [
+                "cancelado"
+            ],
+
+            cancelado: [
+                "nuevo"
+            ]
+
+        };
+
+
+        const permitidas =
+            transicionesPermitidas[
+                estadoActual
+            ] || [];
+
+
+        if (
+            !permitidas.includes(
+                estado
+            )
+        ) {
+
+            return res.status(400).json({
+
+                error:
+                    `No se puede cambiar el pedido de "${estadoActual}" a "${estado}".`
+
+            });
+
+        }
+
+
+        // =================================================
+        // ACTUALIZAR ESTADO
+        // =================================================
+
+        const resultado =
             await pool.query(
                 `
-                SELECT
-                    d.id,
-                    d.producto_id,
-                    pr.nombre,
-                    pr.imagen,
-                    d.cantidad,
-                    d.precio_unitario,
-                    d.subtotal
+                UPDATE pedidos
 
-                FROM detalle_pedidos d
+                SET
+                    estado = $1
 
-                LEFT JOIN productos pr
-                    ON pr.id = d.producto_id
+                WHERE id = $2
 
-                WHERE d.pedido_id = $1
-
-                ORDER BY d.id
+                RETURNING
+                    id,
+                    estado
                 `,
                 [
+                    estado,
                     pedidoId
                 ]
             );
+
 
         // =================================================
         // RESPUESTA
@@ -677,260 +932,36 @@ router.get("/:id", async (req, res) => {
 
         res.json({
 
-            pedido:
-                pedido.rows[0],
+            ok: true,
 
-            productos:
-                detalles.rows
+            mensaje:
+                "Estado actualizado correctamente.",
+
+            pedido:
+                resultado.rows[0]
+
         });
+
 
     } catch (error) {
 
         console.error(
-            "❌ ERROR OBTENIENDO PEDIDO:",
+            "❌ ERROR CAMBIANDO ESTADO:",
             error
         );
+
 
         res.status(500).json({
 
             error:
-                "No se pudo obtener el pedido."
+                "No se pudo actualizar el estado."
+
         });
+
     }
-});
 
-// =====================================================
-// CAMBIAR ESTADO
-// PATCH /api/pedidos/:id/estado
-// =====================================================
+}
 
-router.patch(
-    "/:id/estado",
-    async (req, res) => {
-
-        try {
-
-            const pedidoId =
-                Number(req.params.id);
-
-            const {
-                estado
-            } = req.body;
-
-            // =================================================
-            // VALIDAR ID
-            // =================================================
-
-            if (
-                !Number.isInteger(pedidoId) ||
-                pedidoId <= 0
-            ) {
-
-                return res.status(400).json({
-
-                    error:
-                        "ID de pedido inválido."
-                });
-            }
-
-            // =================================================
-            // VALIDAR ESTADO
-            // =================================================
-
-            if (!estado) {
-
-                return res.status(400).json({
-
-                    error:
-                        "Falta el estado."
-                });
-            }
-
-            if (
-                !ESTADOS_PERMITIDOS.includes(
-                    estado
-                )
-            ) {
-
-                return res.status(400).json({
-
-                    error:
-                        "Estado de pedido inválido.",
-
-                    estados_permitidos:
-                        ESTADOS_PERMITIDOS
-                });
-            }
-
-            // =================================================
-            // OBTENER ESTADO ACTUAL
-            // =================================================
-
-            const pedidoActual =
-                await pool.query(
-                    `
-                    SELECT
-                        id,
-                        estado,
-                        forma_pago
-
-                    FROM pedidos
-
-                    WHERE id = $1
-
-                    LIMIT 1
-                    `,
-                    [
-                        pedidoId
-                    ]
-                );
-
-            if (
-                pedidoActual.rows.length === 0
-            ) {
-
-                return res.status(404).json({
-
-                    error:
-                        "Pedido no encontrado."
-                });
-            }
-
-            const estadoActual =
-                pedidoActual.rows[0].estado;
-
-            // =================================================
-            // PROTEGER MERCADO PAGO
-            // =================================================
-
-            if (
-                estadoActual ===
-                "en_proceso_pago"
-            ) {
-
-                return res.status(403).json({
-
-                    error:
-                        "Este pedido está esperando la confirmación de Mercado Pago. No puede activarse manualmente."
-                });
-            }
-
-            // =================================================
-            // EVITAR ESTADO ANTIGUO
-            // =================================================
-
-            if (
-                estado === "confirmado"
-            ) {
-
-                return res.status(400).json({
-
-                    error:
-                        "El estado confirmado ya no se utiliza."
-                });
-            }
-
-            // =================================================
-            // TRANSICIONES PERMITIDAS
-            // =================================================
-
-            const transicionesPermitidas = {
-
-                nuevo: [
-                    "preparando",
-                    "cancelado"
-                ],
-
-                preparando: [
-                    "listo",
-                    "cancelado"
-                ],
-
-                listo: [
-                    "entregado",
-                    "cancelado"
-                ],
-
-                entregado: [
-                    "cancelado"
-                ],
-
-                cancelado: [
-                    "nuevo"
-                ]
-            };
-
-            const permitidas =
-                transicionesPermitidas[
-                    estadoActual
-                ] || [];
-
-            if (
-                !permitidas.includes(
-                    estado
-                )
-            ) {
-
-                return res.status(400).json({
-
-                    error:
-                        `No se puede cambiar el pedido de "${estadoActual}" a "${estado}".`
-                });
-            }
-
-            // =================================================
-            // ACTUALIZAR ESTADO
-            // =================================================
-
-            const resultado =
-                await pool.query(
-                    `
-                    UPDATE pedidos
-
-                    SET
-                        estado = $1
-
-                    WHERE id = $2
-
-                    RETURNING
-                        id,
-                        estado
-                    `,
-                    [
-                        estado,
-                        pedidoId
-                    ]
-                );
-
-            // =================================================
-            // RESPUESTA
-            // =================================================
-
-            res.json({
-
-                ok: true,
-
-                mensaje:
-                    "Estado actualizado correctamente.",
-
-                pedido:
-                    resultado.rows[0]
-            });
-
-        } catch (error) {
-
-            console.error(
-                "❌ ERROR CAMBIANDO ESTADO:",
-                error
-            );
-
-            res.status(500).json({
-
-                error:
-                    "No se pudo actualizar el estado."
-            });
-        }
-    }
 );
 
 // =====================================================
@@ -938,3 +969,5 @@ router.patch(
 // =====================================================
 
 module.exports = router;
+
+
