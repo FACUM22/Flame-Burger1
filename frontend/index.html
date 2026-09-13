@@ -4,6 +4,7 @@
 
 <head>
 
+```
 <meta charset="UTF-8">
 
 <meta
@@ -22,7 +23,7 @@
     rel="stylesheet"
     href="css/style.css"
 >
-
+```
 
 </head>
 
@@ -33,6 +34,8 @@
 ===================================================== -->
 
 <header class="header">
+
+```
 <a
     href="/"
     class="logo"
@@ -49,13 +52,15 @@
 
 <div class="header-right">
 
-
     <div class="estado-local">
 
-        <span class="estado-punto"></span>
+        <span
+            id="estadoPunto"
+            class="estado-punto"
+        ></span>
 
-        <span>
-            Abierto
+        <span id="estadoTexto">
+            Cerrado
         </span>
 
     </div>
@@ -82,9 +87,8 @@
 
     </button>
 
-
 </div>
-
+```
 
 </header>
 
@@ -94,85 +98,80 @@
 
 <main>
 
-
 <!-- =================================================
      HERO
 ================================================== -->
 
 <section class="hero">
 
-
-    <div class="hero-overlay"></div>
-
-
-    <div class="hero-content">
+```
+<div class="hero-overlay"></div>
 
 
-        <span class="hero-tag">
-            HAMBURGUESAS A LA LLAMA
+<div class="hero-content">
+
+    <span class="hero-tag">
+        HAMBURGUESAS A LA LLAMA
+    </span>
+
+
+    <h1>
+
+        Encendemos
+
+        <br>
+
+        <span>
+            tu antojo.
         </span>
 
+    </h1>
 
-        <h1>
 
-            Encendemos
-            <br>
+    <p>
+
+        Hamburguesas hechas a la llama,
+
+        <br class="hero-break">
+
+        con sabor que no se olvida.
+
+    </p>
+
+
+    <div class="hero-buttons">
+
+        <a
+            href="#menu"
+            class="hero-button"
+        >
 
             <span>
-                tu antojo.
+                Pedir ahora
             </span>
 
-        </h1>
+            <span>
+                →
+            </span>
+
+        </a>
 
 
-        <p>
+        <a
+            href="#info"
+            class="hero-link"
+        >
 
-            Hamburguesas hechas a la llama,
-            <br class="hero-break">
+            Conocé Flame Burger
 
-            con sabor que no se olvida.
-
-        </p>
-
-
-        <div class="hero-buttons">
-
-
-            <a
-                href="#menu"
-                class="hero-button"
-            >
-
-                <span>
-                    Pedir ahora
-                </span>
-
-                <span>
-                    →
-                </span>
-
-            </a>
-
-
-            <a
-                href="#info"
-                class="hero-link"
-            >
-
-                Conocé Flame Burger
-
-            </a>
-
-
-        </div>
-
+        </a>
 
     </div>
 
+</div>
+```
 
 </section>
-
-
 
 <!-- =================================================
      MENÚ
@@ -183,91 +182,83 @@
     class="menu-section"
 >
 
+```
+<div class="menu-header">
 
-    <div class="menu-header">
+    <div class="section-title">
 
-
-        <div class="section-title">
-
-
-            <span>
-                NUESTRO MENÚ
-            </span>
+        <span>
+            NUESTRO MENÚ
+        </span>
 
 
-            <h2>
-                Elegí tu favorita.
-            </h2>
+        <h2>
+            Elegí tu favorita.
+        </h2>
 
 
-            <p>
-                Todo preparado al momento.
-            </p>
-
-
-        </div>
-
-
-        <div class="menu-decoration">
-            🔥
-        </div>
-
+        <p>
+            Todo preparado al momento.
+        </p>
 
     </div>
 
 
-
-    <!-- =================================================
-         CATEGORÍAS
-    ================================================== -->
-
-    <div
-        id="categoriasMenu"
-        class="categorias-menu"
-    >
-
-        <button
-            class="categoria-btn active"
-            data-categoria="todas"
-            type="button"
-        >
-            Todos
-        </button>
-
+    <div class="menu-decoration">
+        🔥
     </div>
 
-
-
-    <!-- =================================================
-         PRODUCTOS
-    ================================================== -->
-
-    <div
-        id="productos"
-        class="productos-grid"
-    >
-
-        <div class="loading-productos">
-
-            <div class="loading-icon">
-                🔥
-            </div>
-
-            <p>
-                Cargando menú...
-            </p>
-
-        </div>
-
-    </div>
-
-
-</section>
-
+</div>
 
 
 <!-- =================================================
-     INFORMACIÓN
+     CATEGORÍAS
+================================================== -->
+
+<div
+    id="categoriasMenu"
+    class="categorias-menu"
+>
+
+    <button
+        class="categoria-btn active"
+        data-categoria="todas"
+        type="button"
+    >
+        Todos
+    </button>
+
+</div>
+
+
+<!-- =================================================
+     PRODUCTOS
+================================================== -->
+
+<div
+    id="productos"
+    class="productos-grid"
+>
+
+    <div class="loading-productos">
+
+        <div class="loading-icon">
+            🔥
+        </div>
+
+        <p>
+            Cargando menú...
+        </p>
+
+    </div>
+
+</div>
+```
+
+</section>
+
+<!-- =================================================
+     INFORMACIÓN / UBICACIÓN / HORARIOS
 ================================================== -->
 
 <section
@@ -275,102 +266,172 @@
     class="info-section"
 >
 
-
-    <div class="info-container">
-
-
-        <div class="info-content">
+```
+<div class="info-container">
 
 
-            <span class="info-label">
-                FLAME BURGER
-            </span>
+    <!-- =================================================
+         INFORMACIÓN
+    ================================================== -->
+
+    <div class="info-content">
+
+        <span class="info-label">
+            FLAME BURGER
+        </span>
 
 
-            <h2>
+        <h2>
 
-                El fuego es
-                <br>
+            Vení a
 
-                nuestro ingrediente.
+            <br>
 
-            </h2>
+            visitarnos.
 
-
-            <p>
-
-                Burgers hechas con ingredientes seleccionados
-                y cocinadas a la llama para conseguir ese
-                sabor único que nos caracteriza.
-
-            </p>
+        </h2>
 
 
-            <div class="info-details">
+        <p>
+
+            Burgers hechas con ingredientes seleccionados
+            y cocinadas a la llama para conseguir ese
+            sabor único que nos caracteriza.
+
+        </p>
 
 
-                <div class="info-item">
+        <div class="info-details">
 
-                    <span class="info-item-icon">
-                        📍
+
+            <!-- UBICACIÓN -->
+
+            <div class="info-item">
+
+                <span class="info-item-icon">
+                    📍
+                </span>
+
+
+                <div>
+
+                    <strong>
+                        Nuestra ubicación
+                    </strong>
+
+                    <span>
+                        Av. Gral. San Martín 5306
                     </span>
 
-                    <div>
-
-                        <strong>
-                            Montevideo
-                        </strong>
-
-                        <span>
-                            Uruguay
-                        </span>
-
-                    </div>
-
-                </div>
-
-
-                <div class="info-item">
-
-                    <span class="info-item-icon">
-                        🔥
+                    <span>
+                        Montevideo, Uruguay
                     </span>
 
-                    <div>
-
-                        <strong>
-                            Hecho a la llama
-                        </strong>
-
-                        <span>
-                            Siempre al momento
-                        </span>
-
-                    </div>
-
                 </div>
-
 
             </div>
 
 
+            <!-- HORARIOS -->
+
+            <div class="info-item">
+
+                <span class="info-item-icon">
+                    🕐
+                </span>
+
+
+                <div>
+
+                    <strong>
+                        Horarios
+                    </strong>
+
+                    <span>
+                        Lunes · Cerrado
+                    </span>
+
+                    <span>
+                        Martes a domingo · 19:30 a 00:00
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <!-- LLAMA -->
+
+            <div class="info-item">
+
+                <span class="info-item-icon">
+                    🔥
+                </span>
+
+
+                <div>
+
+                    <strong>
+                        Hecho a la llama
+                    </strong>
+
+                    <span>
+                        Siempre al momento
+                    </span>
+
+                </div>
+
+            </div>
+
         </div>
 
 
-        <div class="info-fire">
+        <!-- BOTÓN GOOGLE MAPS -->
+
+        <a
+            href="https://www.google.com/maps/search/?api=1&query=FLAME+BURGER,+Av.+Gral.+San+Mart%C3%ADn+5306,+Montevideo,+Uruguay"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="map-button"
+        >
 
             <span>
-                🔥
+                📍 Ver ubicación en Google Maps
             </span>
 
-        </div>
+            <span>
+                →
+            </span>
 
+        </a>
 
     </div>
 
 
-</section>
+    <!-- =================================================
+         MAPA
+    ================================================== -->
 
+    <div class="info-map">
+
+        <iframe
+            src="https://www.google.com/maps?q=FLAME%20BURGER,%20Av.%20Gral.%20San%20Mart%C3%ADn%205306,%20Montevideo,%20Uruguay&output=embed"
+            width="100%"
+            height="350"
+            style="border:0;"
+            allowfullscreen=""
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"
+            title="Ubicación de Flame Burger"
+        >
+        </iframe>
+
+    </div>
+
+</div>
+```
+
+</section>
 
 </main>
 
@@ -383,14 +444,13 @@
     class="carrito-overlay"
 >
 
-
+```
 <div class="carrito">
 
 
     <!-- HEADER DEL CARRITO -->
 
     <div class="carrito-header">
-
 
         <div>
 
@@ -416,9 +476,7 @@
 
         </button>
 
-
     </div>
-
 
 
     <!-- PRODUCTOS DEL CARRITO -->
@@ -429,14 +487,11 @@
     ></div>
 
 
-
     <!-- TOTAL -->
 
     <div class="carrito-footer">
 
-
         <div class="total-carrito">
-
 
             <div>
 
@@ -454,7 +509,6 @@
             <strong id="totalCarrito">
                 $0
             </strong>
-
 
         </div>
 
@@ -475,12 +529,10 @@
 
         </button>
 
-
     </div>
 
-
 </div>
-
+```
 
 </div>
 
@@ -490,81 +542,200 @@
 
 <footer class="footer">
 
-    <div class="footer-logo">
+```
+<div class="footer-logo">
 
-        <img
-            src="../img/fondo.jpeg"
-            alt="Flame Burger"
-            class="footer-logo-image"
-        >
+    <img
+        src="../img/fondo.jpeg"
+        alt="Flame Burger"
+        class="footer-logo-image"
+    >
 
-    </div>
-
-
-    <p class="footer-description">
-        Hamburguesas a la llama · Montevideo
-    </p>
+</div>
 
 
-    <!-- REDES SOCIALES -->
-
-    <div class="footer-social">
-
-        <!-- INSTAGRAM -->
-
-        <a
-            href="https://www.instagram.com/flame_burguersss/"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="social-button instagram"
-        >
-
-            <span class="social-icon">
-                📸
-            </span>
-
-            <span>
-                Instagram
-            </span>
-
-        </a>
+<p class="footer-description">
+    Hamburguesas a la llama · Montevideo
+</p>
 
 
-        <!-- WHATSAPP -->
+<!-- REDES SOCIALES -->
 
-        <a
-            href="https://wa.me/59897429917"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="social-button whatsapp"
-        >
-
-            <span class="social-icon">
-                💬
-            </span>
-
-            <span>
-                WhatsApp
-            </span>
-
-        </a>
-
-    </div>
+<div class="footer-social">
 
 
-    <div class="footer-line"></div>
+    <!-- INSTAGRAM -->
+
+    <a
+        href="https://www.instagram.com/flame_burguersss/"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="social-button instagram"
+    >
+
+        <span class="social-icon">
+            📸
+        </span>
+
+        <span>
+            Instagram
+        </span>
+
+    </a>
 
 
-    <small>
-        © 2026 Flame Burger. Todos los derechos reservados.
-    </small>
+    <!-- WHATSAPP -->
+
+    <a
+        href="https://wa.me/59897429917"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="social-button whatsapp"
+    >
+
+        <span class="social-icon">
+            💬
+        </span>
+
+        <span>
+            WhatsApp
+        </span>
+
+    </a>
+
+</div>
+
+
+<div class="footer-line"></div>
+
+
+<small>
+    © 2026 Flame Burger. Todos los derechos reservados.
+</small>
+```
 
 </footer>
 
+<!-- =====================================================
+     ESTADO DEL LOCAL
+===================================================== -->
 
+<script>
+
+function actualizarEstadoLocal() {
+
+    const ahora = new Date();
+
+    const dia = ahora.getDay();
+
+    const hora = ahora.getHours();
+
+    const minutos = ahora.getMinutes();
+
+    const horaActual = hora * 60 + minutos;
+
+    const apertura = 19 * 60 + 30;
+
+    const cierre = 24 * 60;
+
+
+    const estadoTexto =
+        document.getElementById("estadoTexto");
+
+    const estadoPunto =
+        document.getElementById("estadoPunto");
+
+    const estadoLocal =
+        document.querySelector(".estado-local");
+
+
+    let abierto = false;
+
+
+    /*
+        Domingo = 0
+        Lunes = 1
+        Martes = 2
+        Miércoles = 3
+        Jueves = 4
+        Viernes = 5
+        Sábado = 6
+    */
+
+
+    // Lunes cerrado
+
+    if (dia !== 1) {
+
+        if (
+            horaActual >= apertura &&
+            horaActual < cierre
+        ) {
+
+            abierto = true;
+
+        }
+
+    }
+
+
+    if (abierto) {
+
+        estadoTexto.textContent =
+            "Abierto";
+
+
+        estadoPunto.style.background =
+            "#22c55e";
+
+
+        estadoPunto.style.boxShadow =
+            "0 0 8px rgba(34, 197, 94, 0.8)";
+
+
+        estadoLocal.classList.remove(
+            "cerrado"
+        );
+
+    } else {
+
+        estadoTexto.textContent =
+            "Cerrado";
+
+
+        estadoPunto.style.background =
+            "#ef4444";
+
+
+        estadoPunto.style.boxShadow =
+            "0 0 8px rgba(239, 68, 68, 0.8)";
+
+
+        estadoLocal.classList.add(
+            "cerrado"
+        );
+
+    }
+
+}
+
+
+// Ejecutar al cargar
+
+actualizarEstadoLocal();
+
+
+// Actualizar cada minuto
+
+setInterval(
+    actualizarEstadoLocal,
+    60000
+);
+
+</script>
 
 <!-- =====================================================
-     JAVASCRIPT
+     JAVASCRIPT DEL MENÚ Y CARRITO
 ===================================================== -->
 
 <script src="js/menu.js"></script>
