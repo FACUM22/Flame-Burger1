@@ -541,5 +541,30 @@ body {
     .confirmar {
         padding: 15px;
     }
+    /* ================================
+   CAMBIO EN EFECTIVO
+================================ */
+
+.cambio-opcion {
+    margin-top: 20px;
+}
+
+.cambio-opcion h3 {
+    font-size: 14px;
+    margin-bottom: 12px;
+}
+
+.cambio-radio {
+    gap: 10px;
+}
+
+.cambio-radio .opcion {
+    padding: 12px 15px;
+}
+
+.campo-cambio {
+    margin-top: 15px;
+    margin-bottom: 0;
+}
 
 }
