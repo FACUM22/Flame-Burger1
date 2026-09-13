@@ -15,6 +15,15 @@ const totalElemento = document.getElementById("total");
 
 
 // =====================================================
+// CAMBIO EN EFECTIVO
+// =====================================================
+
+const opcionCambio = document.getElementById("opcionCambio");
+const campoCambio = document.getElementById("campoCambio");
+const cambioInput = document.getElementById("cambio");
+
+
+// =====================================================
 // ESCAPAR HTML
 // =====================================================
 
@@ -46,6 +55,7 @@ function mostrarMensaje(texto, tipo = "error") {
 // =====================================================
 
 function obtenerEntrega() {
+
     const seleccionado = document.querySelector(
         'input[name="entrega"]:checked'
     );
@@ -59,6 +69,7 @@ function obtenerEntrega() {
 // =====================================================
 
 function obtenerPago() {
+
     const seleccionado = document.querySelector(
         'input[name="pago"]:checked'
     );
@@ -68,10 +79,117 @@ function obtenerPago() {
 
 
 // =====================================================
+// OBTENER CAMBIO
+// =====================================================
+
+function obtenerNecesitaCambio() {
+
+    const seleccionado = document.querySelector(
+        'input[name="necesitaCambio"]:checked'
+    );
+
+    return seleccionado ? seleccionado.value : "no";
+}
+
+
+// =====================================================
+// ACTUALIZAR CAMBIO
+// =====================================================
+
+function actualizarCambio() {
+
+    const pago = obtenerPago();
+
+    // Mercado Pago
+    if (pago !== "efectivo") {
+
+        if (opcionCambio) {
+            opcionCambio.style.display = "none";
+        }
+
+        if (campoCambio) {
+            campoCambio.style.display = "none";
+        }
+
+        if (cambioInput) {
+            cambioInput.value = "";
+            cambioInput.required = false;
+        }
+
+        return;
+    }
+
+
+    // Efectivo
+    if (opcionCambio) {
+        opcionCambio.style.display = "block";
+    }
+
+
+    const necesitaCambio =
+        obtenerNecesitaCambio();
+
+
+    if (necesitaCambio === "si") {
+
+        if (campoCambio) {
+            campoCambio.style.display = "block";
+        }
+
+        if (cambioInput) {
+            cambioInput.required = true;
+        }
+
+    } else {
+
+        if (campoCambio) {
+            campoCambio.style.display = "none";
+        }
+
+        if (cambioInput) {
+            cambioInput.value = "";
+            cambioInput.required = false;
+        }
+
+    }
+
+}
+
+
+// =====================================================
+// EVENTOS PAGO
+// =====================================================
+
+document
+    .querySelectorAll('input[name="pago"]')
+    .forEach((radio) => {
+
+        radio.addEventListener(
+            "change",
+            actualizarCambio
+        );
+
+    });
+
+
+document
+    .querySelectorAll('input[name="necesitaCambio"]')
+    .forEach((radio) => {
+
+        radio.addEventListener(
+            "change",
+            actualizarCambio
+        );
+
+    });
+
+
+// =====================================================
 // ACTUALIZAR DIRECCIÓN
 // =====================================================
 
 function actualizarDireccion() {
+
     const entrega = obtenerEntrega();
 
     if (!direccionInput) return;
@@ -104,11 +222,9 @@ function limpiarTelefono() {
 
     if (!telefonoInput) return;
 
-    // Solo números
     telefonoInput.value =
         telefonoInput.value.replace(/\D/g, "");
 
-    // Máximo 9 dígitos
     if (telefonoInput.value.length > 9) {
 
         telefonoInput.value =
@@ -163,25 +279,22 @@ document
 
 function validarDireccion(direccion) {
 
-    // Eliminar espacios al principio/final
     direccion = direccion.trim();
 
-    // Mínimo razonable
     if (direccion.length < 5) {
         return false;
     }
 
-    // Debe contener al menos un número
     const tieneNumero = /\d/.test(direccion);
 
     if (!tieneNumero) {
         return false;
     }
 
-    // Debe contener letras
-    const tieneLetras = /[a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(
-        direccion
-    );
+    const tieneLetras =
+        /[a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(
+            direccion
+        );
 
     if (!tieneLetras) {
         return false;
@@ -401,6 +514,69 @@ function validarFormulario() {
 
 
     // =================================================
+    // VALIDAR CAMBIO
+    // =================================================
+
+    if (pago === "efectivo") {
+
+        const necesitaCambio =
+            obtenerNecesitaCambio();
+
+
+        if (necesitaCambio === "si") {
+
+            const cambio =
+                Number(cambioInput?.value);
+
+
+            if (
+                !cambioInput?.value ||
+                !Number.isFinite(cambio) ||
+                cambio <= 0
+            ) {
+
+                mostrarMensaje(
+                    "Indica con cuánto vas a pagar."
+                );
+
+                cambioInput?.focus();
+
+                return false;
+            }
+
+
+            const total =
+                carrito.reduce(
+                    (suma, producto) => {
+
+                        return suma +
+                            (
+                                Number(producto.precio) *
+                                Number(producto.cantidad)
+                            );
+
+                    },
+                    0
+                );
+
+
+            if (cambio < total) {
+
+                mostrarMensaje(
+                    `El monto ingresado debe ser igual o mayor al total de $${total.toFixed(2)}.`
+                );
+
+                cambioInput?.focus();
+
+                return false;
+            }
+
+        }
+
+    }
+
+
+    // =================================================
     // CARRITO
     // =================================================
 
@@ -426,17 +602,14 @@ async function confirmarPedido() {
 
     try {
 
-        // Limpiar mensaje
         mostrarMensaje("", null);
 
 
-        // Validar
         if (!validarFormulario()) {
             return;
         }
 
 
-        // Desactivar botón
         if (confirmarPedidoBtn) {
 
             confirmarPedidoBtn.disabled = true;
@@ -468,6 +641,21 @@ async function confirmarPedido() {
 
 
         // =================================================
+        // CAMBIO
+        // =================================================
+
+        const necesitaCambio =
+            pago === "efectivo" &&
+            obtenerNecesitaCambio() === "si";
+
+
+        const cambio =
+            necesitaCambio
+                ? Number(cambioInput.value)
+                : null;
+
+
+        // =================================================
         // PREPARAR PEDIDO
         // =================================================
 
@@ -488,6 +676,10 @@ async function confirmarPedido() {
             entrega,
 
             pago,
+
+            necesitaCambio,
+
+            cambio,
 
             productos: carrito.map(
                 (producto) => ({
@@ -633,20 +825,17 @@ async function confirmarPedido() {
             }
 
 
-            // Guardar pago
             localStorage.setItem(
                 "flamePagoActual",
                 JSON.stringify(resultadoPago)
             );
 
 
-            // Vaciar carrito
             localStorage.removeItem(
                 "flameCarrito"
             );
 
 
-            // Ir a Mercado Pago
             window.location.href =
                 resultadoPago.initPoint;
 
@@ -807,5 +996,7 @@ function procesarResultadoMercadoPago() {
 renderizarCarrito();
 
 actualizarDireccion();
+
+actualizarCambio();
 
 procesarResultadoMercadoPago();
