@@ -1684,5 +1684,201 @@ button {
     .social-button {
         width: 180px;
     }
+   /* =====================================================
+MAPA + UBICACIÓN + HORARIOS
+===================================================== */
+
+.info-map {
+width: 100%;
+
+
+background: #222;
+
+border-radius: 18px;
+
+overflow: hidden;
+
+box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.35);
+
+
+}
+
+.info-map iframe {
+display: block;
+
+```
+width: 100%;
+
+height: 350px;
+
+border: none;
+```
+
+}
+
+/* =====================================================
+BOTÓN GOOGLE MAPS
+===================================================== */
+
+.map-button {
+display: inline-flex;
+
+
+align-items: center;
+
+justify-content: space-between;
+
+gap: 20px;
+
+margin-top: 30px;
+
+padding: 13px 18px;
+
+background: #f97316;
+
+color: white;
+
+text-decoration: none;
+
+border-radius: 10px;
+
+font-size: 13px;
+
+font-weight: 800;
+
+transition: 0.2s;
+
+
+}
+
+.map-button:hover {
+background: #ea580c;
+
+
+transform: translateY(-2px);
+
+
+}
+
+/* =====================================================
+ESTADO CERRADO
+===================================================== */
+
+.estado-local.cerrado {
+color: #aaa;
+}
+
+.estado-local.cerrado .estado-punto {
+background: #ef4444;
+
+box-shadow:
+    0 0 8px rgba(239, 68, 68, 0.8);
+
+
+}
+
+/* =====================================================
+INFO ITEM
+===================================================== */
+
+.info-item div {
+display: flex;
+
+
+flex-direction: column;
+
+gap: 4px;
+
+}
+
+/* =====================================================
+TABLET
+===================================================== */
+
+@media (max-width: 900px) {
+
+
+.info-container {
+    grid-template-columns: 1fr;
+}
+
+
+.info-map {
+    width: 100%;
+
+    margin-top: 10px;
+}
+
+
+.info-map iframe {
+    height: 320px;
+}
+
+
+}
+
+/* =====================================================
+MOBILE
+===================================================== */
+
+@media (max-width: 700px) {
+
+```
+.info-section {
+    padding: 65px 22px;
+}
+
+
+.info-content h2 {
+    font-size: 38px;
+}
+
+
+.info-details {
+    flex-direction: column;
+
+    gap: 20px;
+}
+
+
+.info-map {
+    border-radius: 14px;
+}
+
+
+.info-map iframe {
+    height: 280px;
+}
+
+
+.map-button {
+    width: 100%;
+
+    justify-content: space-between;
+}
+
+
+}
+
+/* =====================================================
+MOBILE PEQUEÑO
+===================================================== */
+
+@media (max-width: 450px) {
+
+.info-map iframe {
+    height: 250px;
+}
+
+
+.map-button {
+    font-size: 12px;
+
+    padding: 12px 14px;
+}
+
+}
+
 
 }
