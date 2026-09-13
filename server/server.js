@@ -302,6 +302,81 @@ app.get(
 
 
 // =====================================================
+// PRUEBA TEMPORAL DE SUPABASE STORAGE
+// =====================================================
+// TODO: borrar esta ruta una vez resuelto el problema de imágenes
+
+app.get(
+    "/api/test-storage",
+    async (req, res) => {
+
+        try {
+
+            const { createClient } = require("@supabase/supabase-js");
+
+            res.json({
+
+                SUPABASE_URL: process.env.SUPABASE_URL || "NO DEFINIDA",
+
+                SUPABASE_BUCKET: process.env.SUPABASE_BUCKET || "NO DEFINIDA",
+
+                SUPABASE_SERVICE_KEY_presente: !!process.env.SUPABASE_SERVICE_KEY,
+
+                SUPABASE_SERVICE_KEY_inicio:
+                    process.env.SUPABASE_SERVICE_KEY
+                        ? process.env.SUPABASE_SERVICE_KEY.substring(0, 12) + "..."
+                        : "NO DEFINIDA"
+
+            });
+
+        } catch (error) {
+
+            res.status(500).json({
+                error: error.message
+            });
+
+        }
+
+    }
+);
+
+app.get(
+    "/api/test-storage-upload",
+    async (req, res) => {
+
+        try {
+
+            const { createClient } = require("@supabase/supabase-js");
+
+            const supabase = createClient(
+                process.env.SUPABASE_URL,
+                process.env.SUPABASE_SERVICE_KEY
+            );
+
+            const nombreArchivo = "test-" + Date.now() + ".txt";
+
+            const resultado = await supabase
+                .storage
+                .from(process.env.SUPABASE_BUCKET || "productos")
+                .upload(nombreArchivo, Buffer.from("hola mundo"), {
+                    contentType: "text/plain"
+                });
+
+            res.json(resultado);
+
+        } catch (error) {
+
+            res.status(500).json({
+                errorCapturado: error.message
+            });
+
+        }
+
+    }
+);
+
+
+// =====================================================
 // RUTA 404
 // =====================================================
 
