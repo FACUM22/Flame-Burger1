@@ -1,5 +1,5 @@
 const API_BASE =
-    "http://localhost:3000/api/dashboard/resumen";
+    "/api/dashboard/resumen";
 
 
 let periodoActual = "hoy";
