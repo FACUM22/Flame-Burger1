@@ -24,7 +24,7 @@ const ESTADOS_PERMITIDOS = [
 
 router.post("/", async (req, res) => {
 
-
+```
 const client = await pool.connect();
 
 try {
@@ -33,6 +33,8 @@ try {
         cliente,
         entrega,
         pago,
+        necesitaCambio,
+        cambio,
         productos
     } = req.body;
 
@@ -42,21 +44,29 @@ try {
     // =================================================
 
     if (!cliente) {
+
         return res.status(400).json({
             error: "Faltan los datos del cliente."
         });
+
     }
 
+
     if (!cliente.nombre) {
+
         return res.status(400).json({
             error: "El nombre es obligatorio."
         });
+
     }
 
+
     if (!cliente.telefono) {
+
         return res.status(400).json({
             error: "El teléfono es obligatorio."
         });
+
     }
 
 
@@ -69,9 +79,11 @@ try {
         !Array.isArray(productos) ||
         productos.length === 0
     ) {
+
         return res.status(400).json({
             error: "El pedido no tiene productos."
         });
+
     }
 
 
@@ -94,6 +106,7 @@ try {
         "mercado_pago"
     ];
 
+
     const formaPago =
         formasPagoPermitidas.includes(pago)
             ? pago
@@ -101,8 +114,63 @@ try {
 
 
     // =================================================
-    // ESTADO INICIAL
+    // VALIDAR CAMBIO
     // =================================================
+
+    let necesitaCambioFinal = false;
+    let cambioFinal = null;
+
+
+    if (formaPago === "efectivo") {
+
+        necesitaCambioFinal =
+            necesitaCambio === true;
+
+
+        if (necesitaCambioFinal) {
+
+            cambioFinal =
+                Number(cambio);
+
+
+            if (
+                !Number.isFinite(cambioFinal) ||
+                cambioFinal <= 0
+            ) {
+
+                return res.status(400).json({
+
+                    error:
+                        "Debes indicar con cuánto vas a pagar para preparar el cambio."
+
+                });
+
+            }
+
+
+            cambioFinal =
+                Number(
+                    cambioFinal.toFixed(2)
+                );
+
+        }
+
+    }
+
+
+    // =================================================
+    // MERCADO PAGO
+    // =================================================
+
+    // Mercado Pago NO se activa inmediatamente.
+    //
+    // Primero queda:
+    //
+    // en_proceso_pago
+    //
+    // y solamente el webhook de Mercado Pago
+    // podrá cambiarlo posteriormente.
+
 
     const estadoInicial =
         formaPago === "mercado_pago"
@@ -142,7 +210,9 @@ try {
     // CLIENTE EXISTENTE
     // =================================================
 
-    if (clienteExistente.rows.length > 0) {
+    if (
+        clienteExistente.rows.length > 0
+    ) {
 
         clienteId =
             clienteExistente.rows[0].id;
@@ -212,14 +282,25 @@ try {
     const productosFinales = [];
 
 
-    for (const producto of productos) {
+    for (
+        const producto of productos
+    ) {
 
         const productoId =
-            Number(producto.producto_id);
+            Number(
+                producto.producto_id
+            );
+
 
         const cantidad =
-            Number(producto.cantidad);
+            Number(
+                producto.cantidad
+            );
 
+
+        // =================================================
+        // VALIDAR PRODUCTO
+        // =================================================
 
         if (
             !productoId ||
@@ -255,7 +336,9 @@ try {
             );
 
 
-        if (resultado.rows.length === 0) {
+        if (
+            resultado.rows.length === 0
+        ) {
 
             throw new Error(
                 `El producto con ID ${productoId} no existe.`
@@ -272,7 +355,9 @@ try {
         // COMPROBAR DISPONIBILIDAD
         // =================================================
 
-        if (productoBD.disponible !== true) {
+        if (
+            productoBD.disponible !== true
+        ) {
 
             throw new Error(
                 `El producto "${productoBD.nombre}" no está disponible.`
@@ -286,7 +371,9 @@ try {
         // =================================================
 
         const precio =
-            Number(productoBD.precio);
+            Number(
+                productoBD.precio
+            );
 
 
         const subtotal =
@@ -323,7 +410,9 @@ try {
     // =================================================
 
     total =
-        Number(total.toFixed(2));
+        Number(
+            total.toFixed(2)
+        );
 
 
     // =================================================
@@ -340,7 +429,9 @@ try {
                 forma_pago,
                 estado,
                 total,
-                observaciones
+                observaciones,
+                necesita_cambio,
+                cambio_de
             )
             VALUES
             (
@@ -349,27 +440,34 @@ try {
                 $3,
                 $4,
                 $5,
-                $6
+                $6,
+                $7,
+                $8
             )
             RETURNING
                 id,
                 total,
                 estado,
+                necesita_cambio,
+                cambio_de,
                 creado_en
             `,
             [
                 clienteId,
+
                 tipoEntrega,
+
                 formaPago,
 
-                // IMPORTANTE:
-                // Mercado Pago = en_proceso_pago
-                // Efectivo = nuevo
                 estadoInicial,
 
                 total,
 
-                cliente.comentarios || ""
+                cliente.comentarios || "",
+
+                necesitaCambioFinal,
+
+                cambioFinal
             ]
         );
 
@@ -382,7 +480,9 @@ try {
     // GUARDAR DETALLE DEL PEDIDO
     // =================================================
 
-    for (const producto of productosFinales) {
+    for (
+        const producto of productosFinales
+    ) {
 
         await client.query(
             `
@@ -405,9 +505,13 @@ try {
             `,
             [
                 pedido.id,
+
                 producto.id,
+
                 producto.cantidad,
+
                 producto.precio,
+
                 producto.subtotal
             ]
         );
@@ -438,7 +542,9 @@ try {
 
         total:
             Number(
-                Number(pedido.total).toFixed(2)
+                Number(
+                    pedido.total
+                ).toFixed(2)
             ),
 
         estado:
@@ -450,6 +556,12 @@ try {
         tipo_entrega:
             tipoEntrega,
 
+        necesita_cambio:
+            pedido.necesita_cambio,
+
+        cambio_de:
+            pedido.cambio_de,
+
         creado_en:
             pedido.creado_en
 
@@ -458,13 +570,23 @@ try {
 
 } catch (error) {
 
+    // =================================================
+    // ROLLBACK
+    // =================================================
+
     try {
-        await client.query("ROLLBACK");
+
+        await client.query(
+            "ROLLBACK"
+        );
+
     } catch (rollbackError) {
+
         console.error(
             "ERROR ROLLBACK:",
             rollbackError
         );
+
     }
 
 
@@ -484,13 +606,12 @@ try {
 
     });
 
-
 } finally {
 
     client.release();
 
 }
-
+```
 
 });
 
@@ -501,7 +622,7 @@ try {
 
 router.get("/", async (req, res) => {
 
-
+```
 try {
 
     const resultado =
@@ -518,6 +639,8 @@ try {
                 p.estado,
                 p.total,
                 p.observaciones,
+                p.necesita_cambio,
+                p.cambio_de,
                 p.creado_en
 
             FROM pedidos p
@@ -552,7 +675,7 @@ try {
     });
 
 }
-
+```
 
 });
 
@@ -563,12 +686,18 @@ try {
 
 router.get("/:id", async (req, res) => {
 
-
+```
 try {
 
     const pedidoId =
-        Number(req.params.id);
+        Number(
+            req.params.id
+        );
 
+
+    // =================================================
+    // VALIDAR ID
+    // =================================================
 
     if (
         !Number.isInteger(pedidoId) ||
@@ -603,6 +732,8 @@ try {
                 p.estado,
                 p.total,
                 p.observaciones,
+                p.necesita_cambio,
+                p.cambio_de,
                 p.creado_en
 
             FROM pedidos p
@@ -618,7 +749,9 @@ try {
         );
 
 
-    if (pedido.rows.length === 0) {
+    if (
+        pedido.rows.length === 0
+    ) {
 
         return res.status(404).json({
 
@@ -692,6 +825,7 @@ try {
     });
 
 }
+```
 
 });
 
@@ -704,10 +838,13 @@ router.patch(
 "/:id/estado",
 async (req, res) => {
 
+```
     try {
 
         const pedidoId =
-            Number(req.params.id);
+            Number(
+                req.params.id
+            );
 
 
         const {
@@ -816,7 +953,8 @@ async (req, res) => {
         // =================================================
 
         if (
-            estadoActual === "en_proceso_pago"
+            estadoActual ===
+            "en_proceso_pago"
         ) {
 
             return res.status(403).json({
@@ -961,6 +1099,7 @@ async (req, res) => {
     }
 
 }
+```
 
 );
 
@@ -969,5 +1108,3 @@ async (req, res) => {
 // =====================================================
 
 module.exports = router;
-
-
