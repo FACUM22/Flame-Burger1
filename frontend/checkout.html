@@ -1,153 +1,449 @@
-<!-- PAGO -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<div class="form-card">
+    <title>Finalizar pedido - Flame Burger</title>
 
-<h2>
-    💳 Forma de pago
-</h2>
+    <link rel="stylesheet" href="checkout.css">
+</head>
 
+<body>
 
-<div class="opciones">
+    <!-- ================================
+         HEADER
+    ================================= -->
 
+    <header class="checkout-header">
 
-    <label class="opcion">
+        <div class="checkout-header-container">
 
-        <input
-            type="radio"
-            name="pago"
-            value="efectivo"
-            checked
-        >
+            <a href="index.html" class="logo">
+                FLAME BURGER
+            </a>
 
-        <div>
-
-            <strong>
-                💵 Efectivo
-            </strong>
-
-            <small>
-                Pagás al recibir el pedido.
-            </small>
+            <a href="carrito.html" class="volver">
+                ← Volver al carrito
+            </a>
 
         </div>
 
-    </label>
+    </header>
 
 
+    <!-- ================================
+         CHECKOUT
+    ================================= -->
 
-    <label class="opcion">
+    <main class="checkout-container">
 
-        <input
-            type="radio"
-            name="pago"
-            value="mercado_pago"
-        >
+        <div class="checkout-titulo">
 
-        <div>
+            <h1>Finalizar pedido</h1>
 
-            <strong>
-                💳 Mercado Pago
-            </strong>
-
-            <small>
-                Pagá online de forma segura.
-            </small>
+            <p>
+                Completá tus datos para realizar el pedido.
+            </p>
 
         </div>
 
-    </label>
+
+        <div class="checkout-grid">
 
 
-</div>
+            <!-- ================================
+                 DATOS DEL CLIENTE
+            ================================= -->
+
+            <section class="checkout-card">
+
+                <h2>Datos del pedido</h2>
 
 
-<!-- CAMBIO -->
+                <div class="campo">
 
-<div
-    id="opcionCambio"
-    class="opcion-cambio"
->
+                    <label for="nombre">
+                        Nombre
+                    </label>
 
-    <div class="campo">
-
-        <label>
-            ¿Necesitás cambio?
-        </label>
-
-
-        <div class="opciones">
-
-            <label class="opcion">
-
-                <input
-                    type="radio"
-                    name="necesitaCambio"
-                    value="si"
-                >
-
-                <div>
-
-                    <strong>
-                        Sí
-                    </strong>
+                    <input
+                        type="text"
+                        id="nombre"
+                        name="nombre"
+                        placeholder="Tu nombre"
+                        autocomplete="name"
+                    >
 
                 </div>
 
-            </label>
 
+                <div class="campo">
 
-            <label class="opcion">
+                    <label for="telefono">
+                        Teléfono
+                    </label>
 
-                <input
-                    type="radio"
-                    name="necesitaCambio"
-                    value="no"
-                    checked
-                >
-
-                <div>
-
-                    <strong>
-                        No
-                    </strong>
+                    <input
+                        type="tel"
+                        id="telefono"
+                        name="telefono"
+                        placeholder="Ej: 099 123 456"
+                        autocomplete="tel"
+                    >
 
                 </div>
 
-            </label>
+
+                <!-- ================================
+                     TIPO DE ENTREGA
+                ================================= -->
+
+                <div class="campo">
+
+                    <label>
+                        ¿Cómo querés recibir tu pedido?
+                    </label>
+
+
+                    <div class="opciones">
+
+                        <div class="opcion">
+
+                            <input
+                                type="radio"
+                                id="delivery"
+                                name="entrega"
+                                value="delivery"
+                                checked
+                            >
+
+                            <label for="delivery">
+
+                                <strong>
+                                    🛵 Delivery
+                                </strong>
+
+                                <span>
+                                    Recibí el pedido en tu domicilio.
+                                </span>
+
+                            </label>
+
+                        </div>
+
+
+                        <div class="opcion">
+
+                            <input
+                                type="radio"
+                                id="retiro"
+                                name="entrega"
+                                value="retiro"
+                            >
+
+                            <label for="retiro">
+
+                                <strong>
+                                    🏪 Retiro
+                                </strong>
+
+                                <span>
+                                    Retirá tu pedido en el local.
+                                </span>
+
+                            </label>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- ================================
+                     DIRECCIÓN
+                ================================= -->
+
+                <div
+                    class="campo"
+                    id="campoDireccion"
+                >
+
+                    <label for="direccion">
+                        Dirección
+                    </label>
+
+                    <input
+                        type="text"
+                        id="direccion"
+                        name="direccion"
+                        placeholder="Calle y número"
+                        autocomplete="street-address"
+                    >
+
+                </div>
+
+
+                <!-- ================================
+                     COMENTARIOS
+                ================================= -->
+
+                <div class="campo">
+
+                    <label for="comentarios">
+                        Comentarios
+                    </label>
+
+                    <textarea
+                        id="comentarios"
+                        name="comentarios"
+                        placeholder="Ej: Sin cebolla, tocar timbre, etc."
+                    ></textarea>
+
+                </div>
+
+
+                <!-- ================================
+                     FORMA DE PAGO
+                ================================= -->
+
+                <div class="campo">
+
+                    <label>
+                        Forma de pago
+                    </label>
+
+
+                    <div class="opciones">
+
+                        <!-- EFECTIVO -->
+
+                        <div class="opcion">
+
+                            <input
+                                type="radio"
+                                id="efectivo"
+                                name="pago"
+                                value="efectivo"
+                                checked
+                            >
+
+                            <label for="efectivo">
+
+                                <strong>
+                                    💵 Efectivo
+                                </strong>
+
+                                <span>
+                                    Pagás al recibir el pedido.
+                                </span>
+
+                            </label>
+
+                        </div>
+
+
+                        <!-- MERCADO PAGO -->
+
+                        <div class="opcion">
+
+                            <input
+                                type="radio"
+                                id="mercadoPago"
+                                name="pago"
+                                value="mercado_pago"
+                            >
+
+                            <label for="mercadoPago">
+
+                                <strong>
+                                    💳 Mercado Pago
+                                </strong>
+
+                                <span>
+                                    Pagá online de forma segura.
+                                </span>
+
+                            </label>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- ================================
+                     CAMBIO
+                ================================= -->
+
+                <div
+                    id="opcionCambio"
+                    class="campo cambio-container"
+                >
+
+                    <label>
+                        ¿Necesitás cambio?
+                    </label>
+
+
+                    <div class="opciones">
+
+                        <!-- SI -->
+
+                        <div class="opcion">
+
+                            <input
+                                type="radio"
+                                id="necesitaCambioSi"
+                                name="necesitaCambio"
+                                value="si"
+                            >
+
+                            <label for="necesitaCambioSi">
+
+                                <strong>
+                                    Sí
+                                </strong>
+
+                            </label>
+
+                        </div>
+
+
+                        <!-- NO -->
+
+                        <div class="opcion">
+
+                            <input
+                                type="radio"
+                                id="necesitaCambioNo"
+                                name="necesitaCambio"
+                                value="no"
+                                checked
+                            >
+
+                            <label for="necesitaCambioNo">
+
+                                <strong>
+                                    No
+                                </strong>
+
+                            </label>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- MONTO CON EL QUE PAGA -->
+
+                    <div
+                        id="campoCambio"
+                        class="campo"
+                        style="display: none;"
+                    >
+
+                        <label for="cambio">
+                            ¿Con cuánto vas a pagar?
+                        </label>
+
+                        <input
+                            type="number"
+                            id="cambio"
+                            name="cambio"
+                            min="0"
+                            step="0.01"
+                            placeholder="Ej: 1000"
+                        >
+
+                        <small>
+                            Indicá el monto con el que vas a pagar.
+                        </small>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+
+            <!-- ================================
+                 RESUMEN DEL PEDIDO
+            ================================= -->
+
+            <section class="checkout-card">
+
+                <h2>
+                    Tu pedido
+                </h2>
+
+
+                <div id="listaPedido">
+
+                    <div class="carrito-vacio">
+                        Cargando pedido...
+                    </div>
+
+                </div>
+
+
+                <!-- ================================
+                     TOTAL
+                ================================= -->
+
+                <div class="total-container">
+
+                    <div class="total-linea">
+
+                        <span>
+                            Total
+                        </span>
+
+                        <strong id="total">
+                            $0
+                        </strong>
+
+                    </div>
+
+                </div>
+
+
+                <!-- ================================
+                     CONFIRMAR
+                ================================= -->
+
+                <button
+                    type="button"
+                    id="btnConfirmar"
+                    class="btn-confirmar"
+                >
+                    Confirmar pedido
+                </button>
+
+
+                <!-- ================================
+                     MENSAJE
+                ================================= -->
+
+                <div
+                    id="mensaje"
+                    class="mensaje"
+                ></div>
+
+            </section>
 
         </div>
 
-    </div>
+    </main>
 
 
-    <!-- MONTO DEL CAMBIO -->
+    <!-- ================================
+         JAVASCRIPT
+    ================================= -->
 
-    <div
-        id="campoCambio"
-        class="campo"
-        style="display: none;"
-    >
+    <script src="checkout.js"></script>
 
-        <label for="cambio">
-            ¿Cambio de cuánto?
-        </label>
-
-        <input
-            type="number"
-            id="cambio"
-            name="cambio"
-            min="1"
-            step="1"
-            placeholder="Ej: 1000"
-        >
-
-        <small>
-            Indicá con cuánto vas a pagar.
-        </small>
-
-    </div>
-
-</div>
-
-
-</div>
+</body>
+</html>
