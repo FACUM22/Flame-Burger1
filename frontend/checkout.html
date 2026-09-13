@@ -210,68 +210,140 @@
 
 
 
-            <!-- PAGO -->
+           <!-- PAGO -->
+<div class="form-card">
 
-            <div class="form-card">
+    <h2> 💳 Forma de pago </h2>
 
-                <h2>
-                    💳 Forma de pago
-                </h2>
+    <div class="opciones">
 
+        <!-- EFECTIVO -->
+        <label class="opcion">
 
-                <div class="opciones">
+            <input
+                type="radio"
+                name="pago"
+                value="efectivo"
+                checked
+            >
 
+            <div>
+                <strong> 💵 Efectivo </strong>
 
-                    <label class="opcion">
+                <small>
+                    Pagás al recibir el pedido.
+                </small>
+            </div>
 
-                        <input
-                            type="radio"
-                            name="pago"
-                            value="efectivo"
-                            checked
-                        >
-
-                        <div>
-
-                            <strong>
-                                💵 Efectivo
-                            </strong>
-
-                            <small>
-                                Pagás al recibir el pedido.
-                            </small>
-
-                        </div>
-
-                    </label>
+        </label>
 
 
+        <!-- POS -->
+        <label class="opcion">
 
-                    <label class="opcion">
+            <input
+                type="radio"
+                name="pago"
+                value="pos"
+            >
 
-                        <input
-                            type="radio"
-                            name="pago"
-                            value="mercado_pago"
-                        >
+            <div>
+                <strong> 💳 POS </strong>
 
-                        <div>
+                <small>
+                    Pagás con tarjeta al recibir el pedido.
+                </small>
+            </div>
 
-                            <strong>
-                                💳 Mercado Pago
-                            </strong>
-
-                            <small>
-                                Pagá online de forma segura.
-                            </small>
-
-                        </div>
-
-                    </label>
+        </label>
 
 
+        <!-- MERCADO PAGO -->
+        <label class="opcion">
+
+            <input
+                type="radio"
+                name="pago"
+                value="mercado_pago"
+            >
+
+            <div>
+                <strong> 💳 Mercado Pago </strong>
+
+                <small>
+                    Pagá online de forma segura.
+                </small>
+            </div>
+
+        </label>
+
+    </div>
+
+
+    <!-- CAMBIO -->
+    <div id="opcionCambio" class="cambio-opcion">
+
+        <h3>¿Necesitás cambio?</h3>
+
+        <div class="opciones cambio-radio">
+
+            <label class="opcion">
+
+                <input
+                    type="radio"
+                    name="necesitaCambio"
+                    value="no"
+                    checked
+                >
+
+                <div>
+                    <strong>No</strong>
                 </div>
 
+            </label>
+
+
+            <label class="opcion">
+
+                <input
+                    type="radio"
+                    name="necesitaCambio"
+                    value="si"
+                >
+
+                <div>
+                    <strong>Sí</strong>
+                </div>
+
+            </label>
+
+        </div>
+
+
+        <!-- MONTO CON EL QUE PAGA -->
+        <div
+            id="campoCambio"
+            class="campo campo-cambio"
+            style="display: none;"
+        >
+
+            <label for="cambio">
+                ¿Con cuánto vas a pagar?
+            </label>
+
+            <input
+                type="number"
+                id="cambio"
+                min="0"
+                step="1"
+                placeholder="Ej: 1000"
+            >
+
+        </div>
+
+    </div>
+
+</div>
 
 
                 <!-- CAMBIO EN EFECTIVO -->
