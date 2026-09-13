@@ -15,9 +15,7 @@ html {
 body {
     font-family: Arial, Helvetica, sans-serif;
     background-image: url("../img/vio.jpeg");
-    background-size: cover;
-    background-attachment: fixed;
-    color: #222;
+    color: #9932CC;
 }
 
 button,
@@ -37,6 +35,7 @@ button {
 .header {
     width: 100%;
     height: 75px;
+
     background: #111;
 
     display: flex;
@@ -55,6 +54,7 @@ button {
 
 .header-container {
     width: 100%;
+
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -69,17 +69,16 @@ button {
     display: flex;
     align-items: center;
 
-    height: 100%;
-
     color: white;
     text-decoration: none;
+
+    height: 100%;
 
     overflow: hidden;
 }
 
-
 /* IMPORTANTE:
-   El HTML usa .logo img
+   El HTML actual usa <img> directamente dentro de .logo
 */
 
 .logo img {
@@ -92,7 +91,7 @@ button {
 }
 
 
-/* También dejamos compatible la clase anterior */
+/* Compatible con el nombre anterior */
 
 .logo-image {
     width: 115px;
@@ -122,8 +121,6 @@ button {
 .btn-carrito {
     display: flex;
     align-items: center;
-    justify-content: center;
-
     gap: 7px;
 
     border: none;
@@ -143,8 +140,12 @@ button {
 
 .btn-carrito:hover {
     background: #ea580c;
+
     transform: translateY(-1px);
 }
+
+
+/* CONTADOR DEL CARRITO */
 
 #contadorCarrito {
     display: inline-flex;
@@ -168,7 +169,7 @@ button {
 
 
 /* =====================================================
-   COMPATIBILIDAD CARRITO ANTERIOR
+   COMPATIBILIDAD CON EL DISEÑO ANTERIOR DEL CARRITO
 ===================================================== */
 
 .cart-button {
@@ -193,7 +194,12 @@ button {
 
 .cart-button:hover {
     background: #ea580c;
+
     transform: translateY(-1px);
+}
+
+.cart-icon {
+    font-size: 17px;
 }
 
 #cantidadCarrito {
@@ -283,7 +289,7 @@ button {
 
 
 /* =====================================================
-   HERO TAG
+   TAG
 ===================================================== */
 
 .hero-tag {
@@ -302,7 +308,7 @@ button {
 
 
 /* =====================================================
-   HERO TÍTULO
+   TÍTULO
 ===================================================== */
 
 .hero h1 {
@@ -321,7 +327,7 @@ button {
 
 
 /* =====================================================
-   HERO DESCRIPCIÓN
+   DESCRIPCIÓN
 ===================================================== */
 
 .hero p {
@@ -391,7 +397,7 @@ button {
 
 
 /* =====================================================
-   HERO LINK
+   LINK
 ===================================================== */
 
 .hero-link {
@@ -423,7 +429,7 @@ button {
 
 
 /* =====================================================
-   HEADER MENU
+   HEADER DEL MENU
 ===================================================== */
 
 .menu-header {
@@ -438,7 +444,7 @@ button {
 
 
 /* =====================================================
-   TITULOS
+   TITULO
 ===================================================== */
 
 .section-title span {
@@ -459,14 +465,12 @@ button {
     font-weight: 900;
 
     line-height: 1.1;
-
-    color: white;
 }
 
 .section-title p {
     margin-top: 8px;
 
-    color: #aaa;
+    color: #777;
 
     font-size: 14px;
 }
@@ -559,7 +563,7 @@ button {
     overflow: hidden;
 
     box-shadow:
-        0 5px 20px rgba(0, 0, 0, 0.15);
+        0 5px 20px rgba(0, 0, 0, 0.06);
 
     display: flex;
 
@@ -572,7 +576,7 @@ button {
     transform: translateY(-5px);
 
     box-shadow:
-        0 12px 30px rgba(0, 0, 0, 0.25);
+        0 12px 30px rgba(0, 0, 0, 0.12);
 }
 
 
@@ -668,8 +672,6 @@ button {
     font-weight: 900;
 
     margin-bottom: 8px;
-
-    color: #111;
 }
 
 .producto p {
@@ -850,6 +852,43 @@ button {
    CONTENIDO INFO
 ===================================================== */
 
+.info-label {
+    color: #f97316;
+
+    font-size: 11px;
+
+    font-weight: 900;
+
+    letter-spacing: 3px;
+}
+
+.info-content h2 {
+    margin-top: 12px;
+
+    font-size: clamp(35px, 5vw, 55px);
+
+    line-height: 1;
+
+    font-weight: 900;
+}
+
+.info-content > p {
+    max-width: 550px;
+
+    margin-top: 20px;
+
+    color: #bbb;
+
+    font-size: 15px;
+
+    line-height: 1.7;
+}
+
+
+/* =====================================================
+   INFORMACIÓN ACTUAL
+===================================================== */
+
 .info-content h3 {
     color: #f97316;
 
@@ -876,73 +915,6 @@ button {
 
 .info-content strong {
     color: white;
-}
-
-
-/* =====================================================
-   INFO MAPA
-===================================================== */
-
-.info-map {
-    width: 100%;
-
-    background: #222;
-
-    border-radius: 18px;
-
-    overflow: hidden;
-
-    box-shadow:
-        0 10px 30px rgba(0, 0, 0, 0.35);
-}
-
-.info-map iframe {
-    display: block;
-
-    width: 100%;
-
-    height: 350px;
-
-    border: none;
-}
-
-
-/* =====================================================
-   BOTÓN GOOGLE MAPS
-===================================================== */
-
-.map-button {
-    display: inline-flex;
-
-    align-items: center;
-
-    justify-content: center;
-
-    gap: 10px;
-
-    margin-top: 25px;
-
-    padding: 13px 18px;
-
-    background: #f97316;
-
-    color: white;
-
-    text-decoration: none;
-
-    border-radius: 10px;
-
-    font-size: 13px;
-
-    font-weight: 800;
-
-    transition: 0.2s;
-}
-
-.map-button:hover {
-    background: #ea580c;
-
-    transform: translateY(-2px);
 }
 
 
@@ -991,7 +963,7 @@ button {
 
     flex-direction: column;
 
-    gap: 4px;
+    gap: 3px;
 }
 
 .info-item strong {
@@ -1021,6 +993,73 @@ button {
     font-size: 170px;
 
     opacity: 0.9;
+}
+
+
+/* =====================================================
+   MAPA
+===================================================== */
+
+.info-map {
+    width: 100%;
+
+    background: #222;
+
+    border-radius: 18px;
+
+    overflow: hidden;
+
+    box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.info-map iframe {
+    display: block;
+
+    width: 100%;
+
+    height: 350px;
+
+    border: none;
+}
+
+
+/* =====================================================
+   BOTÓN GOOGLE MAPS
+===================================================== */
+
+.map-button {
+    display: inline-flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    gap: 10px;
+
+    margin-top: 30px;
+
+    padding: 13px 18px;
+
+    background: #f97316;
+
+    color: white;
+
+    text-decoration: none;
+
+    border-radius: 10px;
+
+    font-size: 13px;
+
+    font-weight: 800;
+
+    transition: 0.2s;
+}
+
+.map-button:hover {
+    background: #ea580c;
+
+    transform: translateY(-2px);
 }
 
 
@@ -1100,8 +1139,6 @@ button {
     font-size: 21px;
 
     margin-top: 4px;
-
-    color: #111;
 }
 
 .carrito-label {
@@ -1373,8 +1410,6 @@ button {
 
     justify-content: center;
 
-    flex-direction: column;
-
     gap: 8px;
 
     font-size: 18px;
@@ -1438,7 +1473,7 @@ button {
 
 
 /* =====================================================
-   FOOTER CONTAINER
+   FOOTER EXTRA
 ===================================================== */
 
 .footer-container {
@@ -1513,7 +1548,7 @@ button {
 
 
 /* =====================================================
-   REDES SOCIALES
+   REDES SOCIALES FOOTER
 ===================================================== */
 
 .footer-social {
@@ -1556,6 +1591,9 @@ button {
     font-size: 17px;
 }
 
+
+/* INSTAGRAM */
+
 .social-button.instagram {
     background: #c13584;
 }
@@ -1565,6 +1603,9 @@ button {
 
     transform: translateY(-2px);
 }
+
+
+/* WHATSAPP */
 
 .social-button.whatsapp {
     background: #25d366;
@@ -1605,6 +1646,10 @@ button {
         grid-template-columns: 1fr;
     }
 
+    .info-fire {
+        min-height: 180px;
+    }
+
     .info-map {
         width: 100%;
 
@@ -1613,10 +1658,6 @@ button {
 
     .info-map iframe {
         height: 320px;
-    }
-
-    .info-fire {
-        min-height: 180px;
     }
 
     .footer-container {
@@ -1826,7 +1867,7 @@ button {
     .map-button {
         width: 100%;
 
-        justify-content: center;
+        justify-content: space-between;
     }
 
 
