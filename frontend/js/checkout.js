@@ -1,6 +1,5 @@
-
-const API_PEDIDOS = "http://localhost:3000/api/pedidos";
-const API_PAGOS = "http://localhost:3000/api/pagos/crear";
+const API_PEDIDOS = "/api/pedidos";
+const API_PAGOS = "/api/pagos/crear";
 
 const carrito = JSON.parse(localStorage.getItem("flameCarrito")) || [];
 
@@ -810,4 +809,3 @@ renderizarCarrito();
 actualizarDireccion();
 
 procesarResultadoMercadoPago();
-
