@@ -830,6 +830,235 @@ router.get("/:id", async (req, res) => {
 
 
 // =====================================================
+// IMPRIMIR PEDIDO (TICKETERA TÉRMICA UN-TP85)
+// POST /api/pedidos/:id/imprimir
+// =====================================================
+// No imprime nada acá directamente: emite un evento por
+// Socket.IO ("nuevo_pedido") que recibe el agente que corre
+// en la red del local, y es el agente el que le manda los
+// comandos ESC/POS a la impresora por TCP (192.168.1.114:9100).
+
+router.post("/:id/imprimir", async (req, res) => {
+
+    try {
+
+        const pedidoId =
+            Number(
+                req.params.id
+            );
+
+        if (
+            !Number.isInteger(pedidoId) ||
+            pedidoId <= 0
+        ) {
+
+            return res.status(400).json({
+
+                error:
+                    "ID de pedido inválido."
+
+            });
+
+        }
+
+
+        // =================================================
+        // DATOS DEL PEDIDO (misma consulta que GET /:id)
+        // =================================================
+
+        const pedidoResultado =
+            await pool.query(
+                `
+                SELECT
+                    p.id,
+                    p.cliente_id,
+                    c.nombre AS cliente_nombre,
+                    c.telefono,
+                    c.direccion,
+                    p.tipo_entrega,
+                    p.forma_pago,
+                    p.estado,
+                    p.total,
+                    p.observaciones,
+                    p.necesita_cambio,
+                    p.cambio_de,
+                    p.creado_en
+
+                FROM pedidos p
+
+                LEFT JOIN clientes c
+                    ON c.id = p.cliente_id
+
+                WHERE p.id = $1
+                `,
+                [
+                    pedidoId
+                ]
+            );
+
+        if (
+            pedidoResultado.rows.length === 0
+        ) {
+
+            return res.status(404).json({
+
+                error:
+                    "Pedido no encontrado."
+
+            });
+
+        }
+
+        const pedido =
+            pedidoResultado.rows[0];
+
+
+        // =================================================
+        // PRODUCTOS DEL PEDIDO
+        // =================================================
+
+        const detalles =
+            await pool.query(
+                `
+                SELECT
+                    d.id,
+                    d.producto_id,
+                    pr.nombre,
+                    d.cantidad,
+                    d.precio_unitario,
+                    d.subtotal
+
+                FROM detalle_pedidos d
+
+                LEFT JOIN productos pr
+                    ON pr.id = d.producto_id
+
+                WHERE d.pedido_id = $1
+
+                ORDER BY d.id
+                `,
+                [
+                    pedidoId
+                ]
+            );
+
+
+        // =================================================
+        // ARMAR NOTAS (observaciones + info de cambio)
+        // =================================================
+
+        let notas =
+            pedido.observaciones || "";
+
+        if (
+            pedido.forma_pago === "efectivo" &&
+            (
+                pedido.necesita_cambio === true ||
+                pedido.necesita_cambio === "true"
+            )
+        ) {
+
+            const cambioDe =
+                Number(pedido.cambio_de || 0);
+
+            const total =
+                Number(pedido.total || 0);
+
+            const vuelto =
+                cambioDe - total;
+
+            notas +=
+                `${notas ? " | " : ""}Paga con $${cambioDe.toFixed(2)} (vuelto $${vuelto.toFixed(2)})`;
+
+        }
+
+
+        // =================================================
+        // ARMAR OBJETO PARA EL AGENTE DE IMPRESIÓN
+        // =================================================
+
+        const pedidoParaImprimir = {
+
+            id: pedido.id,
+
+            fecha: pedido.creado_en,
+
+            tipo:
+                pedido.tipo_entrega === "delivery"
+                    ? "Delivery"
+                    : "Retiro",
+
+            cliente: pedido.cliente_nombre,
+
+            telefono: pedido.telefono,
+
+            direccion: pedido.direccion,
+
+            items: detalles.rows.map(
+                (item) => ({
+                    cantidad: item.cantidad,
+                    nombre: item.nombre,
+                    precio: item.precio_unitario
+                })
+            ),
+
+            total: pedido.total,
+
+            metodoPago:
+                pedido.forma_pago === "efectivo"
+                    ? "Efectivo"
+                    : pedido.forma_pago === "pos"
+                    ? "Tarjeta / POS"
+                    : "Mercado Pago",
+
+            notasGenerales: notas
+
+        };
+
+
+        // =================================================
+        // EMITIR AL AGENTE POR SOCKET.IO
+        // =================================================
+
+        const io =
+            req.app.get("io");
+
+        io.emit(
+            "nuevo_pedido",
+            pedidoParaImprimir
+        );
+
+
+        res.json({
+
+            ok: true,
+
+            mensaje:
+                "Orden de impresión enviada."
+
+        });
+
+
+    } catch (error) {
+
+        console.error(
+            "❌ ERROR IMPRIMIENDO PEDIDO:",
+            error
+        );
+
+        res.status(500).json({
+
+            error:
+                "No se pudo imprimir el pedido."
+
+        });
+
+    }
+
+});
+
+
+// =====================================================
 // CAMBIAR ESTADO
 // PATCH /api/pedidos/:id/estado
 // =====================================================
