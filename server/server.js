@@ -1,6 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const http = require("http");
+const { Server } = require("socket.io");
 
 require("dotenv").config();
 
@@ -16,6 +18,43 @@ const categoriasRoutes = require("./routes/categorias");
 const pagosRoutes = require("./routes/pagos");
 
 const app = express();
+
+
+// =====================================================
+// SERVIDOR HTTP + SOCKET.IO
+// =====================================================
+// Se usa http.createServer en vez de app.listen directo
+// porque Socket.IO necesita "engancharse" al servidor HTTP
+// para poder mantener conexiones abiertas (WebSocket).
+// El agente de impresión (en el local) se conecta acá.
+
+const server = http.createServer(app);
+
+const io = new Server(server, {
+    cors: {
+        origin: "*"
+    }
+});
+
+// Se guarda "io" en la app para poder usarlo desde
+// cualquier ruta con: req.app.get("io")
+app.set("io", io);
+
+io.on("connection", (socket) => {
+
+    console.log(
+        `🔌 Agente de impresión conectado (${socket.id})`
+    );
+
+    socket.on("disconnect", () => {
+
+        console.log(
+            `🔌 Agente de impresión desconectado (${socket.id})`
+        );
+
+    });
+
+});
 
 
 // =====================================================
@@ -552,7 +591,7 @@ const PORT =
 // INICIAR SERVIDOR
 // =====================================================
 
-app.listen(
+server.listen(
     PORT,
     () => {
 
