@@ -1,4 +1,4 @@
-
+```javascript
 // =====================================================
 // CONFIGURACIÓN API
 // =====================================================
@@ -10,6 +10,238 @@ const API_PRODUCTOS =
 
 const API_CATEGORIAS =
     `${API_BASE}/api/categorias`;
+
+
+
+// =====================================================
+// HORARIO DE FLAME BURGER
+// =====================================================
+//
+// Lunes, martes, jueves, viernes, sábado y domingo:
+// 20:00 a 00:00
+//
+// Miércoles:
+// CERRADO TODO EL DÍA
+//
+// Se utiliza la hora de Montevideo.
+// =====================================================
+
+function restauranteEstaAbierto() {
+
+    const ahora = new Date();
+
+    const partes = new Intl.DateTimeFormat(
+        "en-US",
+        {
+            timeZone: "America/Montevideo",
+            weekday: "short",
+            hour: "numeric",
+            minute: "numeric",
+            hour12: false
+        }
+    ).formatToParts(ahora);
+
+    const obtenerParte = (tipo) => {
+
+        const parte =
+            partes.find(
+                item => item.type === tipo
+            );
+
+        return parte
+            ? parte.value
+            : null;
+    };
+
+    const dia =
+        obtenerParte("weekday");
+
+    const hora =
+        Number(obtenerParte("hour"));
+
+    const minuto =
+        Number(obtenerParte("minute"));
+
+
+
+    // Miércoles cerrado
+
+    if (dia === "Wed") {
+
+        return false;
+
+    }
+
+
+
+    // Antes de las 20:00
+
+    if (hora < 20) {
+
+        return false;
+
+    }
+
+
+
+    // Desde las 00:00 hasta las 19:59 está cerrado.
+    // A partir de las 20:00 está abierto.
+    //
+    // Como la hora 00:00 aparece como 24 en algunos
+    // navegadores, la consideramos cerrada.
+
+    if (hora >= 24) {
+
+        return false;
+
+    }
+
+
+
+    return true;
+
+}
+
+
+
+// =====================================================
+// AVISO DE CERRADO
+// =====================================================
+
+function actualizarEstadoRestaurante() {
+
+    const aviso =
+        document.getElementById(
+            "avisoCerrado"
+        );
+
+    const mensaje =
+        document.getElementById(
+            "mensajeCerrado"
+        );
+
+    const abierto =
+        restauranteEstaAbierto();
+
+
+
+    if (!aviso) {
+
+        return abierto;
+
+    }
+
+
+
+    if (!abierto) {
+
+        aviso.style.display =
+            "flex";
+
+        aviso.style.position =
+            "fixed";
+
+        aviso.style.inset =
+            "0";
+
+        aviso.style.zIndex =
+            "999999";
+
+        aviso.style.background =
+            "rgba(0, 0, 0, 0.94)";
+
+        aviso.style.alignItems =
+            "center";
+
+        aviso.style.justifyContent =
+            "center";
+
+        aviso.style.textAlign =
+            "center";
+
+        aviso.style.padding =
+            "20px";
+
+        aviso.style.color =
+            "#ffffff";
+
+        aviso.style.boxSizing =
+            "border-box";
+
+
+
+        if (mensaje) {
+
+            const ahora =
+                new Date();
+
+            const partes =
+                new Intl.DateTimeFormat(
+                    "en-US",
+                    {
+                        timeZone:
+                            "America/Montevideo",
+
+                        weekday:
+                            "short",
+
+                        hour:
+                            "numeric",
+
+                        minute:
+                            "numeric",
+
+                        hour12:
+                            false
+                    }
+                ).formatToParts(ahora);
+
+            const dia =
+                partes.find(
+                    item =>
+                        item.type ===
+                        "weekday"
+                )?.value;
+
+
+
+            if (dia === "Wed") {
+
+                mensaje.textContent =
+                    "Los miércoles permanecemos cerrados. Te esperamos nuevamente el jueves desde las 20:00.";
+
+            } else {
+
+                mensaje.textContent =
+                    "Nuestro horario de atención es de 20:00 a 00:00. Podés volver a realizar tu pedido desde las 20:00.";
+
+            }
+
+        }
+
+
+
+        // Evitar que se pueda hacer scroll
+
+        document.body.style.overflow =
+            "hidden";
+
+    } else {
+
+        aviso.style.display =
+            "none";
+
+        document.body.style.overflow =
+            "";
+
+    }
+
+
+
+    return abierto;
+
+}
+
 
 
 // =====================================================
@@ -26,6 +258,7 @@ let carrito =
     JSON.parse(
         localStorage.getItem("flameCarrito")
     ) || [];
+
 
 
 // =====================================================
@@ -60,6 +293,7 @@ const botonCheckout =
     document.getElementById("irCheckout");
 
 
+
 // =====================================================
 // ESCAPAR HTML
 // =====================================================
@@ -73,7 +307,9 @@ function escaparHTML(texto) {
         texto ?? "";
 
     return div.innerHTML;
+
 }
+
 
 
 // =====================================================
@@ -87,7 +323,9 @@ function formatearPrecio(precio) {
             minimumFractionDigits: 0,
             maximumFractionDigits: 2
         });
+
 }
+
 
 
 // =====================================================
@@ -144,6 +382,7 @@ async function cargarCategorias() {
 }
 
 
+
 // =====================================================
 // CREAR BOTÓN TODOS
 // =====================================================
@@ -175,6 +414,14 @@ function crearBotonTodos() {
         "click",
         () => {
 
+            if (!restauranteEstaAbierto()) {
+
+                actualizarEstadoRestaurante();
+
+                return;
+
+            }
+
             seleccionarCategoria("todas");
 
         }
@@ -185,6 +432,7 @@ function crearBotonTodos() {
     );
 
 }
+
 
 
 // =====================================================
@@ -220,6 +468,14 @@ function mostrarCategorias() {
                 "click",
                 () => {
 
+                    if (!restauranteEstaAbierto()) {
+
+                        actualizarEstadoRestaurante();
+
+                        return;
+
+                    }
+
                     seleccionarCategoria(
                         categoria.id
                     );
@@ -237,6 +493,7 @@ function mostrarCategorias() {
 }
 
 
+
 // =====================================================
 // SELECCIONAR CATEGORÍA
 // =====================================================
@@ -244,6 +501,14 @@ function mostrarCategorias() {
 function seleccionarCategoria(
     categoriaId
 ) {
+
+    if (!restauranteEstaAbierto()) {
+
+        actualizarEstadoRestaurante();
+
+        return;
+
+    }
 
     categoriaActual =
         String(categoriaId);
@@ -276,6 +541,7 @@ function seleccionarCategoria(
     mostrarProductos();
 
 }
+
 
 
 // =====================================================
@@ -332,6 +598,7 @@ async function cargarProductos() {
 }
 
 
+
 // =====================================================
 // MOSTRAR CARGANDO
 // =====================================================
@@ -355,6 +622,7 @@ function mostrarCargando() {
     `;
 
 }
+
 
 
 // =====================================================
@@ -407,17 +675,25 @@ function mostrarErrorProductos() {
 }
 
 
+
 // =====================================================
 // MOSTRAR PRODUCTOS
 // =====================================================
 
 function mostrarProductos() {
 
+    if (!restauranteEstaAbierto()) {
+
+        return;
+
+    }
+
     contenedorProductos.innerHTML =
         "";
 
     let filtrados =
         [...productos];
+
 
 
     // =================================================
@@ -440,6 +716,7 @@ function mostrarProductos() {
             );
 
     }
+
 
 
     // =================================================
@@ -476,6 +753,7 @@ function mostrarProductos() {
     }
 
 
+
     // =================================================
     // CREAR TARJETAS
     // =================================================
@@ -493,6 +771,7 @@ function mostrarProductos() {
 }
 
 
+
 // =====================================================
 // CREAR TARJETA PRODUCTO
 // =====================================================
@@ -508,6 +787,7 @@ function crearTarjetaProducto(
         "producto";
 
 
+
     // =================================================
     // IMAGEN
     // =================================================
@@ -521,10 +801,12 @@ function crearTarjetaProducto(
     `;
 
 
+
     if (producto.imagen) {
 
         let imagenURL =
             String(producto.imagen).trim();
+
 
 
         // =================================================
@@ -558,6 +840,7 @@ function crearTarjetaProducto(
         }
 
 
+
         // =================================================
         // URL COMPLETA
         // =================================================
@@ -568,6 +851,7 @@ function crearTarjetaProducto(
         ) {
 
             // Ya es una URL completa.
+
 
 
         // =================================================
@@ -582,6 +866,7 @@ function crearTarjetaProducto(
                 `${API_BASE}${imagenURL}`;
 
 
+
         // =================================================
         // RUTA uploads/...
         // =================================================
@@ -592,6 +877,7 @@ function crearTarjetaProducto(
                 `${API_BASE}/${imagenURL}`;
 
         }
+
 
 
         imagenHTML = `
@@ -607,6 +893,7 @@ function crearTarjetaProducto(
     }
 
 
+
     // =================================================
     // HTML TARJETA
     // =================================================
@@ -620,7 +907,9 @@ function crearTarjetaProducto(
         </div>
 
 
+
         <div class="producto-contenido">
+
 
 
             <span class="categoria">
@@ -632,6 +921,7 @@ function crearTarjetaProducto(
             </span>
 
 
+
             <h3>
 
                 ${escaparHTML(
@@ -639,6 +929,7 @@ function crearTarjetaProducto(
                 )}
 
             </h3>
+
 
 
             <p>
@@ -650,7 +941,9 @@ function crearTarjetaProducto(
             </p>
 
 
+
             <div class="producto-bottom">
+
 
 
                 <strong>
@@ -660,6 +953,7 @@ function crearTarjetaProducto(
                     )}
 
                 </strong>
+
 
 
                 <button
@@ -675,12 +969,15 @@ function crearTarjetaProducto(
                 </button>
 
 
+
             </div>
+
 
 
         </div>
 
     `;
+
 
 
     // =================================================
@@ -706,6 +1003,7 @@ function crearTarjetaProducto(
     }
 
 
+
     // =================================================
     // AGREGAR AL CARRITO
     // =================================================
@@ -719,6 +1017,14 @@ function crearTarjetaProducto(
         "click",
         () => {
 
+            if (!restauranteEstaAbierto()) {
+
+                actualizarEstadoRestaurante();
+
+                return;
+
+            }
+
             agregarAlCarrito(
                 producto
             );
@@ -727,11 +1033,13 @@ function crearTarjetaProducto(
     );
 
 
+
     contenedorProductos.appendChild(
         tarjeta
     );
 
 }
+
 
 
 // =====================================================
@@ -743,14 +1051,18 @@ function imagenFallback(
 ) {
 
     if (!imagen) {
+
         return;
+
     }
 
     const contenedor =
         imagen.parentElement;
 
     if (!contenedor) {
+
         return;
+
     }
 
     contenedor.innerHTML = `
@@ -764,6 +1076,7 @@ function imagenFallback(
 }
 
 
+
 // =====================================================
 // AGREGAR AL CARRITO
 // =====================================================
@@ -772,8 +1085,17 @@ function agregarAlCarrito(
     producto
 ) {
 
+    if (!restauranteEstaAbierto()) {
+
+        actualizarEstadoRestaurante();
+
+        return;
+
+    }
+
     const id =
         Number(producto.id);
+
 
 
     const existente =
@@ -781,6 +1103,7 @@ function agregarAlCarrito(
             item =>
                 Number(item.producto_id) === id
         );
+
 
 
     if (existente) {
@@ -811,6 +1134,7 @@ function agregarAlCarrito(
     }
 
 
+
     guardarCarrito();
 
     actualizarCarrito();
@@ -818,6 +1142,7 @@ function agregarAlCarrito(
     abrirCarrito();
 
 }
+
 
 
 // =====================================================
@@ -834,6 +1159,7 @@ function guardarCarrito() {
 }
 
 
+
 // =====================================================
 // ACTUALIZAR CARRITO
 // =====================================================
@@ -841,7 +1167,9 @@ function guardarCarrito() {
 function actualizarCarrito() {
 
     if (!itemsCarrito) {
+
         return;
+
     }
 
     itemsCarrito.innerHTML =
@@ -852,6 +1180,7 @@ function actualizarCarrito() {
 
     let cantidadTotal =
         0;
+
 
 
     // =================================================
@@ -881,6 +1210,7 @@ function actualizarCarrito() {
     }
 
 
+
     // =================================================
     // PRODUCTOS DEL CARRITO
     // =================================================
@@ -898,6 +1228,7 @@ function actualizarCarrito() {
                 precio * cantidad;
 
 
+
             total +=
                 subtotal;
 
@@ -905,11 +1236,13 @@ function actualizarCarrito() {
                 cantidad;
 
 
+
             const elemento =
                 document.createElement("div");
 
             elemento.className =
                 "carrito-item";
+
 
 
             elemento.innerHTML = `
@@ -931,7 +1264,9 @@ function actualizarCarrito() {
                 </div>
 
 
+
                 <div class="cantidad">
+
 
 
                     <button
@@ -943,9 +1278,11 @@ function actualizarCarrito() {
                     </button>
 
 
+
                     <span>
                         ${cantidad}
                     </span>
+
 
 
                     <button
@@ -957,9 +1294,11 @@ function actualizarCarrito() {
                     </button>
 
 
+
                 </div>
 
             `;
+
 
 
             // MENOS
@@ -982,6 +1321,7 @@ function actualizarCarrito() {
             );
 
 
+
             // MÁS
 
             const botonMas =
@@ -1002,12 +1342,14 @@ function actualizarCarrito() {
             );
 
 
+
             itemsCarrito.appendChild(
                 elemento
             );
 
         }
     );
+
 
 
     // =================================================
@@ -1021,6 +1363,7 @@ function actualizarCarrito() {
             formatearPrecio(total);
 
     }
+
 
 
     // =================================================
@@ -1037,6 +1380,7 @@ function actualizarCarrito() {
 }
 
 
+
 // =====================================================
 // CAMBIAR CANTIDAD
 // =====================================================
@@ -1045,6 +1389,14 @@ function cambiarCantidad(
     productoId,
     cambio
 ) {
+
+    if (!restauranteEstaAbierto()) {
+
+        actualizarEstadoRestaurante();
+
+        return;
+
+    }
 
     const item =
         carrito.find(
@@ -1058,13 +1410,18 @@ function cambiarCantidad(
         );
 
 
+
     if (!item) {
+
         return;
+
     }
+
 
 
     item.cantidad +=
         cambio;
+
 
 
     // =================================================
@@ -1089,11 +1446,13 @@ function cambiarCantidad(
     }
 
 
+
     guardarCarrito();
 
     actualizarCarrito();
 
 }
+
 
 
 // =====================================================
@@ -1102,8 +1461,18 @@ function cambiarCantidad(
 
 function abrirCarrito() {
 
-    if (!carritoOverlay) {
+    if (!restauranteEstaAbierto()) {
+
+        actualizarEstadoRestaurante();
+
         return;
+
+    }
+
+    if (!carritoOverlay) {
+
+        return;
+
     }
 
     carritoOverlay.classList.add(
@@ -1116,6 +1485,7 @@ function abrirCarrito() {
 }
 
 
+
 // =====================================================
 // CERRAR CARRITO
 // =====================================================
@@ -1123,7 +1493,9 @@ function abrirCarrito() {
 function cerrarCarrito() {
 
     if (!carritoOverlay) {
+
         return;
+
     }
 
     carritoOverlay.classList.remove(
@@ -1134,6 +1506,7 @@ function cerrarCarrito() {
         "";
 
 }
+
 
 
 // =====================================================
@@ -1161,6 +1534,7 @@ if (carritoOverlay) {
 }
 
 
+
 // =====================================================
 // BOTÓN ABRIR CARRITO
 // =====================================================
@@ -1169,10 +1543,23 @@ if (botonAbrirCarrito) {
 
     botonAbrirCarrito.addEventListener(
         "click",
-        abrirCarrito
+        () => {
+
+            if (!restauranteEstaAbierto()) {
+
+                actualizarEstadoRestaurante();
+
+                return;
+
+            }
+
+            abrirCarrito();
+
+        }
     );
 
 }
+
 
 
 // =====================================================
@@ -1187,6 +1574,7 @@ if (botonCerrarCarrito) {
     );
 
 }
+
 
 
 // =====================================================
@@ -1209,6 +1597,7 @@ document.addEventListener(
 );
 
 
+
 // =====================================================
 // CONTINUAR AL CHECKOUT
 // =====================================================
@@ -1218,6 +1607,14 @@ if (botonCheckout) {
     botonCheckout.addEventListener(
         "click",
         () => {
+
+            if (!restauranteEstaAbierto()) {
+
+                actualizarEstadoRestaurante();
+
+                return;
+
+            }
 
             if (
                 carrito.length === 0
@@ -1232,6 +1629,7 @@ if (botonCheckout) {
             }
 
 
+
             window.location.href =
                 "/checkout.html";
 
@@ -1241,19 +1639,81 @@ if (botonCheckout) {
 }
 
 
+
+// =====================================================
+// BLOQUEAR "PEDIR AHORA" CUANDO ESTÁ CERRADO
+// =====================================================
+
+document.addEventListener(
+    "click",
+    evento => {
+
+        const botonPedir =
+            evento.target.closest(
+                ".hero-button"
+            );
+
+        if (!botonPedir) {
+
+            return;
+
+        }
+
+        if (!restauranteEstaAbierto()) {
+
+            evento.preventDefault();
+
+            actualizarEstadoRestaurante();
+
+        }
+
+    }
+);
+
+
+
+// =====================================================
+// CONTROL AUTOMÁTICO DEL HORARIO
+// =====================================================
+//
+// Se revisa cada 30 segundos.
+// Esto permite que la página se cierre sola
+// al llegar a las 00:00 o se abra a las 20:00.
+// =====================================================
+
+setInterval(
+    () => {
+
+        actualizarEstadoRestaurante();
+
+    },
+    30000
+);
+
+
+
 // =====================================================
 // INICIAR
 // =====================================================
 
 async function iniciar() {
 
+    actualizarEstadoRestaurante();
+
     actualizarCarrito();
 
     await cargarCategorias();
 
-    await cargarProductos();
+    // Solo cargamos el menú si está abierto.
+
+    if (restauranteEstaAbierto()) {
+
+        await cargarProductos();
+
+    }
 
 }
+
 
 
 // =====================================================
@@ -1261,3 +1721,4 @@ async function iniciar() {
 // =====================================================
 
 iniciar();
+```
