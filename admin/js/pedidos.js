@@ -784,7 +784,7 @@ function crearTicketHTML(pedido, productos) {
 
             <div class="producto">
 
-                <div>
+                <div class="producto-nombre">
 
                     <strong>
                         ${escaparHTML(
@@ -804,7 +804,7 @@ function crearTicketHTML(pedido, productos) {
                 </div>
 
 
-                <strong>
+                <strong class="producto-precio">
 
                     $${Number(
                         producto.subtotal || 0
@@ -844,10 +844,10 @@ function crearTicketHTML(pedido, productos) {
 
         cambioHTML = `
 
-            <div class="info">
+            <div class="info cambio">
 
                 <strong>
-                    Paga con:
+                    PAGA CON:
                 </strong>
 
                 $${pagaCon.toLocaleString("es-UY")}
@@ -855,7 +855,7 @@ function crearTicketHTML(pedido, productos) {
                 <br>
 
                 <strong>
-                    Vuelto:
+                    VUELTO:
                 </strong>
 
                 $${vuelto.toLocaleString("es-UY")}
@@ -872,15 +872,14 @@ function crearTicketHTML(pedido, productos) {
         <div class="ticket">
 
 
-            <!-- LOGO REAL DE FLAME BURGER -->
+            <!-- LOGO -->
 
             <div class="logo-container">
 
                 <img
-                    src="/img/fondo.jpeg"
+                    src="/img/logo-ticket.png"
                     class="logo-imagen"
                     alt="Flame Burger"
-                    onerror="this.style.display='none';"
                 >
 
             </div>
@@ -888,11 +887,7 @@ function crearTicketHTML(pedido, productos) {
 
             <div class="centro">
 
-                <div class="nombre-negocio">
-                    FLAME BURGER
-                </div>
-
-                <div>
+                <div class="titulo-ticket">
                     COMPROBANTE DE PEDIDO
                 </div>
 
@@ -909,7 +904,7 @@ function crearTicketHTML(pedido, productos) {
             <div class="info">
 
                 <strong>
-                    Fecha:
+                    FECHA:
                 </strong>
 
                 ${formatearFecha(
@@ -920,7 +915,7 @@ function crearTicketHTML(pedido, productos) {
 
 
                 <strong>
-                    Cliente:
+                    CLIENTE:
                 </strong>
 
                 ${escaparHTML(
@@ -932,7 +927,7 @@ function crearTicketHTML(pedido, productos) {
 
 
                 <strong>
-                    Teléfono:
+                    TELÉFONO:
                 </strong>
 
                 ${escaparHTML(
@@ -945,7 +940,7 @@ function crearTicketHTML(pedido, productos) {
 
 
                 <strong>
-                    Entrega:
+                    ENTREGA:
                 </strong>
 
                 ${obtenerTextoEntrega(
@@ -955,21 +950,27 @@ function crearTicketHTML(pedido, productos) {
                 <br>
 
 
+                ${
+                    pedido.tipo_entrega === "delivery"
+                    ? `
+                        <strong>
+                            DIRECCIÓN:
+                        </strong>
+
+                        ${escaparHTML(
+                            pedido.cliente_direccion ||
+                            pedido.direccion ||
+                            "—"
+                        )}
+
+                        <br>
+                    `
+                    : ""
+                }
+
+
                 <strong>
-                    Dirección:
-                </strong>
-
-                ${escaparHTML(
-                    pedido.cliente_direccion ||
-                    pedido.direccion ||
-                    "—"
-                )}
-
-                <br>
-
-
-                <strong>
-                    Pago:
+                    PAGO:
                 </strong>
 
                 ${obtenerTextoPago(
@@ -982,9 +983,9 @@ function crearTicketHTML(pedido, productos) {
             <div class="linea"></div>
 
 
-            <strong>
+            <div class="titulo-productos">
                 PRODUCTOS
-            </strong>
+            </div>
 
 
             ${productosHTML}
@@ -1028,11 +1029,9 @@ function crearTicketHTML(pedido, productos) {
                 </span>
 
                 <span>
-
                     $${Number(
                         pedido.total || 0
                     ).toLocaleString("es-UY")}
-
                 </span>
 
             </div>
@@ -1041,7 +1040,7 @@ function crearTicketHTML(pedido, productos) {
             <div class="linea"></div>
 
 
-            <div class="centro">
+            <div class="centro gracias">
 
                 Gracias por tu compra
 
@@ -1115,7 +1114,7 @@ async function abrirTicket(pedidoId) {
 <meta charset="UTF-8">
 
 <title>
-Pedido #${datos.pedido.id} - Flame Burger
+Pedido #${datos.pedido.id}
 </title>
 
 
@@ -1176,9 +1175,12 @@ body {
 }
 
 
-/* =========================================
-   LOGO
-   ========================================= */
+.centro {
+
+    text-align: center;
+
+}
+
 
 .logo-container {
 
@@ -1199,31 +1201,26 @@ body {
 
     display: block;
 
-    width: 42mm;
+    width: 48mm;
 
     max-width: 100%;
 
-    max-height: 25mm;
+    max-height: 30mm;
+
+    height: auto;
 
     object-fit: contain;
 
 }
 
 
-.centro {
+.titulo-ticket {
 
-    text-align: center;
-
-}
-
-
-.nombre-negocio {
-
-    font-size: 22px;
+    font-size: 12px;
 
     font-weight: bold;
 
-    margin-bottom: 2mm;
+    margin-top: 2mm;
 
 }
 
@@ -1234,15 +1231,14 @@ body {
 
     font-weight: bold;
 
-    margin: 8px 0;
+    margin: 5px 0;
 
 }
 
 
 .linea {
 
-    border-top:
-        1px dashed black;
+    border-top: 1px dashed black;
 
     margin: 8px 0;
 
@@ -1260,11 +1256,9 @@ body {
 
     display: flex;
 
-    justify-content:
-        space-between;
+    justify-content: space-between;
 
-    align-items:
-        flex-start;
+    align-items: flex-start;
 
     gap: 8px;
 
@@ -1275,16 +1269,34 @@ body {
 }
 
 
-.producto > div {
+.producto-nombre {
 
     flex: 1;
+
+    min-width: 0;
 
 }
 
 
-.producto > strong {
+.producto-precio {
 
     white-space: nowrap;
+
+}
+
+
+.titulo-productos {
+
+    font-weight: bold;
+
+    margin-bottom: 5px;
+
+}
+
+
+.cambio {
+
+    line-height: 1.7;
 
 }
 
@@ -1293,8 +1305,7 @@ body {
 
     display: flex;
 
-    justify-content:
-        space-between;
+    justify-content: space-between;
 
     font-size: 20px;
 
@@ -1310,6 +1321,17 @@ body {
     margin-top: 8px;
 
     line-height: 1.4;
+
+}
+
+
+.gracias {
+
+    font-weight: bold;
+
+    margin-top: 5px;
+
+    margin-bottom: 5px;
 
 }
 
@@ -1353,15 +1375,11 @@ body {
 }
 
 
-/* =========================================
-   IMPRESIÓN
-   ========================================= */
-
 @media print {
 
     .botones {
 
-        display: none;
+        display: none !important;
 
     }
 
@@ -1386,14 +1404,18 @@ body {
 
         padding: 3mm;
 
+        margin: 0 auto;
+
     }
 
 
     .logo-imagen {
 
-        width: 42mm;
+        width: 48mm;
 
-        max-height: 25mm;
+        max-width: 100%;
+
+        max-height: 30mm;
 
     }
 
@@ -1420,7 +1442,7 @@ window.onload = function() {
 
         window.print();
 
-    }, 700);
+    }, 500);
 
 };
 
@@ -1435,7 +1457,7 @@ window.onafterprint = function() {
 
 };
 
-<\/script>
+</script>
 
 
 </body>
