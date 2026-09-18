@@ -1,632 +1,1801 @@
+const API_PEDIDOS = "/api/pedidos";
+
+let pedidos = [];
+let filtroActual = "todos";
+
+const ordersList = document.getElementById("ordersList");
+const pedidosNuevos = document.getElementById("pedidosNuevos");
+
+
+// =====================================================
+// CARGAR PEDIDOS
+// =====================================================
+
+async function cargarPedidos() {
+
+    try {
+
+        const respuesta = await fetch(API_PEDIDOS);
+
+        if (!respuesta.ok) {
+            throw new Error("No se pudieron cargar los pedidos.");
+        }
+
+        pedidos = await respuesta.json();
+
+        mostrarPedidos();
+
+    } catch (error) {
+
+        console.error("ERROR PEDIDOS:", error);
+
+        if (ordersList) {
+
+            ordersList.innerHTML = `
+                <div class="empty-orders">
+                    <h3>Error al cargar los pedidos</h3>
+                    <p>${escaparHTML(error.message)}</p>
+                </div>
+            `;
+
+        }
+    }
+}
+
+
+// =====================================================
+// MOSTRAR PEDIDOS
+// =====================================================
+
+function mostrarPedidos() {
+
+    if (!ordersList) {
+        return;
+    }
+
+    ordersList.innerHTML = "";
+
+    const cantidadNuevos = pedidos.filter(
+        pedido => pedido.estado === "nuevo"
+    ).length;
+
+    if (pedidosNuevos) {
+
+        pedidosNuevos.textContent =
+            `${cantidadNuevos} pedido${cantidadNuevos !== 1 ? "s" : ""} nuevo${cantidadNuevos !== 1 ? "s" : ""}`;
+
+    }
+
+
+    let pedidosFiltrados = pedidos.filter(
+        pedido => pedido.estado !== "en_proceso_pago"
+    );
+
+
+    if (filtroActual !== "todos") {
+
+        pedidosFiltrados = pedidosFiltrados.filter(
+            pedido => pedido.estado === filtroActual
+        );
+
+    }
+
+
+    if (pedidosFiltrados.length === 0) {
+
+        ordersList.innerHTML = `
+            <div class="empty-orders">
+
+                <div class="empty-icon">
+                    🛒
+                </div>
+
+                <h3>
+                    No hay pedidos
+                </h3>
+
+                <p>
+                    No hay pedidos en esta categoría.
+                </p>
+
+            </div>
+        `;
+
+        return;
+    }
+
+
+    pedidosFiltrados.forEach(pedido => {
+
+        const tarjeta = crearTarjetaPedido(pedido);
+
+        ordersList.appendChild(tarjeta);
+
+    });
+}
+
+
+// =====================================================
+// CREAR TARJETA DEL PEDIDO
+// =====================================================
+
+function crearTarjetaPedido(pedido) {
+
+    const tarjeta = document.createElement("div");
+
+    tarjeta.className = "order-card";
+
+
+    if (pedido.estado === "nuevo") {
+
+        tarjeta.classList.add("new-order");
+
+    }
+
+
+    const fecha =
+        formatearFecha(pedido.creado_en);
+
+    const estadoTexto =
+        obtenerTextoEstado(pedido.estado);
+
+    const claseEstado =
+        `status-${pedido.estado}`;
+
+
+    let informacionCambio = "";
+
+
+    if (pedido.forma_pago === "efectivo") {
+
+        if (
+            pedido.necesita_cambio === true ||
+            pedido.necesita_cambio === "true"
+        ) {
+
+            const total =
+                Number(pedido.total || 0);
+
+            const cambioDe =
+                Number(pedido.cambio_de || 0);
+
+            const vuelto =
+                cambioDe - total;
+
+
+            informacionCambio = `
+
+                <div class="order-info">
+
+                    <span>
+                        CAMBIO
+                    </span>
+
+                    <strong>
+                        💵 Sí
+                    </strong>
+
+                </div>
+
+
+                <div class="order-info">
+
+                    <span>
+                        PAGA CON
+                    </span>
+
+                    <strong>
+                        $${cambioDe.toLocaleString("es-UY")}
+                    </strong>
+
+                </div>
+
+
+                <div class="order-info">
+
+                    <span>
+                        VUELTO
+                    </span>
+
+                    <strong>
+                        $${vuelto.toLocaleString("es-UY")}
+                    </strong>
+
+                </div>
+
+            `;
+
+        } else {
+
+            informacionCambio = `
+
+                <div class="order-info">
+
+                    <span>
+                        CAMBIO
+                    </span>
+
+                    <strong>
+                        ❌ No necesita
+                    </strong>
+
+                </div>
+
+            `;
+
+        }
+    }
+
+
+    tarjeta.innerHTML = `
+
+        <div class="order-top">
+
+            <div>
+
+                <div class="order-number">
+                    Pedido #${pedido.id}
+                </div>
+
+                <div class="order-date">
+                    ${fecha}
+                </div>
+
+                ${
+                    pedido.estado === "nuevo"
+                    ? `
+                        <span class="new-label">
+                            🔔 NUEVO PEDIDO
+                        </span>
+                    `
+                    : ""
+                }
+
+            </div>
+
+
+            <span class="order-status ${claseEstado}">
+                ${estadoTexto}
+            </span>
+
+        </div>
+
+
+        <div class="order-info-grid">
+
+
+            <div class="order-info">
+
+                <span>
+                    CLIENTE
+                </span>
+
+                <strong>
+                    ${escaparHTML(
+                        pedido.cliente_nombre ||
+                        "Sin nombre"
+                    )}
+                </strong>
+
+            </div>
+
+
+            <div class="order-info">
+
+                <span>
+                    TELÉFONO
+                </span>
+
+                <strong>
+                    ${escaparHTML(
+                        pedido.cliente_telefono ||
+                        pedido.telefono ||
+                        "Sin teléfono"
+                    )}
+                </strong>
+
+            </div>
+
+
+            <div class="order-info">
+
+                <span>
+                    ENTREGA
+                </span>
+
+                <strong>
+                    ${obtenerTextoEntrega(
+                        pedido.tipo_entrega
+                    )}
+                </strong>
+
+            </div>
+
+
+            <div class="order-info">
+
+                <span>
+                    DIRECCIÓN
+                </span>
+
+                <strong>
+                    ${escaparHTML(
+                        pedido.cliente_direccion ||
+                        pedido.direccion ||
+                        "—"
+                    )}
+                </strong>
+
+            </div>
+
+
+            <div class="order-info">
+
+                <span>
+                    PAGO
+                </span>
+
+                <strong>
+                    ${obtenerTextoPago(
+                        pedido.forma_pago
+                    )}
+                </strong>
+
+            </div>
+
+
+            <div class="order-info">
+
+                <span>
+                    ESTADO
+                </span>
+
+                <strong>
+                    ${estadoTexto}
+                </strong>
+
+            </div>
+
+
+            ${informacionCambio}
+
+        </div>
+
+
+        <div
+            class="order-products"
+            id="productos-${pedido.id}"
+        >
+
+            <div>
+                ⏳ Cargando productos...
+            </div>
+
+        </div>
+
+
+        ${
+            pedido.observaciones
+            ? `
+                <div class="order-observation">
+
+                    <strong>
+                        📝 Comentarios:
+                    </strong>
+
+                    <br>
+
+                    ${escaparHTML(
+                        pedido.observaciones
+                    )}
+
+                </div>
+            `
+            : ""
+        }
+
+
+        <div class="order-bottom">
+
+            <div>
+
+                <div class="order-total-label">
+                    TOTAL
+                </div>
+
+                <div class="order-total">
+
+                    $${Number(
+                        pedido.total || 0
+                    ).toLocaleString("es-UY")}
+
+                </div>
+
+            </div>
+
+
+            <div class="order-actions">
+
+                ${crearBotonesEstado(pedido)}
+
+            </div>
+
+        </div>
+
+    `;
+
+
+    cargarDetallePedido(pedido.id);
+
+
+    return tarjeta;
+}
+
+
+// =====================================================
+// BOTONES
+// =====================================================
+
+function crearBotonesEstado(pedido) {
+
+    const botonImprimir = `
+
+        <button
+            class="btn-print"
+            onclick="imprimirPedido(${pedido.id})"
+        >
+            🖨️ Imprimir ticket
+        </button>
+
+    `;
+
+
+    const botonPDF = `
+
+        <button
+            class="btn-print"
+            onclick="guardarPDF(${pedido.id})"
+        >
+            📄 Guardar PDF
+        </button>
+
+    `;
+
+
+    if (pedido.estado === "cancelado") {
+
+        return `
+
+            ${botonImprimir}
+
+            ${botonPDF}
+
+            <button
+                class="btn-confirm"
+                onclick="cambiarEstado(${pedido.id}, 'nuevo')"
+            >
+                ↩️ Reactivar
+            </button>
+
+        `;
+
+    }
+
+
+    if (pedido.estado === "entregado") {
+
+        return `
+
+            ${botonImprimir}
+
+            ${botonPDF}
+
+            <button
+                class="btn-cancel"
+                onclick="cambiarEstado(${pedido.id}, 'cancelado')"
+            >
+                ❌ Cancelar
+            </button>
+
+        `;
+
+    }
+
+
+    if (pedido.estado === "nuevo") {
+
+        return `
+
+            ${botonImprimir}
+
+            ${botonPDF}
+
+            <button
+                class="btn-preparing"
+                onclick="cambiarEstado(${pedido.id}, 'preparando')"
+            >
+                👨‍🍳 Comenzar a preparar
+            </button>
+
+            <button
+                class="btn-cancel"
+                onclick="cambiarEstado(${pedido.id}, 'cancelado')"
+            >
+                ❌ Cancelar
+            </button>
+
+        `;
+
+    }
+
+
+    if (pedido.estado === "preparando") {
+
+        return `
+
+            ${botonImprimir}
+
+            ${botonPDF}
+
+            <button
+                class="btn-ready"
+                onclick="cambiarEstado(${pedido.id}, 'listo')"
+            >
+                🍔 Listo
+            </button>
+
+            <button
+                class="btn-cancel"
+                onclick="cambiarEstado(${pedido.id}, 'cancelado')"
+            >
+                ❌ Cancelar
+            </button>
+
+        `;
+
+    }
+
+
+    if (pedido.estado === "listo") {
+
+        return `
+
+            ${botonImprimir}
+
+            ${botonPDF}
+
+            <button
+                class="btn-delivered"
+                onclick="cambiarEstado(${pedido.id}, 'entregado')"
+            >
+                🛵 Entregado
+            </button>
+
+            <button
+                class="btn-cancel"
+                onclick="cambiarEstado(${pedido.id}, 'cancelado')"
+            >
+                ❌ Cancelar
+            </button>
+
+        `;
+
+    }
+
+
+    return `
+        ${botonImprimir}
+        ${botonPDF}
+    `;
+}
+
+
+// =====================================================
+// DETALLE DEL PEDIDO
+// =====================================================
+
+async function cargarDetallePedido(pedidoId) {
+
+    try {
+
+        const respuesta =
+            await fetch(
+                `${API_PEDIDOS}/${pedidoId}`
+            );
+
+
+        if (!respuesta.ok) {
+
+            throw new Error(
+                "No se pudo obtener el detalle."
+            );
+
+        }
+
+
+        const resultado =
+            await respuesta.json();
+
+
+        const contenedor =
+            document.getElementById(
+                `productos-${pedidoId}`
+            );
+
+
+        if (!contenedor) {
+            return;
+        }
+
+
+        if (
+            !resultado.productos ||
+            resultado.productos.length === 0
+        ) {
+
+            contenedor.innerHTML = `
+                <div>
+                    Sin productos
+                </div>
+            `;
+
+            return;
+        }
+
+
+        contenedor.innerHTML = "";
+
+
+        resultado.productos.forEach(producto => {
+
+            const elemento =
+                document.createElement("div");
+
+
+            elemento.className =
+                "order-product";
+
+
+            elemento.innerHTML = `
+
+                <div>
+
+                    <strong>
+                        ${escaparHTML(
+                            producto.nombre ||
+                            "Producto"
+                        )}
+                    </strong>
+
+                    <small>
+
+                        ${producto.cantidad}
+                        x
+                        $${Number(
+                            producto.precio_unitario || 0
+                        ).toLocaleString("es-UY")}
+
+                    </small>
+
+                </div>
+
+
+                <strong>
+
+                    $${Number(
+                        producto.subtotal || 0
+                    ).toLocaleString("es-UY")}
+
+                </strong>
+
+            `;
+
+
+            contenedor.appendChild(elemento);
+
+        });
+
+
+    } catch (error) {
+
+        console.error(
+            "ERROR DETALLE:",
+            error
+        );
+
+
+        const contenedor =
+            document.getElementById(
+                `productos-${pedidoId}`
+            );
+
+
+        if (contenedor) {
+
+            contenedor.innerHTML = `
+                <div>
+                    ⚠️ No se pudo cargar el detalle
+                </div>
+            `;
+
+        }
+
+    }
+}
+
+
+// =====================================================
+// OBTENER DATOS DEL PEDIDO
+// =====================================================
+
+async function obtenerDatosPedido(pedidoId) {
+
+    const pedido = pedidos.find(
+        p => Number(p.id) === Number(pedidoId)
+    );
+
+
+    if (!pedido) {
+
+        throw new Error(
+            "No se encontró el pedido."
+        );
+
+    }
+
+
+    const respuesta = await fetch(
+        `${API_PEDIDOS}/${pedidoId}`
+    );
+
+
+    if (!respuesta.ok) {
+
+        throw new Error(
+            "No se pudieron cargar los productos."
+        );
+
+    }
+
+
+    const resultado =
+        await respuesta.json();
+
+
+    return {
+        pedido: pedido,
+        productos: resultado.productos || []
+    };
+}
+
+
+// =====================================================
+// CREAR CONTENIDO DEL TICKET
+// =====================================================
+
+function crearTicketHTML(pedido, productos) {
+
+    let productosHTML = "";
+
+
+    productos.forEach(producto => {
+
+        productosHTML += `
+
+            <div class="producto">
+
+                <div>
+
+                    <strong>
+                        ${escaparHTML(
+                            producto.nombre ||
+                            "Producto"
+                        )}
+                    </strong>
+
+                    <br>
+
+                    ${producto.cantidad}
+                    x
+                    $${Number(
+                        producto.precio_unitario || 0
+                    ).toLocaleString("es-UY")}
+
+                </div>
+
+
+                <strong>
+
+                    $${Number(
+                        producto.subtotal || 0
+                    ).toLocaleString("es-UY")}
+
+                </strong>
+
+            </div>
+
+        `;
+
+    });
+
+
+    let cambioHTML = "";
+
+
+    if (
+        pedido.forma_pago === "efectivo" &&
+        (
+            pedido.necesita_cambio === true ||
+            pedido.necesita_cambio === "true"
+        )
+    ) {
+
+        const pagaCon =
+            Number(pedido.cambio_de || 0);
+
+
+        const total =
+            Number(pedido.total || 0);
+
+
+        const vuelto =
+            pagaCon - total;
+
+
+        cambioHTML = `
+
+            <div class="info cambio">
+
+                <strong>
+                    PAGA CON:
+                </strong>
+
+                $${pagaCon.toLocaleString("es-UY")}
+
+                <br>
+
+                <strong>
+                    VUELTO:
+                </strong>
+
+                $${vuelto.toLocaleString("es-UY")}
+
+            </div>
+
+        `;
+
+    }
+
+
+    return `
+
+        <div class="ticket">
+
+
+            <!-- ================================================= -->
+            <!-- LOGO FLAME BURGER -->
+            <!-- ================================================= -->
+
+            <div class="logo-container">
+
+                <img
+                    src="/img/logo-ticket.png"
+                    class="logo-imagen"
+                    alt="Flame Burger"
+                    onerror="this.style.display='none';"
+                >
+
+            </div>
+
+
+            <div class="centro">
+
+                <div class="titulo-ticket">
+                    COMPROBANTE DE PEDIDO
+                </div>
+
+                <div class="pedido">
+                    PEDIDO #${pedido.id}
+                </div>
+
+            </div>
+
+
+            <div class="linea"></div>
+
+
+            <div class="info">
+
+                <strong>
+                    FECHA:
+                </strong>
+
+                ${formatearFecha(
+                    pedido.creado_en
+                )}
+
+                <br>
+
+
+                <strong>
+                    CLIENTE:
+                </strong>
+
+                ${escaparHTML(
+                    pedido.cliente_nombre ||
+                    "Sin nombre"
+                )}
+
+                <br>
+
+
+                <strong>
+                    TELÉFONO:
+                </strong>
+
+                ${escaparHTML(
+                    pedido.cliente_telefono ||
+                    pedido.telefono ||
+                    "Sin teléfono"
+                )}
+
+                <br>
+
+
+                <strong>
+                    ENTREGA:
+                </strong>
+
+                ${obtenerTextoEntrega(
+                    pedido.tipo_entrega
+                )}
+
+                <br>
+
+
+                ${
+                    (
+                        pedido.tipo_entrega === "delivery"
+                    )
+                    ? `
+                        <strong>
+                            DIRECCIÓN:
+                        </strong>
+
+                        ${escaparHTML(
+                            pedido.cliente_direccion ||
+                            pedido.direccion ||
+                            "—"
+                        )}
+
+                        <br>
+                    `
+                    : ""
+                }
+
+
+                <strong>
+                    PAGO:
+                </strong>
+
+                ${obtenerTextoPago(
+                    pedido.forma_pago
+                )}
+
+            </div>
+
+
+            <div class="linea"></div>
+
+
+            <div class="titulo-productos">
+                PRODUCTOS
+            </div>
+
+
+            ${productosHTML}
+
+
+            ${
+                pedido.observaciones
+                ? `
+
+                    <div class="linea"></div>
+
+                    <div class="observaciones">
+
+                        <strong>
+                            OBSERVACIONES:
+                        </strong>
+
+                        <br>
+
+                        ${escaparHTML(
+                            pedido.observaciones
+                        )}
+
+                    </div>
+
+                `
+                : ""
+            }
+
+
+            <div class="linea"></div>
+
+
+            ${cambioHTML}
+
+
+            <div class="total">
+
+                <span>
+                    TOTAL
+                </span>
+
+                <span>
+
+                    $${Number(
+                        pedido.total || 0
+                    ).toLocaleString("es-UY")}
+
+                </span>
+
+            </div>
+
+
+            <div class="linea"></div>
+
+
+            <div class="centro gracias">
+
+                Gracias por tu compra
+
+            </div>
+
+
+            <div class="botones">
+
+                <button
+                    class="boton"
+                    onclick="window.print()"
+                >
+                    🖨️ IMPRIMIR TICKET
+                </button>
+
+
+                <button
+                    class="boton pdf"
+                    onclick="window.print()"
+                >
+                    📄 GUARDAR PDF
+                </button>
+
+            </div>
+
+
+        </div>
+
+    `;
+}
+
+
+// =====================================================
+// ABRIR TICKET
+// =====================================================
+
+async function abrirTicket(pedidoId) {
+
+    try {
+
+        const datos =
+            await obtenerDatosPedido(pedidoId);
+
+
+        const ventana =
+            window.open(
+                "",
+                "_blank",
+                "width=450,height=800"
+            );
+
+
+        if (!ventana) {
+
+            alert(
+                "⚠️ El navegador bloqueó la ventana. Permití las ventanas emergentes para esta página."
+            );
+
+            return;
+        }
+
+
+        ventana.document.write(`
+
 <!DOCTYPE html>
+
 <html lang="es">
 
 <head>
 
-    <meta charset="UTF-8">
+<meta charset="UTF-8">
 
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
+<title>
+Pedido #${datos.pedido.id}
+</title>
 
-    <title>
-        Flame Burger | Pedidos
-    </title>
 
-    <link
-        rel="stylesheet"
-        href="css/admin.css"
-    >
+<style>
 
-    <style>
+@page {
 
-        .orders-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
+    size: 80mm auto;
 
-        .orders-counter {
-            background: #fff7ed;
-            color: #c2410c;
-            border: 1px solid #fed7aa;
-            padding: 9px 13px;
-            border-radius: 9px;
-            font-size: 12px;
-            font-weight: 700;
-        }
+    margin: 0;
 
-        .order-filters {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin-bottom: 20px;
-        }
+}
 
-        .order-filter {
-            border: 1px solid #ddd;
-            background: white;
-            color: #333;
-            padding: 9px 14px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 700;
-        }
 
-        .order-filter.active {
-            background: #f97316;
-            color: white;
-            border-color: #f97316;
-        }
+* {
 
-        .orders-list {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
+    box-sizing: border-box;
 
-        .order-card {
-            background: white;
-            border: 1px solid #e8e8e8;
-            border-radius: 16px;
-            padding: 20px;
-            transition: .2s;
-        }
+}
 
-        .order-card.new-order {
-            border: 2px solid #f97316;
-            box-shadow: 0 8px 25px rgba(249,115,22,.12);
-        }
 
-        .order-card:hover {
-            box-shadow: 0 8px 25px rgba(0,0,0,.06);
-        }
+html,
+body {
 
-        .order-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
+    margin: 0;
 
-        .order-number {
-            font-size: 19px;
-            font-weight: 800;
-        }
+    padding: 0;
 
-        .order-date {
-            color: #888;
-            font-size: 12px;
-            margin-top: 5px;
-        }
+    background: white;
 
-        .new-label {
-            display: inline-block;
-            margin-top: 8px;
-            background: #f97316;
-            color: white;
-            padding: 5px 8px;
-            border-radius: 6px;
-            font-size: 9px;
-            font-weight: 800;
-            letter-spacing: .5px;
-        }
+}
 
-        .order-status {
-            padding: 7px 10px;
-            border-radius: 7px;
-            font-size: 10px;
-            font-weight: 800;
-        }
 
-        .status-nuevo {
-            background: #fff7ed;
-            color: #c2410c;
-        }
+body {
 
-        .status-confirmado {
-            background: #eff6ff;
-            color: #1d4ed8;
-        }
+    color: black;
 
-        .status-preparando {
-            background: #fefce8;
-            color: #a16207;
-        }
+    font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
 
-        .status-listo {
-            background: #ecfdf5;
-            color: #047857;
-        }
+    font-size: 12px;
 
-        .status-entregado {
-            background: #f3f4f6;
-            color: #374151;
-        }
+}
 
-        .status-cancelado {
-            background: #fef2f2;
-            color: #b91c1c;
-        }
 
-        .order-info-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            margin: 20px 0;
-        }
+.ticket {
 
-        .order-info {
-            background: #f8f8f8;
-            border-radius: 10px;
-            padding: 13px;
-        }
+    width: 80mm;
 
-        .order-info span {
-            display: block;
-            color: #888;
-            font-size: 9px;
-            font-weight: 700;
-            margin-bottom: 5px;
-        }
+    max-width: 80mm;
 
-        .order-info strong {
-            font-size: 13px;
-            word-break: break-word;
-        }
+    margin: auto;
 
-        .order-products {
-            border-top: 1px solid #eee;
-            border-bottom: 1px solid #eee;
-            padding: 14px 0;
-            margin-bottom: 16px;
-        }
+    padding: 4mm;
 
-        .order-product {
-            display: flex;
-            justify-content: space-between;
-            gap: 15px;
-            padding: 8px 0;
-        }
+}
 
-        .order-product strong {
-            font-size: 13px;
-        }
 
-        .order-product small {
-            display: block;
-            color: #888;
-            margin-top: 3px;
-        }
+.centro {
 
-        .order-observation {
-            background: #fff8ef;
-            border-left: 3px solid #f97316;
-            padding: 10px 12px;
-            border-radius: 6px;
-            margin-bottom: 16px;
-            font-size: 12px;
-        }
+    text-align: center;
 
-        .order-bottom {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
+}
 
-        .order-total-label {
-            color: #888;
-            font-size: 10px;
-            font-weight: 700;
-        }
 
-        .order-total {
-            font-size: 23px;
-            font-weight: 800;
-            margin-top: 3px;
-        }
+.logo-container {
 
-        .order-actions {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
+    width: 100%;
 
-        .order-actions button {
-            border: none;
-            padding: 10px 12px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 11px;
-            font-weight: 700;
-        }
+    display: flex;
 
-        .btn-confirm {
-            background: #eff6ff;
-            color: #1d4ed8;
-        }
+    justify-content: center;
 
-        .btn-preparing {
-            background: #fef3c7;
-            color: #92400e;
-        }
+    align-items: center;
 
-        .btn-ready {
-            background: #ecfdf5;
-            color: #047857;
-        }
+    margin-bottom: 3mm;
 
-        .btn-delivered {
-            background: #f3f4f6;
-            color: #374151;
-        }
+}
 
-        .btn-cancel {
-            background: #fef2f2;
-            color: #b91c1c;
-        }
 
-        .empty-orders {
-            background: white;
-            border: 1px solid #eee;
-            border-radius: 15px;
-            padding: 60px 20px;
-            text-align: center;
-            color: #888;
-        }
+.logo-imagen {
 
-        .empty-orders .empty-icon {
-            font-size: 45px;
-            margin-bottom: 10px;
-        }
+    display: block;
 
-        .refresh-info {
-            color: #888;
-            font-size: 11px;
-        }
+    width: 48mm;
 
-        @media (max-width: 850px) {
+    max-width: 100%;
 
-            .order-info-grid {
-                grid-template-columns: 1fr 1fr;
-            }
+    max-height: 30mm;
 
-        }
+    height: auto;
 
-        @media (max-width: 550px) {
+    object-fit: contain;
 
-            .order-info-grid {
-                grid-template-columns: 1fr;
-            }
+}
 
-            .order-actions {
-                width: 100%;
-            }
 
-            .order-actions button {
-                flex: 1;
-            }
+.titulo-ticket {
 
-        }
+    font-size: 12px;
 
-    </style>
+    font-weight: bold;
+
+    margin-top: 2mm;
+
+}
+
+
+.pedido {
+
+    font-size: 20px;
+
+    font-weight: bold;
+
+    margin: 5px 0;
+
+}
+
+
+.linea {
+
+    border-top:
+        1px dashed black;
+
+    margin: 8px 0;
+
+}
+
+
+.info {
+
+    line-height: 1.6;
+
+}
+
+
+.producto {
+
+    display: flex;
+
+    justify-content:
+        space-between;
+
+    align-items: flex-start;
+
+    gap: 8px;
+
+    margin: 8px 0;
+
+    line-height: 1.3;
+
+}
+
+
+.producto > div {
+
+    flex: 1;
+
+}
+
+
+.producto > strong {
+
+    white-space: nowrap;
+
+}
+
+
+.titulo-productos {
+
+    font-weight: bold;
+
+    margin-bottom: 5px;
+
+}
+
+
+.cambio {
+
+    line-height: 1.7;
+
+}
+
+
+.total {
+
+    display: flex;
+
+    justify-content:
+        space-between;
+
+    font-size: 20px;
+
+    font-weight: bold;
+
+    margin-top: 10px;
+
+}
+
+
+.observaciones {
+
+    margin-top: 8px;
+
+    line-height: 1.4;
+
+}
+
+
+.gracias {
+
+    font-weight: bold;
+
+    margin-top: 5px;
+
+    margin-bottom: 5px;
+
+}
+
+
+.botones {
+
+    margin-top: 20px;
+
+}
+
+
+.boton {
+
+    width: 100%;
+
+    border: 0;
+
+    padding: 12px;
+
+    margin-top: 8px;
+
+    background: black;
+
+    color: white;
+
+    font-size: 14px;
+
+    font-weight: bold;
+
+    cursor: pointer;
+
+    border-radius: 4px;
+
+}
+
+
+.boton.pdf {
+
+    background: #555;
+
+}
+
+
+@media print {
+
+    .botones {
+
+        display: none !important;
+
+    }
+
+
+    html,
+    body {
+
+        width: 80mm;
+
+        margin: 0;
+
+        padding: 0;
+
+    }
+
+
+    .ticket {
+
+        width: 80mm;
+
+        max-width: 80mm;
+
+        padding: 3mm;
+
+        margin: 0 auto;
+
+    }
+
+
+    .logo-imagen {
+
+        width: 48mm;
+
+        max-width: 100%;
+
+        max-height: 30mm;
+
+    }
+
+}
+
+</style>
 
 </head>
 
 
 <body>
 
+${crearTicketHTML(
+    datos.pedido,
+    datos.productos
+)}
 
-<div class="app">
 
+<script>
 
-    <!-- SIDEBAR -->
+window.onload = function() {
 
-    <aside class="sidebar">
+    setTimeout(function() {
 
-        <div class="brand">
+        window.print();
 
-            <div class="brand-logo">
-                🍔
-            </div>
+    }, 500);
 
-            <div>
+};
 
-                <h1>FLAME</h1>
+window.onafterprint = function() {
 
-                <span>
-                    BURGER
-                </span>
+    setTimeout(function() {
 
-            </div>
+        window.close();
 
-        </div>
+    }, 300);
 
+};
 
-        <nav class="menu">
+</script>
 
-            <a
-                href="dashboard.html"
-                class="menu-item"
-            >
-                <span>📊</span>
-                Dashboard
-            </a>
-
-
-            <a
-                href="pedidos.html"
-                class="menu-item active"
-            >
-                <span>🛒</span>
-                Pedidos
-            </a>
-
-
-            <a
-                href="productos.html"
-                class="menu-item"
-            >
-                <span>🍔</span>
-                Productos
-            </a>
-
-
-            <a
-                href="#"
-                class="menu-item"
-            >
-                <span>📁</span>
-                Categorías
-            </a>
-
-
-            <a
-                href="ventas.html"
-                class="menu-item"
-            >
-                <span>💰</span>
-                Ventas
-            </a>
-
-
-       
-
-        </nav>
-
-
-        <div class="sidebar-bottom">
-
-            <div class="store-status">
-
-                <span class="status-dot"></span>
-
-                <div>
-
-                    <strong>
-                        Local abierto
-                    </strong>
-
-                    <small>
-                        Recibiendo pedidos
-                    </small>
-
-                </div>
-
-            </div>
-
-        </div>
-
-    </aside>
-
-
-
-    <!-- MAIN -->
-
-    <main class="main">
-
-
-        <!-- TOPBAR -->
-
-        <header class="topbar">
-
-            <button
-                class="mobile-menu"
-                type="button"
-            >
-                ☰
-            </button>
-
-
-            <div class="topbar-title">
-
-                <h2>
-                    Pedidos
-                </h2>
-
-                <p>
-                    Gestión de pedidos
-                </p>
-
-            </div>
-
-
-            <div class="topbar-actions">
-
-                <button
-                    class="notification"
-                    type="button"
-                >
-                    🔔
-                </button>
-
-
-                <div class="user">
-
-                    <div class="avatar">
-                        FB
-                    </div>
-
-                    <div>
-
-                        <strong>
-                            Flame Burger
-                        </strong>
-
-                        <small>
-                            Administrador
-                        </small>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-        </header>
-
-
-
-        <!-- CONTENIDO -->
-
-        <section class="content">
-
-
-            <div class="welcome">
-
-                <div>
-
-                    <span class="eyebrow">
-                        PEDIDOS
-                    </span>
-
-                    <h2>
-                        Pedidos de Flame Burger 🛒
-                    </h2>
-
-                    <p>
-                        Gestioná los pedidos que llegan
-                        desde la web.
-                    </p>
-
-                </div>
-
-
-                <div>
-
-                    <div
-                        id="pedidosNuevos"
-                        class="orders-counter"
-                    >
-                        0 pedidos nuevos
-                    </div>
-
-                    <div class="refresh-info">
-                        Actualización automática
-                    </div>
-
-                </div>
-
-            </div>
-
-
-
-            <!-- PANEL -->
-
-            <div class="panel">
-
-
-                <!-- FILTROS -->
-
-                <div class="order-filters">
-
-
-                    <button
-                        class="order-filter active"
-                        data-filter="todos"
-                    >
-                        Todos
-                    </button>
-
-
-                    <button
-                        class="order-filter"
-                        data-filter="nuevo"
-                    >
-                        Nuevos
-                    </button>
-
-
-                    <button
-                        class="order-filter"
-                        data-filter="confirmado"
-                    >
-                        Confirmados
-                    </button>
-
-
-                    <button
-                        class="order-filter"
-                        data-filter="preparando"
-                    >
-                        Preparando
-                    </button>
-
-
-                    <button
-                        class="order-filter"
-                        data-filter="listo"
-                    >
-                        Listos
-                    </button>
-
-
-                    <button
-                        class="order-filter"
-                        data-filter="entregado"
-                    >
-                        Entregados
-                    </button>
-
-
-                    <button
-                        class="order-filter"
-                        data-filter="cancelado"
-                    >
-                        Cancelados
-                    </button>
-
-                </div>
-
-
-                <!-- PEDIDOS -->
-
-                <div
-                    id="ordersList"
-                    class="orders-list"
-                ></div>
-
-
-            </div>
-
-        </section>
-
-    </main>
-
-</div>
-
-
-<script src="js/mobile-menu.js"></script>
-<script src="js/pedidos.js"></script>
 
 </body>
 
 </html>
+
+        `);
+
+
+        ventana.document.close();
+
+        ventana.focus();
+
+
+    } catch (error) {
+
+        console.error(
+            "ERROR TICKET:",
+            error
+        );
+
+
+        alert(
+            "❌ " + error.message
+        );
+
+    }
+
+}
+
+
+// =====================================================
+// IMPRIMIR TICKET
+// =====================================================
+
+async function imprimirPedido(pedidoId) {
+
+    await abrirTicket(pedidoId);
+
+}
+
+
+// =====================================================
+// GUARDAR PDF
+// =====================================================
+
+async function guardarPDF(pedidoId) {
+
+    await abrirTicket(pedidoId);
+
+}
+
+
+// =====================================================
+// CAMBIAR ESTADO
+// =====================================================
+
+async function cambiarEstado(
+    pedidoId,
+    nuevoEstado
+) {
+
+    try {
+
+        const confirmar =
+            confirm(
+                `¿Cambiar el pedido #${pedidoId} a "${obtenerTextoEstado(nuevoEstado)}"?`
+            );
+
+
+        if (!confirmar) {
+            return;
+        }
+
+
+        const respuesta =
+            await fetch(
+                `${API_PEDIDOS}/${pedidoId}/estado`,
+                {
+                    method: "PATCH",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body:
+                        JSON.stringify({
+                            estado:
+                                nuevoEstado
+                        })
+                }
+            );
+
+
+        const resultado =
+            await respuesta.json();
+
+
+        if (!respuesta.ok) {
+
+            throw new Error(
+                resultado.error ||
+                "No se pudo cambiar el estado."
+            );
+
+        }
+
+
+        const pedido =
+            pedidos.find(
+                p =>
+                    Number(p.id) ===
+                    Number(pedidoId)
+            );
+
+
+        if (pedido) {
+
+            pedido.estado =
+                nuevoEstado;
+
+        }
+
+
+        mostrarPedidos();
+
+
+    } catch (error) {
+
+        console.error(
+            "ERROR CAMBIANDO ESTADO:",
+            error
+        );
+
+
+        alert(
+            "❌ " + error.message
+        );
+
+    }
+
+}
+
+
+// =====================================================
+// FILTROS
+// =====================================================
+
+document
+    .querySelectorAll(".order-filter")
+    .forEach(boton => {
+
+        boton.addEventListener(
+            "click",
+            () => {
+
+                document
+                    .querySelectorAll(".order-filter")
+                    .forEach(b =>
+                        b.classList.remove("active")
+                    );
+
+
+                boton.classList.add("active");
+
+
+                filtroActual =
+                    boton.dataset.filter;
+
+
+                mostrarPedidos();
+
+            }
+        );
+
+    });
+
+
+// =====================================================
+// FECHA
+// =====================================================
+
+function formatearFecha(fecha) {
+
+    if (!fecha) {
+        return "";
+    }
+
+
+    const fechaObjeto =
+        new Date(fecha);
+
+
+    return fechaObjeto.toLocaleString(
+        "es-UY",
+        {
+
+            day: "2-digit",
+
+            month: "2-digit",
+
+            year: "numeric",
+
+            hour: "2-digit",
+
+            minute: "2-digit"
+
+        }
+    );
+
+}
+
+
+// =====================================================
+// ESTADO
+// =====================================================
+
+function obtenerTextoEstado(estado) {
+
+    const estados = {
+
+        en_proceso_pago:
+            "🟡 En proceso de pago",
+
+        nuevo:
+            "🆕 Nuevo",
+
+        preparando:
+            "👨‍🍳 Preparando",
+
+        listo:
+            "🍔 Listo",
+
+        entregado:
+            "🛵 Entregado",
+
+        cancelado:
+            "❌ Cancelado"
+
+    };
+
+
+    return estados[estado] ||
+        estado ||
+        "Desconocido";
+
+}
+
+
+// =====================================================
+// ENTREGA
+// =====================================================
+
+function obtenerTextoEntrega(entrega) {
+
+    if (entrega === "delivery") {
+
+        return "🛵 Delivery";
+
+    }
+
+
+    if (entrega === "retiro") {
+
+        return "🏪 Retiro";
+
+    }
+
+
+    return entrega || "—";
+
+}
+
+
+// =====================================================
+// PAGO
+// =====================================================
+
+function obtenerTextoPago(pago) {
+
+    if (pago === "efectivo") {
+
+        return "💵 Efectivo";
+
+    }
+
+
+    if (pago === "mercado_pago") {
+
+        return "💳 Mercado Pago";
+
+    }
+
+
+    return pago || "—";
+
+}
+
+
+// =====================================================
+// ESCAPAR HTML
+// =====================================================
+
+function escaparHTML(texto) {
+
+    const div =
+        document.createElement("div");
+
+
+    div.textContent =
+        texto ?? "";
+
+
+    return div.innerHTML;
+
+}
+
+
+// =====================================================
+// ACTUALIZAR PEDIDOS
+// =====================================================
+
+setInterval(
+    cargarPedidos,
+    10000
+);
+
+
+// =====================================================
+// INICIAR
+// =====================================================
+
+cargarPedidos();
