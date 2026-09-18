@@ -877,7 +877,7 @@ function crearTicketHTML(pedido, productos) {
             <div class="logo-container">
 
                 <img
-                    src="/img/logo-ticket.png"
+                    src="/img/logoim.jpeg"
                     class="logo-imagen"
                     alt="Flame Burger"
                 >
