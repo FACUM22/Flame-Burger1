@@ -1,8 +1,114 @@
+
 const express = require("express");
 
 const router = express.Router();
 
 const pool = require("../database");
+
+// =====================================================
+// HORARIO DEL RESTAURANTE
+// =====================================================
+// Flame Burger:
+// Lunes, martes y jueves a domingo: 20:00 a 00:00
+// Miércoles: cerrado
+//
+// Se utiliza la zona horaria de Montevideo para que
+// funcione correctamente aunque Render tenga otra zona horaria.
+// =====================================================
+
+function restauranteEstaAbierto() {
+
+    const ahora = new Date();
+
+    const partes =
+        new Intl.DateTimeFormat("es-UY", {
+            timeZone: "America/Montevideo",
+            weekday: "short",
+            hour: "2-digit",
+            minute: "2-digit",
+            hourCycle: "h23"
+        }).formatToParts(ahora);
+
+
+    const obtenerParte = (tipo) => {
+
+        const parte =
+            partes.find(
+                (item) => item.type === tipo
+            );
+
+        return parte
+            ? parte.value
+            : null;
+
+    };
+
+
+    const dia =
+        obtenerParte("weekday");
+
+    const hora =
+        Number(
+            obtenerParte("hour")
+        );
+
+    const minuto =
+        Number(
+            obtenerParte("minute")
+        );
+
+
+    // =================================================
+    // MIÉRCOLES CERRADO
+    // =================================================
+
+    if (dia === "mié") {
+
+        return false;
+
+    }
+
+
+    // =================================================
+    // ANTES DE LAS 20:00
+    // =================================================
+
+    if (hora < 20) {
+
+        return false;
+
+    }
+
+
+    // =================================================
+    // DESDE LAS 00:00 HASTA LAS 19:59
+    // =================================================
+
+    if (hora === 0) {
+
+        return false;
+
+    }
+
+
+    // =================================================
+    // 20:00 - 23:59
+    // =================================================
+
+    if (
+        hora >= 20 &&
+        hora <= 23
+    ) {
+
+        return true;
+
+    }
+
+
+    return false;
+
+}
+
 
 // =====================================================
 // ESTADOS PERMITIDOS
@@ -17,12 +123,41 @@ const ESTADOS_PERMITIDOS = [
     "cancelado"
 ];
 
+
 // =====================================================
 // CREAR PEDIDO
 // POST /api/pedidos
 // =====================================================
 
 router.post("/", async (req, res) => {
+
+    // =================================================
+    // COMPROBAR HORARIO
+    // =================================================
+    // IMPORTANTE:
+    // Esto se ejecuta solamente al crear un pedido.
+    //
+    // No afecta:
+    // - Mercado Pago
+    // - Webhook
+    // - Panel administrador
+    // - Cambios de estado
+    // - Impresión
+    // =================================================
+
+    if (!restauranteEstaAbierto()) {
+
+        return res.status(403).json({
+
+            ok: false,
+
+            error:
+                "Flame Burger está cerrado. Los pedidos se reciben de 20:00 a 00:00. Los miércoles estamos cerrados."
+
+        });
+
+    }
+
 
     const client = await pool.connect();
 
@@ -863,7 +998,7 @@ router.post("/:id/imprimir", async (req, res) => {
 
 
         // =================================================
-        // DATOS DEL PEDIDO (misma consulta que GET /:id)
+        // DATOS DEL PEDIDO
         // =================================================
 
         const pedidoResultado =
@@ -944,7 +1079,7 @@ router.post("/:id/imprimir", async (req, res) => {
 
 
         // =================================================
-        // ARMAR NOTAS (observaciones + info de cambio)
+        // ARMAR NOTAS
         // =================================================
 
         let notas =
