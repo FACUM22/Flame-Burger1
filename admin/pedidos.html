@@ -784,7 +784,7 @@ function crearTicketHTML(pedido, productos) {
 
             <div class="producto">
 
-                <div>
+                <div class="producto-nombre">
 
                     <strong>
                         ${escaparHTML(
@@ -804,7 +804,7 @@ function crearTicketHTML(pedido, productos) {
                 </div>
 
 
-                <strong>
+                <strong class="producto-precio">
 
                     $${Number(
                         producto.subtotal || 0
@@ -872,9 +872,7 @@ function crearTicketHTML(pedido, productos) {
         <div class="ticket">
 
 
-            <!-- ================================================= -->
-            <!-- LOGO FLAME BURGER -->
-            <!-- ================================================= -->
+            <!-- LOGO -->
 
             <div class="logo-container">
 
@@ -882,7 +880,6 @@ function crearTicketHTML(pedido, productos) {
                     src="/img/logo-ticket.png"
                     class="logo-imagen"
                     alt="Flame Burger"
-                    onerror="this.style.display='none';"
                 >
 
             </div>
@@ -954,9 +951,7 @@ function crearTicketHTML(pedido, productos) {
 
 
                 ${
-                    (
-                        pedido.tipo_entrega === "delivery"
-                    )
+                    pedido.tipo_entrega === "delivery"
                     ? `
                         <strong>
                             DIRECCIÓN:
@@ -1034,11 +1029,9 @@ function crearTicketHTML(pedido, productos) {
                 </span>
 
                 <span>
-
                     $${Number(
                         pedido.total || 0
                     ).toLocaleString("es-UY")}
-
                 </span>
 
             </div>
@@ -1245,8 +1238,7 @@ body {
 
 .linea {
 
-    border-top:
-        1px dashed black;
+    border-top: 1px dashed black;
 
     margin: 8px 0;
 
@@ -1264,8 +1256,7 @@ body {
 
     display: flex;
 
-    justify-content:
-        space-between;
+    justify-content: space-between;
 
     align-items: flex-start;
 
@@ -1278,14 +1269,16 @@ body {
 }
 
 
-.producto > div {
+.producto-nombre {
 
     flex: 1;
+
+    min-width: 0;
 
 }
 
 
-.producto > strong {
+.producto-precio {
 
     white-space: nowrap;
 
@@ -1312,8 +1305,7 @@ body {
 
     display: flex;
 
-    justify-content:
-        space-between;
+    justify-content: space-between;
 
     font-size: 20px;
 
@@ -1453,6 +1445,7 @@ window.onload = function() {
     }, 500);
 
 };
+
 
 window.onafterprint = function() {
 
