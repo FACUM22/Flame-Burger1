@@ -872,9 +872,23 @@ function crearTicketHTML(pedido, productos) {
         <div class="ticket">
 
 
+            <!-- LOGO REAL DE FLAME BURGER -->
+
+            <div class="logo-container">
+
+                <img
+                    src="/img/fondo.jpeg"
+                    class="logo-imagen"
+                    alt="Flame Burger"
+                    onerror="this.style.display='none';"
+                >
+
+            </div>
+
+
             <div class="centro">
 
-                <div class="logo">
+                <div class="nombre-negocio">
                     FLAME BURGER
                 </div>
 
@@ -1101,7 +1115,7 @@ async function abrirTicket(pedidoId) {
 <meta charset="UTF-8">
 
 <title>
-Pedido #${datos.pedido.id}
+Pedido #${datos.pedido.id} - Flame Burger
 </title>
 
 
@@ -1162,6 +1176,40 @@ body {
 }
 
 
+/* =========================================
+   LOGO
+   ========================================= */
+
+.logo-container {
+
+    width: 100%;
+
+    display: flex;
+
+    justify-content: center;
+
+    align-items: center;
+
+    margin-bottom: 3mm;
+
+}
+
+
+.logo-imagen {
+
+    display: block;
+
+    width: 42mm;
+
+    max-width: 100%;
+
+    max-height: 25mm;
+
+    object-fit: contain;
+
+}
+
+
 .centro {
 
     text-align: center;
@@ -1169,11 +1217,13 @@ body {
 }
 
 
-.logo {
+.nombre-negocio {
 
     font-size: 22px;
 
     font-weight: bold;
+
+    margin-bottom: 2mm;
 
 }
 
@@ -1212,6 +1262,9 @@ body {
 
     justify-content:
         space-between;
+
+    align-items:
+        flex-start;
 
     gap: 8px;
 
@@ -1300,6 +1353,10 @@ body {
 }
 
 
+/* =========================================
+   IMPRESIÓN
+   ========================================= */
+
 @media print {
 
     .botones {
@@ -1307,6 +1364,7 @@ body {
         display: none;
 
     }
+
 
     html,
     body {
@@ -1319,6 +1377,7 @@ body {
 
     }
 
+
     .ticket {
 
         width: 80mm;
@@ -1326,6 +1385,15 @@ body {
         max-width: 80mm;
 
         padding: 3mm;
+
+    }
+
+
+    .logo-imagen {
+
+        width: 42mm;
+
+        max-height: 25mm;
 
     }
 
@@ -1342,6 +1410,33 @@ ${crearTicketHTML(
     datos.pedido,
     datos.productos
 )}
+
+
+<script>
+
+window.onload = function() {
+
+    setTimeout(function() {
+
+        window.print();
+
+    }, 700);
+
+};
+
+
+window.onafterprint = function() {
+
+    setTimeout(function() {
+
+        window.close();
+
+    }, 300);
+
+};
+
+<\/script>
+
 
 </body>
 
