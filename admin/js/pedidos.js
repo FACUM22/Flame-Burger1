@@ -3,8 +3,8 @@ const API_PEDIDOS = "/api/pedidos";
 let pedidos = [];
 let filtroActual = "todos";
 
-const listaPedidos = document.getElementById("ordersList");
-const contadorNuevos = document.getElementById("pedidosNuevos");
+const ordersList = document.getElementById("ordersList");
+const pedidosNuevos = document.getElementById("pedidosNuevos");
 
 
 // =====================================================
@@ -46,7 +46,7 @@ function activarSonido() {
     } catch (error) {
 
         console.error(
-            "No se pudo activar el sonido:",
+            "ERROR ACTIVANDO SONIDO:",
             error
         );
 
@@ -55,7 +55,7 @@ function activarSonido() {
 }
 
 
-// El primer clic habilita el audio del navegador
+// El primer clic en el panel activa el audio
 document.addEventListener(
     "click",
     activarSonido,
@@ -90,11 +90,10 @@ function reproducirSonidoPedido() {
 
 
         // =================================================
-        // FUNCIÓN PARA TOCAR UNA ALERTA
+        // UNA ALERTA
         // =================================================
 
         function tocarAlerta(inicio) {
-
 
             const notas = [
 
@@ -113,110 +112,104 @@ function reproducirSonidoPedido() {
                 {
                     frecuencia: 1396.91,
                     tiempo: 0.25,
-                    duracion: 0.35
+                    duracion: 0.40
                 }
 
             ];
 
 
-            notas.forEach(
-                nota => {
+            notas.forEach(nota => {
+
+                const oscilador =
+                    audioContext.createOscillator();
+
+                const ganancia =
+                    audioContext.createGain();
 
 
-                    const oscilador =
-                        audioContext.createOscillator();
+                // Sonido brillante
+                oscilador.type = "triangle";
 
 
-                    const ganancia =
-                        audioContext.createGain();
+                oscilador.frequency.setValueAtTime(
+
+                    nota.frecuencia,
+
+                    ahora +
+                    inicio +
+                    nota.tiempo
+
+                );
 
 
-                    // Sonido brillante
-                    oscilador.type =
-                        "triangle";
+                // Empieza bajo
+                ganancia.gain.setValueAtTime(
+
+                    0.0001,
+
+                    ahora +
+                    inicio +
+                    nota.tiempo
+
+                );
 
 
-                    oscilador.frequency.setValueAtTime(
+                // Volumen fuerte
+                ganancia.gain.exponentialRampToValueAtTime(
 
-                        nota.frecuencia,
+                    0.60,
 
-                        ahora +
-                        inicio +
-                        nota.tiempo
+                    ahora +
+                    inicio +
+                    nota.tiempo +
+                    0.015
 
-                    );
-
-
-                    // Comienza casi en silencio
-                    ganancia.gain.setValueAtTime(
-
-                        0.0001,
-
-                        ahora +
-                        inicio +
-                        nota.tiempo
-
-                    );
+                );
 
 
-                    // Subida rápida de volumen
-                    ganancia.gain.exponentialRampToValueAtTime(
+                // Fade out
+                ganancia.gain.exponentialRampToValueAtTime(
 
-                        0.55,
+                    0.0001,
 
-                        ahora +
-                        inicio +
-                        nota.tiempo +
-                        0.015
+                    ahora +
+                    inicio +
+                    nota.tiempo +
+                    nota.duracion
 
-                    );
-
-
-                    // Bajada del sonido
-                    ganancia.gain.exponentialRampToValueAtTime(
-
-                        0.0001,
-
-                        ahora +
-                        inicio +
-                        nota.tiempo +
-                        nota.duracion
-
-                    );
+                );
 
 
-                    oscilador.connect(
-                        ganancia
-                    );
+                oscilador.connect(
+                    ganancia
+                );
 
 
-                    ganancia.connect(
-                        audioContext.destination
-                    );
+                ganancia.connect(
+                    audioContext.destination
+                );
 
 
-                    oscilador.start(
+                oscilador.start(
 
-                        ahora +
-                        inicio +
-                        nota.tiempo
+                    ahora +
+                    inicio +
+                    nota.tiempo
 
-                    );
-
-
-                    oscilador.stop(
-
-                        ahora +
-                        inicio +
-                        nota.tiempo +
-                        nota.duracion +
-                        0.05
-
-                    );
+                );
 
 
-                }
-            );
+                oscilador.stop(
+
+                    ahora +
+                    inicio +
+                    nota.tiempo +
+                    nota.duracion +
+                    0.05
+
+                );
+
+            });
 
         }
 
@@ -232,13 +225,13 @@ function reproducirSonidoPedido() {
         // SEGUNDA ALERTA
         // =================================================
 
-        tocarAlerta(0.85);
+        tocarAlerta(0.90);
 
 
     } catch (error) {
 
         console.error(
-            "Error reproduciendo sonido:",
+            "ERROR REPRODUCIENDO SONIDO:",
             error
         );
 
@@ -255,14 +248,12 @@ async function cargarPedidos() {
 
     try {
 
-        const respuesta =
-            await fetch(API_PEDIDOS);
-
+        const respuesta = await fetch(API_PEDIDOS);
 
         if (!respuesta.ok) {
 
             throw new Error(
-                "Error al obtener los pedidos"
+                "No se pudieron cargar los pedidos."
             );
 
         }
@@ -274,8 +265,10 @@ async function cargarPedidos() {
 
         // =================================================
         // PRIMERA CARGA
-        // No reproducir sonido
         // =================================================
+
+        // Guardamos los pedidos que ya existían
+        // para NO hacer sonar la alerta al abrir la página.
 
         if (
             pedidosAnteriores.length === 0
@@ -297,11 +290,10 @@ async function cargarPedidos() {
 
 
         // =================================================
-        // SIGUIENTES CARGAS
+        // COMPROBAR SI LLEGÓ UN PEDIDO NUEVO
         // =================================================
 
         else {
-
 
             const hayPedidoNuevo =
                 nuevosPedidos.some(
@@ -311,10 +303,13 @@ async function cargarPedidos() {
                         const pedidoAnterior =
                             pedidosAnteriores.find(
                                 anterior =>
-                                    anterior.id ===
-                                    pedido.id
+                                    Number(anterior.id) ===
+                                    Number(pedido.id)
                             );
 
+
+                        // El pedido es nuevo solamente
+                        // si antes no existía.
 
                         return (
 
@@ -331,6 +326,10 @@ async function cargarPedidos() {
                 );
 
 
+            // =================================================
+            // REPRODUCIR SONIDO
+            // =================================================
+
             if (hayPedidoNuevo) {
 
                 reproducirSonidoPedido();
@@ -338,7 +337,8 @@ async function cargarPedidos() {
             }
 
 
-            // Guardar estado actual
+            // Actualizamos la lista anterior
+
             pedidosAnteriores =
                 nuevosPedidos.map(
                     pedido => ({
@@ -354,6 +354,8 @@ async function cargarPedidos() {
         }
 
 
+        // Guardamos los pedidos actuales
+
         pedidos =
             nuevosPedidos;
 
@@ -364,19 +366,26 @@ async function cargarPedidos() {
     } catch (error) {
 
         console.error(
-            "Error cargando pedidos:",
+            "ERROR PEDIDOS:",
             error
         );
 
 
-        if (listaPedidos) {
+        if (ordersList) {
 
-            listaPedidos.innerHTML = `
+            ordersList.innerHTML = `
 
-                <div class="error">
+                <div class="empty-orders">
 
-                    No se pudieron cargar
-                    los pedidos.
+                    <h3>
+                        Error al cargar los pedidos
+                    </h3>
+
+                    <p>
+                        ${escaparHTML(
+                            error.message
+                        )}
+                    </p>
 
                 </div>
 
@@ -395,15 +404,45 @@ async function cargarPedidos() {
 
 function mostrarPedidos() {
 
-    if (!listaPedidos) {
+    if (!ordersList) {
 
         return;
 
     }
 
 
-    // No mostrar pedidos esperando pago
-    const pedidosVisibles =
+    ordersList.innerHTML = "";
+
+
+    const cantidadNuevos =
+        pedidos.filter(
+            pedido =>
+                pedido.estado === "nuevo"
+        ).length;
+
+
+    if (pedidosNuevos) {
+
+        pedidosNuevos.textContent =
+
+            `${cantidadNuevos} pedido${
+
+                cantidadNuevos !== 1
+                    ? "s"
+                    : ""
+
+            } nuevo${
+
+                cantidadNuevos !== 1
+                    ? "s"
+                    : ""
+
+            }`;
+
+    }
+
+
+    let pedidosFiltrados =
         pedidos.filter(
             pedido =>
                 pedido.estado !==
@@ -411,35 +450,10 @@ function mostrarPedidos() {
         );
 
 
-    // Contar nuevos
-    const nuevos =
-        pedidosVisibles.filter(
-            pedido =>
-                pedido.estado ===
-                "nuevo"
-        );
-
-
-    if (contadorNuevos) {
-
-        contadorNuevos.textContent =
-            nuevos.length;
-
-    }
-
-
-    let pedidosFiltrados =
-        pedidosVisibles;
-
-
-    // =================================================
-    // FILTRO
-    // =================================================
-
     if (filtroActual !== "todos") {
 
         pedidosFiltrados =
-            pedidosVisibles.filter(
+            pedidosFiltrados.filter(
                 pedido =>
                     pedido.estado ===
                     filtroActual
@@ -448,44 +462,25 @@ function mostrarPedidos() {
     }
 
 
-    // =================================================
-    // ORDENAR MÁS RECIENTES PRIMERO
-    // =================================================
-
-    pedidosFiltrados.sort(
-        (a, b) => {
-
-            return (
-
-                new Date(
-                    b.creado_en
-                )
-
-                -
-
-                new Date(
-                    a.creado_en
-                )
-
-            );
-
-        }
-    );
-
-
-    // =================================================
-    // SIN PEDIDOS
-    // =================================================
-
     if (
         pedidosFiltrados.length === 0
     ) {
 
-        listaPedidos.innerHTML = `
+        ordersList.innerHTML = `
 
-            <div class="sin-pedidos">
+            <div class="empty-orders">
 
-                No hay pedidos para mostrar.
+                <div class="empty-icon">
+                    🛒
+                </div>
+
+                <h3>
+                    No hay pedidos
+                </h3>
+
+                <p>
+                    No hay pedidos en esta categoría.
+                </p>
 
             </div>
 
@@ -496,14 +491,17 @@ function mostrarPedidos() {
     }
 
 
-    listaPedidos.innerHTML = "";
-
-
     pedidosFiltrados.forEach(
         pedido => {
 
-            listaPedidos.appendChild(
-                crearTarjetaPedido(pedido)
+            const tarjeta =
+                crearTarjetaPedido(
+                    pedido
+                );
+
+
+            ordersList.appendChild(
+                tarjeta
             );
 
         }
@@ -513,7 +511,7 @@ function mostrarPedidos() {
 
 
 // =====================================================
-// CREAR TARJETA
+// CREAR TARJETA DEL PEDIDO
 // =====================================================
 
 function crearTarjetaPedido(pedido) {
@@ -526,215 +524,400 @@ function crearTarjetaPedido(pedido) {
         "order-card";
 
 
+    if (
+        pedido.estado === "nuevo"
+    ) {
+
+        tarjeta.classList.add(
+            "new-order"
+        );
+
+    }
+
+
+    const fecha =
+        formatearFecha(
+            pedido.creado_en
+        );
+
+
+    const estadoTexto =
+        obtenerTextoEstado(
+            pedido.estado
+        );
+
+
+    const claseEstado =
+        `status-${pedido.estado}`;
+
+
+    let informacionCambio = "";
+
+
+    if (
+        pedido.forma_pago === "efectivo"
+    ) {
+
+
+        if (
+
+            pedido.necesita_cambio === true
+
+            ||
+
+            pedido.necesita_cambio === "true"
+
+        ) {
+
+
+            const total =
+                Number(
+                    pedido.total || 0
+                );
+
+
+            const cambioDe =
+                Number(
+                    pedido.cambio_de || 0
+                );
+
+
+            const vuelto =
+                cambioDe -
+                total;
+
+
+            informacionCambio = `
+
+                <div class="order-info">
+
+                    <span>
+                        CAMBIO
+                    </span>
+
+                    <strong>
+                        💵 Sí
+                    </strong>
+
+                </div>
+
+
+                <div class="order-info">
+
+                    <span>
+                        PAGA CON
+                    </span>
+
+                    <strong>
+                        $${cambioDe.toLocaleString(
+                            "es-UY"
+                        )}
+                    </strong>
+
+                </div>
+
+
+                <div class="order-info">
+
+                    <span>
+                        VUELTO
+                    </span>
+
+                    <strong>
+                        $${vuelto.toLocaleString(
+                            "es-UY"
+                        )}
+                    </strong>
+
+                </div>
+
+            `;
+
+
+        } else {
+
+
+            informacionCambio = `
+
+                <div class="order-info">
+
+                    <span>
+                        CAMBIO
+                    </span>
+
+                    <strong>
+                        ❌ No necesita
+                    </strong>
+
+                </div>
+
+            `;
+
+        }
+
+    }
+
+
     tarjeta.innerHTML = `
 
-        <div class="order-header">
+        <div class="order-top">
+
 
             <div>
 
-                <h3>
 
-                    PEDIDO #${pedido.id}
+                <div class="order-number">
 
-                </h3>
+                    Pedido #${pedido.id}
+
+                </div>
 
 
-                <span class="order-date">
+                <div class="order-date">
 
-                    ${formatearFecha(
-                        pedido.creado_en
-                    )}
+                    ${fecha}
 
-                </span>
+                </div>
+
+
+                ${
+                    pedido.estado === "nuevo"
+
+                    ? `
+
+                        <span class="new-label">
+
+                            🔔 NUEVO PEDIDO
+
+                        </span>
+
+                    `
+
+                    : ""
+
+                }
+
 
             </div>
 
 
             <span
-                class="estado estado-${pedido.estado}"
+                class="order-status ${claseEstado}"
             >
 
-                ${obtenerTextoEstado(
-                    pedido.estado
-                )}
+                ${estadoTexto}
 
             </span>
 
+
         </div>
 
 
-        <div class="order-body">
+        <div class="order-info-grid">
 
 
-            <div class="cliente-info">
+            <div class="order-info">
+
+                <span>
+                    CLIENTE
+                </span>
 
 
-                <p>
-
-                    <strong>
-                        CLIENTE:
-                    </strong>
+                <strong>
 
                     ${escaparHTML(
-                        pedido.nombre ||
+
+                        pedido.cliente_nombre ||
+
                         "Sin nombre"
+
                     )}
 
-                </p>
-
-
-                <p>
-
-                    <strong>
-                        TELÉFONO:
-                    </strong>
-
-                    ${escaparHTML(
-                        pedido.telefono ||
-                        "No indicado"
-                    )}
-
-                </p>
-
-
-                <p>
-
-                    <strong>
-                        ENTREGA:
-                    </strong>
-
-                    ${obtenerTextoEntrega(
-                        pedido
-                    )}
-
-                </p>
-
-
-                ${
-                    pedido.direccion
-                        ? `
-
-                            <p>
-
-                                <strong>
-                                    DIRECCIÓN:
-                                </strong>
-
-                                ${escaparHTML(
-                                    pedido.direccion
-                                )}
-
-                            </p>
-
-                        `
-                        : ""
-                }
-
-
-                <p>
-
-                    <strong>
-                        PAGO:
-                    </strong>
-
-                    ${obtenerTextoPago(
-                        pedido
-                    )}
-
-                </p>
-
-
-                ${
-                    pedido.cambio
-                        ? `
-
-                            <p>
-
-                                <strong>
-                                    PRECISA CAMBIO DE:
-                                </strong>
-
-                                $${pedido.cambio}
-
-                            </p>
-
-                        `
-                        : ""
-                }
-
+                </strong>
 
             </div>
 
 
-            <div class="productos-pedido">
+            <div class="order-info">
 
-                <h4>
-                    PRODUCTOS
-                </h4>
+                <span>
+                    TELÉFONO
+                </span>
 
 
-                <div
-                    id="productos-${pedido.id}"
-                >
+                <strong>
 
-                    Cargando productos...
+                    ${escaparHTML(
+
+                        pedido.cliente_telefono ||
+
+                        pedido.telefono ||
+
+                        "Sin teléfono"
+
+                    )}
+
+                </strong>
+
+            </div>
+
+
+            <div class="order-info">
+
+                <span>
+                    ENTREGA
+                </span>
+
+
+                <strong>
+
+                    ${obtenerTextoEntrega(
+                        pedido.tipo_entrega
+                    )}
+
+                </strong>
+
+            </div>
+
+
+            <div class="order-info">
+
+                <span>
+                    DIRECCIÓN
+                </span>
+
+
+                <strong>
+
+                    ${escaparHTML(
+
+                        pedido.cliente_direccion ||
+
+                        pedido.direccion ||
+
+                        "—"
+
+                    )}
+
+                </strong>
+
+            </div>
+
+
+            <div class="order-info">
+
+                <span>
+                    PAGO
+                </span>
+
+
+                <strong>
+
+                    ${obtenerTextoPago(
+                        pedido.forma_pago
+                    )}
+
+                </strong>
+
+            </div>
+
+
+            <div class="order-info">
+
+                <span>
+                    ESTADO
+                </span>
+
+
+                <strong>
+
+                    ${estadoTexto}
+
+                </strong>
+
+            </div>
+
+
+            ${informacionCambio}
+
+
+        </div>
+
+
+        <div
+            class="order-products"
+            id="productos-${pedido.id}"
+        >
+
+            <div>
+                ⏳ Cargando productos...
+            </div>
+
+        </div>
+
+
+        ${
+            pedido.observaciones
+
+            ? `
+
+                <div class="order-observation">
+
+                    <strong>
+                        📝 Comentarios:
+                    </strong>
+
+                    <br>
+
+
+                    ${escaparHTML(
+                        pedido.observaciones
+                    )}
 
                 </div>
 
-            </div>
+            `
+
+            : ""
+
+        }
 
 
-            ${
-                pedido.observaciones
-                    ? `
-
-                        <div class="observaciones">
-
-                            <strong>
-                                OBSERVACIONES:
-                            </strong>
-
-                            <p>
-
-                                ${escaparHTML(
-                                    pedido.observaciones
-                                )}
-
-                            </p>
-
-                        </div>
-
-                    `
-                    : ""
-            }
+        <div class="order-bottom">
 
 
-            <div class="order-total">
-
-                <strong>
-                    TOTAL:
-                </strong>
+            <div>
 
 
-                <span>
+                <div class="order-total-label">
+
+                    TOTAL
+
+                </div>
+
+
+                <div class="order-total">
 
                     $${Number(
                         pedido.total || 0
-                    ).toFixed(2)}
+                    ).toLocaleString(
+                        "es-UY"
+                    )}
 
-                </span>
+                </div>
+
 
             </div>
 
 
-        </div>
+            <div class="order-actions">
 
+                ${crearBotonesEstado(
+                    pedido
+                )}
 
-        <div class="order-actions">
+            </div>
 
-            ${crearBotonesEstado(
-                pedido
-            )}
 
         </div>
 
@@ -757,146 +940,54 @@ function crearTarjetaPedido(pedido) {
 
 function crearBotonesEstado(pedido) {
 
-    let botones = `
+    const botonImprimir = `
 
         <button
             class="btn-print"
             onclick="imprimirPedido(${pedido.id})"
         >
 
-            🖨️ IMPRIMIR PEDIDO
-
-        </button>
-
-
-        <button
-            class="btn-pdf"
-            onclick="guardarPDF(${pedido.id})"
-        >
-
-            📄 GUARDAR PDF
+            🖨️ Imprimir ticket
 
         </button>
 
     `;
 
 
-    // =================================================
-    // NUEVO
-    // =================================================
+    const botonPDF = `
+
+        <button
+            class="btn-print"
+            onclick="guardarPDF(${pedido.id})"
+        >
+
+            📄 Guardar PDF
+
+        </button>
+
+    `;
+
 
     if (
-        pedido.estado === "nuevo"
+        pedido.estado === "cancelado"
     ) {
 
-        botones += `
+        return `
 
-            <button
-                class="btn-preparar"
-                onclick="cambiarEstado(
-                    ${pedido.id},
-                    'preparando'
-                )"
-            >
+            ${botonImprimir}
 
-                🍔 COMENZAR A PREPARAR
-
-            </button>
+            ${botonPDF}
 
 
             <button
-                class="btn-cancelar"
-                onclick="cambiarEstado(
-                    ${pedido.id},
-                    'cancelado'
-                )"
-            >
-
-                ❌ CANCELAR
-
-            </button>
-
-        `;
-
-    }
-
-
-    // =================================================
-    // PREPARANDO
-    // =================================================
-
-    else if (
-        pedido.estado ===
-        "preparando"
-    ) {
-
-        botones += `
-
-            <button
-                class="btn-listo"
-                onclick="cambiarEstado(
-                    ${pedido.id},
-                    'listo'
-                )"
-            >
-
-                ✅ MARCAR COMO LISTO
-
-            </button>
-
-        `;
-
-    }
-
-
-    // =================================================
-    // LISTO
-    // =================================================
-
-    else if (
-        pedido.estado ===
-        "listo"
-    ) {
-
-        botones += `
-
-            <button
-                class="btn-entregado"
-                onclick="cambiarEstado(
-                    ${pedido.id},
-                    'entregado'
-                )"
-            >
-
-                🏁 MARCAR COMO ENTREGADO
-
-            </button>
-
-        `;
-
-    }
-
-
-    // =================================================
-    // CANCELADO
-    // =================================================
-
-    else if (
-        pedido.estado ===
-        "cancelado"
-    ) {
-
-        botones += `
-
-            <button
-                class="btn-reactivar"
+                class="btn-confirm"
                 onclick="cambiarEstado(
                     ${pedido.id},
                     'nuevo'
                 )"
             >
 
-                🔄 REACTIVAR PEDIDO
+                ↩️ Reactivar
 
             </button>
 
@@ -905,7 +996,164 @@ function crearBotonesEstado(pedido) {
     }
 
 
-    return botones;
+    if (
+        pedido.estado === "entregado"
+    ) {
+
+        return `
+
+            ${botonImprimir}
+
+            ${botonPDF}
+
+
+            <button
+                class="btn-cancel"
+                onclick="cambiarEstado(
+                    ${pedido.id},
+                    'cancelado'
+                )"
+            >
+
+                ❌ Cancelar
+
+            </button>
+
+        `;
+
+    }
+
+
+    if (
+        pedido.estado === "nuevo"
+    ) {
+
+        return `
+
+            ${botonImprimir}
+
+            ${botonPDF}
+
+
+            <button
+                class="btn-preparing"
+                onclick="cambiarEstado(
+                    ${pedido.id},
+                    'preparando'
+                )"
+            >
+
+                👨‍🍳 Comenzar a preparar
+
+            </button>
+
+
+            <button
+                class="btn-cancel"
+                onclick="cambiarEstado(
+                    ${pedido.id},
+                    'cancelado'
+                )"
+            >
+
+                ❌ Cancelar
+
+            </button>
+
+        `;
+
+    }
+
+
+    if (
+        pedido.estado === "preparando"
+    ) {
+
+        return `
+
+            ${botonImprimir}
+
+            ${botonPDF}
+
+
+            <button
+                class="btn-ready"
+                onclick="cambiarEstado(
+                    ${pedido.id},
+                    'listo'
+                )"
+            >
+
+                🍔 Listo
+
+            </button>
+
+
+            <button
+                class="btn-cancel"
+                onclick="cambiarEstado(
+                    ${pedido.id},
+                    'cancelado'
+                )"
+            >
+
+                ❌ Cancelar
+
+            </button>
+
+        `;
+
+    }
+
+
+    if (
+        pedido.estado === "listo"
+    ) {
+
+        return `
+
+            ${botonImprimir}
+
+            ${botonPDF}
+
+
+            <button
+                class="btn-delivered"
+                onclick="cambiarEstado(
+                    ${pedido.id},
+                    'entregado'
+                )"
+            >
+
+                🛵 Entregado
+
+            </button>
+
+
+            <button
+                class="btn-cancel"
+                onclick="cambiarEstado(
+                    ${pedido.id},
+                    'cancelado'
+                )"
+            >
+
+                ❌ Cancelar
+
+            </button>
+
+        `;
+
+    }
+
+
+    return `
+
+        ${botonImprimir}
+
+        ${botonPDF}
+
+    `;
 
 }
 
@@ -914,32 +1162,34 @@ function crearBotonesEstado(pedido) {
 // DETALLE DEL PEDIDO
 // =====================================================
 
-async function cargarDetallePedido(id) {
+async function cargarDetallePedido(
+    pedidoId
+) {
 
     try {
 
         const respuesta =
             await fetch(
-                `${API_PEDIDOS}/${id}`
+                `${API_PEDIDOS}/${pedidoId}`
             );
 
 
         if (!respuesta.ok) {
 
             throw new Error(
-                "No se pudo obtener el detalle"
+                "No se pudo obtener el detalle."
             );
 
         }
 
 
-        const pedido =
+        const resultado =
             await respuesta.json();
 
 
         const contenedor =
             document.getElementById(
-                `productos-${id}`
+                `productos-${pedidoId}`
             );
 
 
@@ -950,20 +1200,19 @@ async function cargarDetallePedido(id) {
         }
 
 
-        const detalles =
-            pedido.detalles ||
-            pedido.productos ||
-            pedido.detalle_pedidos ||
-            [];
+        if (
 
+            !resultado.productos ||
 
-        if (!detalles.length) {
+            resultado.productos.length === 0
+
+        ) {
 
             contenedor.innerHTML = `
 
-                <p>
-                    No hay productos registrados.
-                </p>
+                <div>
+                    Sin productos
+                </div>
 
             `;
 
@@ -972,78 +1221,99 @@ async function cargarDetallePedido(id) {
         }
 
 
-        contenedor.innerHTML =
-            detalles.map(
-                detalle => {
+        contenedor.innerHTML = "";
 
 
-                    const cantidad =
-                        detalle.cantidad ||
-                        1;
+        resultado.productos.forEach(
+            producto => {
 
 
-                    const nombre =
-                        detalle.nombre ||
-                        detalle.producto_nombre ||
-                        detalle.producto?.nombre ||
-                        "Producto";
+                const elemento =
+                    document.createElement(
+                        "div"
+                    );
 
 
-                    const precio =
-                        detalle.precio ||
-                        detalle.precio_unitario ||
-                        detalle.producto?.precio ||
-                        0;
+                elemento.className =
+                    "order-product";
 
 
-                    return `
+                elemento.innerHTML = `
 
-                        <div
-                            class="producto-linea"
-                        >
-
-                            <span>
-
-                                ${cantidad} x
-
-                                ${escaparHTML(
-                                    nombre
-                                )}
-
-                            </span>
+                    <div>
 
 
-                            <strong>
+                        <strong>
 
-                                $${(
+                            ${escaparHTML(
 
-                                    Number(precio) *
+                                producto.nombre ||
 
-                                    Number(cantidad)
+                                "Producto"
 
-                                ).toFixed(2)}
+                            )}
 
-                            </strong>
+                        </strong>
 
-                        </div>
 
-                    `;
+                        <small>
 
-                }
-            ).join("");
+                            ${producto.cantidad}
+
+                            x
+
+                            $${Number(
+
+                                producto.precio_unitario ||
+
+                                0
+
+                            ).toLocaleString(
+                                "es-UY"
+                            )}
+
+                        </small>
+
+
+                    </div>
+
+
+                    <strong>
+
+                        $${Number(
+
+                            producto.subtotal ||
+
+                            0
+
+                        ).toLocaleString(
+                            "es-UY"
+                        )}
+
+                    </strong>
+
+                `;
+
+
+                contenedor.appendChild(
+                    elemento
+                );
+
+            }
+        );
 
 
     } catch (error) {
 
         console.error(
-            `Error cargando detalle del pedido ${id}:`,
+            "ERROR DETALLE:",
             error
         );
 
 
         const contenedor =
             document.getElementById(
-                `productos-${id}`
+                `productos-${pedidoId}`
             );
 
 
@@ -1051,12 +1321,12 @@ async function cargarDetallePedido(id) {
 
             contenedor.innerHTML = `
 
-                <p>
+                <div>
 
-                    No se pudieron cargar
-                    los productos.
+                    ⚠️ No se pudo cargar
+                    el detalle
 
-                </p>
+                </div>
 
             `;
 
@@ -1068,104 +1338,513 @@ async function cargarDetallePedido(id) {
 
 
 // =====================================================
-// OBTENER PEDIDO
+// OBTENER DATOS DEL PEDIDO
 // =====================================================
 
-async function obtenerDatosPedido(id) {
+async function obtenerDatosPedido(
+    pedidoId
+) {
+
+    const pedido =
+        pedidos.find(
+            p =>
+                Number(p.id) ===
+                Number(pedidoId)
+        );
+
+
+    if (!pedido) {
+
+        throw new Error(
+            "No se encontró el pedido."
+        );
+
+    }
+
 
     const respuesta =
         await fetch(
-            `${API_PEDIDOS}/${id}`
+            `${API_PEDIDOS}/${pedidoId}`
         );
 
 
     if (!respuesta.ok) {
 
         throw new Error(
-            "No se pudo obtener el pedido"
+            "No se pudieron cargar los productos."
         );
 
     }
 
 
-    return await respuesta.json();
+    const resultado =
+        await respuesta.json();
+
+
+    return {
+
+        pedido:
+            pedido,
+
+        productos:
+            resultado.productos || []
+
+    };
 
 }
 
 
 // =====================================================
-// TICKET
+// CREAR CONTENIDO DEL TICKET
 // =====================================================
 
-function crearTicketHTML(pedido) {
+function crearTicketHTML(
+    pedido,
+    productos
+) {
 
-    const detalles =
-        pedido.detalles ||
-        pedido.productos ||
-        pedido.detalle_pedidos ||
-        [];
-
-
-    const productosHTML =
-        detalles.map(
-            detalle => {
+    let productosHTML = "";
 
 
-                const cantidad =
-                    detalle.cantidad ||
-                    1;
+    productos.forEach(
+        producto => {
 
 
-                const nombre =
-                    detalle.nombre ||
-                    detalle.producto_nombre ||
-                    detalle.producto?.nombre ||
-                    "Producto";
+            productosHTML += `
+
+                <div class="producto">
 
 
-                const precio =
-                    detalle.precio ||
-                    detalle.precio_unitario ||
-                    detalle.producto?.precio ||
-                    0;
+                    <div class="producto-nombre">
 
 
-                return `
-
-                    <div class="producto">
-
-                        <div>
-
-                            ${cantidad} x
+                        <strong>
 
                             ${escaparHTML(
-                                nombre
+
+                                producto.nombre ||
+
+                                "Producto"
+
                             )}
 
-                        </div>
+                        </strong>
 
 
-                        <div>
+                        <br>
 
-                            $${(
 
-                                Number(precio) *
+                        ${producto.cantidad}
 
-                                Number(cantidad)
+                        x
 
-                            ).toFixed(2)}
+                        $${Number(
 
-                        </div>
+                            producto.precio_unitario ||
+
+                            0
+
+                        ).toLocaleString(
+                            "es-UY"
+                        )}
+
 
                     </div>
 
-                `;
 
-            }
-        ).join("");
+                    <strong
+                        class="producto-precio"
+                    >
+
+                        $${Number(
+
+                            producto.subtotal ||
+
+                            0
+
+                        ).toLocaleString(
+                            "es-UY"
+                        )}
+
+                    </strong>
+
+
+                </div>
+
+            `;
+
+        }
+    );
+
+
+    let cambioHTML = "";
+
+
+    if (
+
+        pedido.forma_pago ===
+            "efectivo"
+
+        &&
+
+        (
+
+            pedido.necesita_cambio === true
+
+            ||
+
+            pedido.necesita_cambio === "true"
+
+        )
+
+    ) {
+
+
+        const pagaCon =
+            Number(
+                pedido.cambio_de || 0
+            );
+
+
+        const total =
+            Number(
+                pedido.total || 0
+            );
+
+
+        const vuelto =
+            pagaCon -
+            total;
+
+
+        cambioHTML = `
+
+            <div class="info cambio">
+
+                <strong>
+                    PAGA CON:
+                </strong>
+
+                $${pagaCon.toLocaleString(
+                    "es-UY"
+                )}
+
+                <br>
+
+
+                <strong>
+                    VUELTO:
+                </strong>
+
+                $${vuelto.toLocaleString(
+                    "es-UY"
+                )}
+
+            </div>
+
+        `;
+
+    }
 
 
     return `
+
+        <div class="ticket">
+
+
+            <div class="logo-container">
+
+
+                <img
+                    src="/img/logoim.jpeg"
+                    class="logo-imagen"
+                    alt="Flame Burger"
+                >
+
+
+            </div>
+
+
+            <div class="centro">
+
+
+                <div class="titulo-ticket">
+
+                    COMPROBANTE DE PEDIDO
+
+                </div>
+
+
+                <div class="pedido">
+
+                    PEDIDO #${pedido.id}
+
+                </div>
+
+
+            </div>
+
+
+            <div class="linea"></div>
+
+
+            <div class="info">
+
+
+                <strong>
+                    FECHA:
+                </strong>
+
+                ${formatearFecha(
+                    pedido.creado_en
+                )}
+
+                <br>
+
+
+                <strong>
+                    CLIENTE:
+                </strong>
+
+                ${escaparHTML(
+
+                    pedido.cliente_nombre ||
+
+                    "Sin nombre"
+
+                )}
+
+                <br>
+
+
+                <strong>
+                    TELÉFONO:
+                </strong>
+
+                ${escaparHTML(
+
+                    pedido.cliente_telefono ||
+
+                    pedido.telefono ||
+
+                    "Sin teléfono"
+
+                )}
+
+                <br>
+
+
+                <strong>
+                    ENTREGA:
+                </strong>
+
+                ${obtenerTextoEntrega(
+                    pedido.tipo_entrega
+                )}
+
+                <br>
+
+
+                ${
+                    pedido.tipo_entrega ===
+                    "delivery"
+
+                    ? `
+
+                        <strong>
+                            DIRECCIÓN:
+                        </strong>
+
+                        ${escaparHTML(
+
+                            pedido.cliente_direccion ||
+
+                            pedido.direccion ||
+
+                            "—"
+
+                        )}
+
+                        <br>
+
+                    `
+
+                    : ""
+
+                }
+
+
+                <strong>
+                    PAGO:
+                </strong>
+
+                ${obtenerTextoPago(
+                    pedido.forma_pago
+                )}
+
+
+            </div>
+
+
+            <div class="linea"></div>
+
+
+            <div class="titulo-productos">
+
+                PRODUCTOS
+
+            </div>
+
+
+            ${productosHTML}
+
+
+            ${
+                pedido.observaciones
+
+                ? `
+
+                    <div class="linea"></div>
+
+
+                    <div class="observaciones">
+
+
+                        <strong>
+
+                            OBSERVACIONES:
+
+                        </strong>
+
+
+                        <br>
+
+
+                        ${escaparHTML(
+
+                            pedido.observaciones
+
+                        )}
+
+
+                    </div>
+
+                `
+
+                : ""
+
+            }
+
+
+            <div class="linea"></div>
+
+
+            ${cambioHTML}
+
+
+            <div class="total">
+
+
+                <span>
+                    TOTAL
+                </span>
+
+
+                <span>
+
+                    $${Number(
+
+                        pedido.total || 0
+
+                    ).toLocaleString(
+                        "es-UY"
+                    )}
+
+                </span>
+
+
+            </div>
+
+
+            <div class="linea"></div>
+
+
+            <div class="centro gracias">
+
+                Gracias por tu compra
+
+            </div>
+
+
+            <div class="botones">
+
+
+                <button
+                    class="boton"
+                    onclick="window.print()"
+                >
+
+                    🖨️ IMPRIMIR TICKET
+
+                </button>
+
+
+                <button
+                    class="boton pdf"
+                    onclick="window.print()"
+                >
+
+                    📄 GUARDAR PDF
+
+                </button>
+
+
+            </div>
+
+
+        </div>
+
+    `;
+
+}
+
+
+// =====================================================
+// ABRIR TICKET
+// =====================================================
+
+async function abrirTicket(
+    pedidoId
+) {
+
+    try {
+
+        const datos =
+            await obtenerDatosPedido(
+                pedidoId
+            );
+
+
+        const ventana =
+            window.open(
+                "",
+                "_blank",
+                "width=450,height=800"
+            );
+
+
+        if (!ventana) {
+
+            alert(
+                "⚠️ El navegador bloqueó la ventana. Permití las ventanas emergentes para esta página."
+            );
+
+            return;
+
+        }
+
+
+        ventana.document.write(`
 
 <!DOCTYPE html>
 
@@ -1175,25 +1854,47 @@ function crearTicketHTML(pedido) {
 
 <meta charset="UTF-8">
 
+
 <title>
-    Pedido #${pedido.id}
+
+Pedido #${datos.pedido.id}
+
 </title>
 
 
 <style>
 
+@page {
+
+    size: 80mm auto;
+
+    margin: 0;
+
+}
+
+
 * {
+
     box-sizing: border-box;
+
+}
+
+
+html,
+body {
+
+    margin: 0;
+
+    padding: 0;
+
+    background: white;
+
 }
 
 
 body {
 
-    margin: 0;
-
-    padding: 10px;
-
-    width: 80mm;
+    color: black;
 
     font-family:
         Arial,
@@ -1202,53 +1903,87 @@ body {
 
     font-size: 12px;
 
-    color: #000;
-
 }
 
 
 .ticket {
 
-    width: 100%;
+    width: 80mm;
+
+    max-width: 80mm;
+
+    margin: auto;
+
+    padding: 4mm;
 
 }
 
 
-.logo {
+.centro {
 
     text-align: center;
 
-    margin-bottom: 8px;
+}
+
+
+.logo-container {
+
+    width: 100%;
+
+    display: flex;
+
+    justify-content: center;
+
+    align-items: center;
+
+    margin-bottom: 3mm;
 
 }
 
 
-.logo img {
+.logo-imagen {
 
-    max-width: 55mm;
+    display: block;
 
-    max-height: 25mm;
+    width: 48mm;
+
+    max-width: 100%;
+
+    max-height: 30mm;
+
+    height: auto;
 
     object-fit: contain;
 
 }
 
 
-h1 {
+.titulo-ticket {
 
-    text-align: center;
+    font-size: 12px;
 
-    font-size: 18px;
+    font-weight: bold;
+
+    margin-top: 2mm;
+
+}
+
+
+.pedido {
+
+    font-size: 20px;
+
+    font-weight: bold;
 
     margin: 5px 0;
 
 }
 
 
-.line {
+.linea {
 
     border-top:
-        1px dashed #000;
+        1px dashed black;
 
     margin: 8px 0;
 
@@ -1257,7 +1992,7 @@ h1 {
 
 .info {
 
-    margin-bottom: 5px;
+    line-height: 1.6;
 
 }
 
@@ -1269,9 +2004,45 @@ h1 {
     justify-content:
         space-between;
 
-    gap: 5px;
+    align-items: flex-start;
 
-    margin: 4px 0;
+    gap: 8px;
+
+    margin: 8px 0;
+
+    line-height: 1.3;
+
+}
+
+
+.producto-nombre {
+
+    flex: 1;
+
+    min-width: 0;
+
+}
+
+
+.producto-precio {
+
+    white-space: nowrap;
+
+}
+
+
+.titulo-productos {
+
+    font-weight: bold;
+
+    margin-bottom: 5px;
+
+}
+
+
+.cambio {
+
+    line-height: 1.7;
 
 }
 
@@ -1283,20 +2054,11 @@ h1 {
     justify-content:
         space-between;
 
-    font-size: 17px;
+    font-size: 20px;
 
     font-weight: bold;
 
-    margin-top: 8px;
-
-}
-
-
-.cambio {
-
-    font-weight: bold;
-
-    margin-top: 8px;
+    margin-top: 10px;
 
 }
 
@@ -1305,25 +2067,102 @@ h1 {
 
     margin-top: 8px;
 
+    line-height: 1.4;
+
 }
 
 
-.footer {
+.gracias {
 
-    text-align: center;
+    font-weight: bold;
 
-    margin-top: 15px;
+    margin-top: 5px;
 
-    font-size: 10px;
+    margin-bottom: 5px;
+
+}
+
+
+.botones {
+
+    margin-top: 20px;
+
+}
+
+
+.boton {
+
+    width: 100%;
+
+    border: 0;
+
+    padding: 12px;
+
+    margin-top: 8px;
+
+    background: black;
+
+    color: white;
+
+    font-size: 14px;
+
+    font-weight: bold;
+
+    cursor: pointer;
+
+    border-radius: 4px;
+
+}
+
+
+.boton.pdf {
+
+    background: #555;
 
 }
 
 
 @media print {
 
+    .botones {
+
+        display: none !important;
+
+    }
+
+
+    html,
     body {
 
+        width: 80mm;
+
+        margin: 0;
+
         padding: 0;
+
+    }
+
+
+    .ticket {
+
+        width: 80mm;
+
+        max-width: 80mm;
+
+        padding: 3mm;
+
+        margin: 0 auto;
+
+    }
+
+
+    .logo-imagen {
+
+        width: 48mm;
+
+        max-width: 100%;
+
+        max-height: 30mm;
 
     }
 
@@ -1336,277 +2175,80 @@ h1 {
 
 <body>
 
-<div class="ticket">
 
+${crearTicketHTML(
+    datos.pedido,
+    datos.productos
+)}
 
-    <div class="logo">
 
-        <img
-            src="/img/logoim.jpeg"
-            alt="Flame Burger"
-        >
+<script>
 
-    </div>
+window.onload = function() {
 
+    setTimeout(function() {
 
-    <h1>
+        window.print();
 
-        PEDIDO #${pedido.id}
+    }, 500);
 
-    </h1>
+};
 
 
-    <div class="line"></div>
+window.onafterprint = function() {
 
+    setTimeout(function() {
 
-    <div class="info">
+        window.close();
 
-        <strong>
-            CLIENTE:
-        </strong>
+    }, 300);
 
-        ${escaparHTML(
-            pedido.nombre ||
-            "Sin nombre"
-        )}
+};
 
-    </div>
+</script>
 
-
-    <div class="info">
-
-        <strong>
-            TELÉFONO:
-        </strong>
-
-        ${escaparHTML(
-            pedido.telefono ||
-            "No indicado"
-        )}
-
-    </div>
-
-
-    <div class="info">
-
-        <strong>
-            ENTREGA:
-        </strong>
-
-        ${obtenerTextoEntrega(
-            pedido
-        )}
-
-    </div>
-
-
-    ${
-        pedido.direccion
-            ? `
-
-                <div class="info">
-
-                    <strong>
-                        DIRECCIÓN:
-                    </strong>
-
-                    ${escaparHTML(
-                        pedido.direccion
-                    )}
-
-                </div>
-
-            `
-            : ""
-    }
-
-
-    <div class="info">
-
-        <strong>
-            PAGO:
-        </strong>
-
-        ${obtenerTextoPago(
-            pedido
-        )}
-
-    </div>
-
-
-    ${
-        pedido.cambio
-            ? `
-
-                <div class="cambio">
-
-                    PRECISA CAMBIO DE:
-
-                    $${pedido.cambio}
-
-                </div>
-
-            `
-            : ""
-    }
-
-
-    <div class="line"></div>
-
-
-    ${productosHTML}
-
-
-    ${
-        pedido.observaciones
-            ? `
-
-                <div class="observaciones">
-
-                    <strong>
-                        OBSERVACIONES:
-                    </strong>
-
-                    <br>
-
-                    ${escaparHTML(
-                        pedido.observaciones
-                    )}
-
-                </div>
-
-            `
-            : ""
-    }
-
-
-    <div class="line"></div>
-
-
-    <div class="total">
-
-        <span>
-            TOTAL
-        </span>
-
-
-        <span>
-
-            $${Number(
-                pedido.total || 0
-            ).toFixed(2)}
-
-        </span>
-
-    </div>
-
-
-    <div class="footer">
-
-        Flame Burger
-
-        <br>
-
-        ¡Gracias por tu compra!
-
-    </div>
-
-
-</div>
 
 </body>
 
 </html>
 
-    `;
-
-}
+        `);
 
 
-// =====================================================
-// ABRIR TICKET
-// =====================================================
+        ventana.document.close();
 
-function abrirTicket(pedido) {
-
-    const ventana =
-        window.open(
-            "",
-            "_blank",
-            "width=400,height=700"
-        );
-
-
-    if (!ventana) {
-
-        alert(
-            "El navegador bloqueó la ventana de impresión. Permití las ventanas emergentes."
-        );
-
-        return;
-
-    }
-
-
-    ventana.document.write(
-        crearTicketHTML(pedido)
-    );
-
-
-    ventana.document.close();
-
-    ventana.focus();
-
-
-    setTimeout(
-        () => {
-
-
-            ventana.print();
-
-
-            setTimeout(
-                () => {
-
-                    ventana.close();
-
-                },
-                1000
-            );
-
-
-        },
-        500
-    );
-
-}
-
-
-// =====================================================
-// IMPRIMIR
-// =====================================================
-
-async function imprimirPedido(id) {
-
-    try {
-
-        const pedido =
-            await obtenerDatosPedido(id);
-
-
-        abrirTicket(pedido);
+        ventana.focus();
 
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "ERROR TICKET:",
+            error
+        );
 
 
         alert(
-            "No se pudo preparar el pedido para imprimir."
+            "❌ " +
+            error.message
         );
 
     }
+
+}
+
+
+// =====================================================
+// IMPRIMIR TICKET
+// =====================================================
+
+async function imprimirPedido(
+    pedidoId
+) {
+
+    await abrirTicket(
+        pedidoId
+    );
 
 }
 
@@ -1615,63 +2257,13 @@ async function imprimirPedido(id) {
 // GUARDAR PDF
 // =====================================================
 
-async function guardarPDF(id) {
+async function guardarPDF(
+    pedidoId
+) {
 
-    try {
-
-        const pedido =
-            await obtenerDatosPedido(id);
-
-
-        const ventana =
-            window.open(
-                "",
-                "_blank",
-                "width=400,height=700"
-            );
-
-
-        if (!ventana) {
-
-            alert(
-                "Permití las ventanas emergentes para guardar el PDF."
-            );
-
-            return;
-
-        }
-
-
-        ventana.document.write(
-            crearTicketHTML(pedido)
-        );
-
-
-        ventana.document.close();
-
-        ventana.focus();
-
-
-        setTimeout(
-            () => {
-
-                ventana.print();
-
-            },
-            500
-        );
-
-
-    } catch (error) {
-
-        console.error(error);
-
-
-        alert(
-            "No se pudo generar el PDF."
-        );
-
-    }
+    await abrirTicket(
+        pedidoId
+    );
 
 }
 
@@ -1681,18 +2273,39 @@ async function guardarPDF(id) {
 // =====================================================
 
 async function cambiarEstado(
-    id,
+    pedidoId,
     nuevoEstado
 ) {
 
     try {
 
+        const confirmar =
+            confirm(
+
+                `¿Cambiar el pedido #${pedidoId} a "${obtenerTextoEstado(
+                    nuevoEstado
+                )}"?`
+
+            );
+
+
+        if (!confirmar) {
+
+            return;
+
+        }
+
+
         const respuesta =
             await fetch(
-                `${API_PEDIDOS}/${id}/estado`,
+
+                `${API_PEDIDOS}/${pedidoId}/estado`,
+
                 {
 
-                    method: "PATCH",
+                    method:
+                        "PATCH",
+
 
                     headers: {
 
@@ -1701,36 +2314,92 @@ async function cambiarEstado(
 
                     },
 
-                    body: JSON.stringify({
 
-                        estado:
-                            nuevoEstado
+                    body:
+                        JSON.stringify({
 
-                    })
+                            estado:
+                                nuevoEstado
+
+                        })
 
                 }
+
             );
+
+
+        const resultado =
+            await respuesta.json();
 
 
         if (!respuesta.ok) {
 
             throw new Error(
-                "No se pudo cambiar el estado"
+
+                resultado.error ||
+
+                "No se pudo cambiar el estado."
+
             );
 
         }
 
 
-        await cargarPedidos();
+        const pedido =
+            pedidos.find(
+
+                p =>
+                    Number(p.id) ===
+                    Number(pedidoId)
+
+            );
+
+
+        if (pedido) {
+
+            pedido.estado =
+                nuevoEstado;
+
+        }
+
+
+        // Actualizamos también
+        // el estado guardado para que
+        // cambiar estados no genere
+        // sonidos falsos.
+
+        const pedidoAnterior =
+            pedidosAnteriores.find(
+
+                p =>
+                    Number(p.id) ===
+                    Number(pedidoId)
+
+            );
+
+
+        if (pedidoAnterior) {
+
+            pedidoAnterior.estado =
+                nuevoEstado;
+
+        }
+
+
+        mostrarPedidos();
 
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "ERROR CAMBIANDO ESTADO:",
+            error
+        );
 
 
         alert(
-            "No se pudo actualizar el estado del pedido."
+            "❌ " +
+            error.message
         );
 
     }
@@ -1758,8 +2427,8 @@ document
                             ".order-filter"
                         )
                         .forEach(
-                            btn =>
-                                btn.classList.remove(
+                            b =>
+                                b.classList.remove(
                                     "active"
                                 )
                         );
@@ -1771,8 +2440,7 @@ document
 
 
                     filtroActual =
-                        boton.dataset.filter ||
-                        "todos";
+                        boton.dataset.filter;
 
 
                     mostrarPedidos();
@@ -1785,10 +2453,12 @@ document
 
 
 // =====================================================
-// FORMATEAR FECHA
+// FECHA
 // =====================================================
 
-function formatearFecha(fecha) {
+function formatearFecha(
+    fecha
+) {
 
     if (!fecha) {
 
@@ -1797,12 +2467,14 @@ function formatearFecha(fecha) {
     }
 
 
-    const fechaObj =
+    const fechaObjeto =
         new Date(fecha);
 
 
-    return fechaObj.toLocaleString(
+    return fechaObjeto.toLocaleString(
+
         "es-UY",
+
         {
 
             day: "2-digit",
@@ -1816,6 +2488,7 @@ function formatearFecha(fecha) {
             minute: "2-digit"
 
         }
+
     );
 
 }
@@ -1831,30 +2504,35 @@ function obtenerTextoEstado(
 
     const estados = {
 
+        en_proceso_pago:
+            "🟡 En proceso de pago",
+
         nuevo:
-            "NUEVO",
+            "🆕 Nuevo",
 
         preparando:
-            "PREPARANDO",
+            "👨‍🍳 Preparando",
 
         listo:
-            "LISTO",
+            "🍔 Listo",
 
         entregado:
-            "ENTREGADO",
+            "🛵 Entregado",
 
         cancelado:
-            "CANCELADO",
-
-        en_proceso_pago:
-            "ESPERANDO PAGO"
+            "❌ Cancelado"
 
     };
 
 
     return (
+
         estados[estado] ||
-        estado
+
+        estado ||
+
+        "Desconocido"
+
     );
 
 }
@@ -1865,27 +2543,28 @@ function obtenerTextoEstado(
 // =====================================================
 
 function obtenerTextoEntrega(
-    pedido
+    entrega
 ) {
 
     if (
-
-        pedido.tipo_entrega ===
-            "delivery"
-
-        ||
-
-        pedido.entrega ===
-            "delivery"
-
+        entrega === "delivery"
     ) {
 
-        return "DELIVERY";
+        return "🛵 Delivery";
 
     }
 
 
-    return "RETIRO EN LOCAL";
+    if (
+        entrega === "retiro"
+    ) {
+
+        return "🏪 Retiro";
+
+    }
+
+
+    return entrega || "—";
 
 }
 
@@ -1895,45 +2574,28 @@ function obtenerTextoEntrega(
 // =====================================================
 
 function obtenerTextoPago(
-    pedido
+    pago
 ) {
 
-    const metodo =
-        pedido.metodo_pago ||
-        pedido.pago ||
-        "";
-
-
-    const metodoNormalizado =
-        metodo.toLowerCase();
-
-
     if (
-        metodoNormalizado.includes(
-            "mercado"
-        )
+        pago === "efectivo"
     ) {
 
-        return "MERCADO PAGO";
+        return "💵 Efectivo";
 
     }
 
 
     if (
-        metodoNormalizado.includes(
-            "efectivo"
-        )
+        pago === "mercado_pago"
     ) {
 
-        return "EFECTIVO";
+        return "💳 Mercado Pago";
 
     }
 
 
-    return (
-        metodo ||
-        "No indicado"
-    );
+    return pago || "—";
 
 }
 
@@ -1946,38 +2608,23 @@ function escaparHTML(
     texto
 ) {
 
-    return String(texto)
-
-        .replace(
-            /&/g,
-            "&amp;"
-        )
-
-        .replace(
-            /</g,
-            "&lt;"
-        )
-
-        .replace(
-            />/g,
-            "&gt;"
-        )
-
-        .replace(
-            /"/g,
-            "&quot;"
-        )
-
-        .replace(
-            /'/g,
-            "&#039;"
+    const div =
+        document.createElement(
+            "div"
         );
+
+
+    div.textContent =
+        texto ?? "";
+
+
+    return div.innerHTML;
 
 }
 
 
 // =====================================================
-// ACTUALIZAR CADA 10 SEGUNDOS
+// ACTUALIZAR PEDIDOS
 // =====================================================
 
 setInterval(
@@ -1987,7 +2634,7 @@ setInterval(
 
 
 // =====================================================
-// CARGA INICIAL
+// INICIAR
 // =====================================================
 
 cargarPedidos();
