@@ -1,21 +1,68 @@
 const API_PEDIDOS = "/api/pedidos";
 const API_PAGOS = "/api/pagos/crear";
 
-const carrito = JSON.parse(localStorage.getItem("flameCarrito")) || [];
+const carrito =
+    JSON.parse(localStorage.getItem("flameCarrito")) || [];
 
-const nombreInput = document.getElementById("nombre");
-const telefonoInput = document.getElementById("telefono");
-const direccionInput = document.getElementById("direccion");
-const comentariosInput = document.getElementById("comentarios");
+const nombreInput =
+    document.getElementById("nombre");
 
-const confirmarPedidoBtn = document.getElementById("confirmarPedido");
-const mensaje = document.getElementById("mensaje");
-const resumenProductos = document.getElementById("resumenProductos");
-const totalElemento = document.getElementById("total");
+const telefonoInput =
+    document.getElementById("telefono");
 
-const opcionCambio = document.getElementById("opcionCambio");
-const campoCambio = document.getElementById("campoCambio");
-const cambioInput = document.getElementById("cambio");
+const direccionInput =
+    document.getElementById("direccion");
+
+const comentariosInput =
+    document.getElementById("comentarios");
+
+const confirmarPedidoBtn =
+    document.getElementById("confirmarPedido");
+
+const mensaje =
+    document.getElementById("mensaje");
+
+const resumenProductos =
+    document.getElementById("resumenProductos");
+
+const totalElemento =
+    document.getElementById("total");
+
+const opcionCambio =
+    document.getElementById("opcionCambio");
+
+const campoCambio =
+    document.getElementById("campoCambio");
+
+const cambioInput =
+    document.getElementById("cambio");
+
+
+// =====================================================
+// CONFIGURACIÓN DELIVERY
+// =====================================================
+
+// Dirección del local
+const DIRECCION_FLAME_BURGER =
+    "Av. Gral. San Martín 5306, Montevideo, Uruguay";
+
+// Límites de distancia
+const DISTANCIA_ENVIO_GRATIS = 3;
+const DISTANCIA_MAXIMA_DELIVERY = 6;
+
+// Precio del envío entre 3 y 6 km
+const PRECIO_ENVIO = 100;
+
+
+// =====================================================
+// VARIABLES DELIVERY
+// =====================================================
+
+let costoEnvio = 0;
+
+let distanciaDelivery = null;
+
+let calculandoDistancia = false;
 
 
 // =====================================================
@@ -24,9 +71,11 @@ const cambioInput = document.getElementById("cambio");
 
 function escaparHTML(texto) {
 
-    const div = document.createElement("div");
+    const div =
+        document.createElement("div");
 
-    div.textContent = texto ?? "";
+    div.textContent =
+        texto ?? "";
 
     return div.innerHTML;
 }
@@ -36,11 +85,15 @@ function escaparHTML(texto) {
 // MOSTRAR MENSAJE
 // =====================================================
 
-function mostrarMensaje(texto, tipo = "error") {
+function mostrarMensaje(
+    texto,
+    tipo = "error"
+) {
 
     if (!mensaje) return;
 
-    mensaje.textContent = texto;
+    mensaje.textContent =
+        texto;
 
     mensaje.className = "";
 
@@ -107,9 +160,11 @@ function obtenerNecesitaCambio() {
 
 function actualizarDireccion() {
 
-    const entrega = obtenerEntrega();
+    const entrega =
+        obtenerEntrega();
 
     if (!direccionInput) return;
+
 
     if (entrega === "retiro") {
 
@@ -122,6 +177,14 @@ function actualizarDireccion() {
         direccionInput.placeholder =
             "No necesaria para retiro";
 
+        costoEnvio = 0;
+
+        distanciaDelivery = null;
+
+        actualizarResumenTotal();
+
+        mostrarMensaje("", null);
+
     } else {
 
         direccionInput.disabled = false;
@@ -130,6 +193,12 @@ function actualizarDireccion() {
 
         direccionInput.placeholder =
             "Ej: Av. Italia 1234, apto 302";
+
+        costoEnvio = 0;
+
+        distanciaDelivery = null;
+
+        actualizarResumenTotal();
     }
 }
 
@@ -140,34 +209,44 @@ function actualizarDireccion() {
 
 function actualizarCambio() {
 
-    const pago = obtenerPago();
+    const pago =
+        obtenerPago();
+
 
     // POS y Mercado Pago no necesitan cambio
+
     if (pago !== "efectivo") {
 
         if (opcionCambio) {
-            opcionCambio.style.display = "none";
+
+            opcionCambio.style.display =
+                "none";
         }
 
         if (campoCambio) {
-            campoCambio.style.display = "none";
+
+            campoCambio.style.display =
+                "none";
         }
 
         if (cambioInput) {
 
             cambioInput.value = "";
 
-            cambioInput.required = false;
+            cambioInput.required =
+                false;
         }
 
         return;
     }
 
 
-    // Solo efectivo muestra cambio
+    // Solo efectivo
+
     if (opcionCambio) {
 
-        opcionCambio.style.display = "block";
+        opcionCambio.style.display =
+            "block";
     }
 
 
@@ -179,26 +258,30 @@ function actualizarCambio() {
 
         if (campoCambio) {
 
-            campoCambio.style.display = "block";
+            campoCambio.style.display =
+                "block";
         }
 
         if (cambioInput) {
 
-            cambioInput.required = true;
+            cambioInput.required =
+                true;
         }
 
     } else {
 
         if (campoCambio) {
 
-            campoCambio.style.display = "none";
+            campoCambio.style.display =
+                "none";
         }
 
         if (cambioInput) {
 
             cambioInput.value = "";
 
-            cambioInput.required = false;
+            cambioInput.required =
+                false;
         }
     }
 }
@@ -213,12 +296,20 @@ function limpiarTelefono() {
     if (!telefonoInput) return;
 
     telefonoInput.value =
-        telefonoInput.value.replace(/\D/g, "");
+        telefonoInput.value.replace(
+            /\D/g,
+            ""
+        );
 
-    if (telefonoInput.value.length > 9) {
+    if (
+        telefonoInput.value.length > 9
+    ) {
 
         telefonoInput.value =
-            telefonoInput.value.substring(0, 9);
+            telefonoInput.value.substring(
+                0,
+                9
+            );
     }
 }
 
@@ -254,12 +345,26 @@ if (telefonoInput) {
 // =====================================================
 
 document
-    .querySelectorAll('input[name="entrega"]')
+    .querySelectorAll(
+        'input[name="entrega"]'
+    )
     .forEach((radio) => {
 
         radio.addEventListener(
             "change",
-            actualizarDireccion
+            async () => {
+
+                actualizarDireccion();
+
+                if (
+                    obtenerEntrega() ===
+                    "delivery"
+                ) {
+
+                    await calcularEnvio();
+                }
+
+            }
         );
 
     });
@@ -270,7 +375,9 @@ document
 // =====================================================
 
 document
-    .querySelectorAll('input[name="pago"]')
+    .querySelectorAll(
+        'input[name="pago"]'
+    )
     .forEach((radio) => {
 
         radio.addEventListener(
@@ -286,7 +393,9 @@ document
 // =====================================================
 
 document
-    .querySelectorAll('input[name="necesitaCambio"]')
+    .querySelectorAll(
+        'input[name="necesitaCambio"]'
+    )
     .forEach((radio) => {
 
         radio.addEventListener(
@@ -301,11 +410,17 @@ document
 // VALIDAR DIRECCIÓN
 // =====================================================
 
-function validarDireccion(direccion) {
+function validarDireccion(
+    direccion
+) {
 
-    direccion = direccion.trim();
+    direccion =
+        direccion.trim();
 
-    if (direccion.length < 5) {
+    if (
+        direccion.length < 5
+    ) {
+
         return false;
     }
 
@@ -313,6 +428,7 @@ function validarDireccion(direccion) {
         /\d/.test(direccion);
 
     if (!tieneNumero) {
+
         return false;
     }
 
@@ -322,10 +438,237 @@ function validarDireccion(direccion) {
         );
 
     if (!tieneLetras) {
+
         return false;
     }
 
     return true;
+}
+
+
+// =====================================================
+// OBTENER SUBTOTAL
+// =====================================================
+
+function obtenerSubtotal() {
+
+    return carrito.reduce(
+        (total, producto) => {
+
+            const precio =
+                Number(producto.precio) || 0;
+
+            const cantidad =
+                Number(producto.cantidad) || 0;
+
+            return total +
+                (
+                    precio *
+                    cantidad
+                );
+
+        },
+        0
+    );
+}
+
+
+// =====================================================
+// OBTENER TOTAL FINAL
+// =====================================================
+
+function obtenerTotalFinal() {
+
+    return (
+        obtenerSubtotal() +
+        Number(costoEnvio || 0)
+    );
+}
+
+
+// =====================================================
+// CREAR LÍNEA DE ENVÍO
+// =====================================================
+
+function obtenerLineaEnvio() {
+
+    let linea =
+        document.getElementById(
+            "lineaEnvioCheckout"
+        );
+
+    if (linea) {
+
+        return linea;
+    }
+
+
+    const lineaSeparadora =
+        document.createElement("div");
+
+    lineaSeparadora.className =
+        "linea";
+
+    lineaSeparadora.id =
+        "separadorEnvioCheckout";
+
+
+    linea =
+        document.createElement("div");
+
+    linea.id =
+        "lineaEnvioCheckout";
+
+    linea.className =
+        "resumen-total";
+
+
+    if (totalElemento) {
+
+        const contenedor =
+            totalElemento.parentElement;
+
+        if (contenedor) {
+
+            contenedor.parentNode.insertBefore(
+                lineaSeparadora,
+                contenedor
+            );
+
+            contenedor.parentNode.insertBefore(
+                linea,
+                contenedor
+            );
+        }
+    }
+
+
+    return linea;
+}
+
+
+// =====================================================
+// MOSTRAR COSTO ENVÍO
+// =====================================================
+
+function actualizarLineaEnvio() {
+
+    const linea =
+        obtenerLineaEnvio();
+
+    if (!linea) return;
+
+
+    const entrega =
+        obtenerEntrega();
+
+
+    if (entrega !== "delivery") {
+
+        linea.innerHTML = `
+            <span>
+                Envío
+            </span>
+
+            <strong>
+                $0
+            </strong>
+        `;
+
+        return;
+    }
+
+
+    if (
+        distanciaDelivery === null
+    ) {
+
+        linea.innerHTML = `
+            <span>
+                Envío
+            </span>
+
+            <strong>
+                —
+            </strong>
+        `;
+
+        return;
+    }
+
+
+    if (
+        distanciaDelivery <=
+        DISTANCIA_ENVIO_GRATIS
+    ) {
+
+        linea.innerHTML = `
+            <span>
+                Envío
+            </span>
+
+            <strong>
+                GRATIS
+            </strong>
+        `;
+
+        return;
+    }
+
+
+    if (
+        distanciaDelivery <=
+        DISTANCIA_MAXIMA_DELIVERY
+    ) {
+
+        linea.innerHTML = `
+            <span>
+                Envío
+            </span>
+
+            <strong>
+                $${PRECIO_ENVIO}
+            </strong>
+        `;
+
+        return;
+    }
+
+
+    linea.innerHTML = `
+        <span>
+            Envío
+        </span>
+
+        <strong>
+            No disponible
+        </strong>
+    `;
+}
+
+
+// =====================================================
+// ACTUALIZAR TOTAL
+// =====================================================
+
+function actualizarResumenTotal() {
+
+    const subtotal =
+        obtenerSubtotal();
+
+    const total =
+        subtotal +
+        Number(costoEnvio || 0);
+
+
+    actualizarLineaEnvio();
+
+
+    if (totalElemento) {
+
+        totalElemento.textContent =
+            `$${total.toFixed(2)}`;
+    }
 }
 
 
@@ -335,11 +678,18 @@ function validarDireccion(direccion) {
 
 function renderizarCarrito() {
 
-    if (!resumenProductos || !totalElemento) {
+    if (
+        !resumenProductos ||
+        !totalElemento
+    ) {
+
         return;
     }
 
-    resumenProductos.innerHTML = "";
+
+    resumenProductos.innerHTML =
+        "";
+
 
     if (!carrito.length) {
 
@@ -349,54 +699,551 @@ function renderizarCarrito() {
             </p>
         `;
 
-        totalElemento.textContent = "$0";
+        totalElemento.textContent =
+            "$0";
 
         return;
     }
 
-    let total = 0;
 
-    carrito.forEach((producto) => {
+    carrito.forEach(
+        (producto) => {
 
-        const precio =
-            Number(producto.precio) || 0;
+            const precio =
+                Number(producto.precio) || 0;
 
-        const cantidad =
-            Number(producto.cantidad) || 0;
+            const cantidad =
+                Number(producto.cantidad) || 0;
 
-        const subtotal =
-            precio * cantidad;
+            const subtotal =
+                precio *
+                cantidad;
 
-        total += subtotal;
 
-        const div =
-            document.createElement("div");
+            const div =
+                document.createElement(
+                    "div"
+                );
 
-        div.className =
-            "resumen-producto";
+            div.className =
+                "resumen-producto";
 
-        div.innerHTML = `
-            <div>
+
+            div.innerHTML = `
+                <div>
+
+                    <strong>
+                        ${escaparHTML(
+                            producto.nombre
+                        )}
+                    </strong>
+
+                    <span>
+                        ${cantidad}
+                        ×
+                        $${precio.toFixed(2)}
+                    </span>
+
+                </div>
+
                 <strong>
-                    ${escaparHTML(producto.nombre)}
+                    $${subtotal.toFixed(2)}
                 </strong>
+            `;
 
-                <span>
-                    ${cantidad} × $${precio.toFixed(2)}
-                </span>
-            </div>
 
-            <strong>
-                $${subtotal.toFixed(2)}
-            </strong>
-        `;
+            resumenProductos.appendChild(
+                div
+            );
 
-        resumenProductos.appendChild(div);
+        }
+    );
 
-    });
 
-    totalElemento.textContent =
-        `$${total.toFixed(2)}`;
+    actualizarResumenTotal();
+}
+
+
+// =====================================================
+// GEOCODIFICAR DIRECCIÓN
+// =====================================================
+
+async function geocodificarDireccion(
+    direccion
+) {
+
+    const consulta =
+        `${direccion}, Montevideo, Uruguay`;
+
+
+    const url =
+        "https://nominatim.openstreetmap.org/search" +
+        "?format=json" +
+        "&limit=1" +
+        "&countrycodes=uy" +
+        "&q=" +
+        encodeURIComponent(consulta);
+
+
+    const respuesta =
+        await fetch(url, {
+
+            headers: {
+
+                "Accept":
+                    "application/json"
+
+            }
+
+        });
+
+
+    if (!respuesta.ok) {
+
+        throw new Error(
+            "No se pudo consultar la dirección."
+        );
+    }
+
+
+    const resultados =
+        await respuesta.json();
+
+
+    if (
+        !resultados ||
+        !resultados.length
+    ) {
+
+        throw new Error(
+            "No encontramos esa dirección. Revisá la calle y el número."
+        );
+    }
+
+
+    return {
+
+        lat:
+            Number(
+                resultados[0].lat
+            ),
+
+        lon:
+            Number(
+                resultados[0].lon
+            )
+
+    };
+}
+
+
+// =====================================================
+// OBTENER COORDENADAS FLAME BURGER
+// =====================================================
+
+async function obtenerCoordenadasFlameBurger() {
+
+    const consulta =
+        DIRECCION_FLAME_BURGER;
+
+
+    const url =
+        "https://nominatim.openstreetmap.org/search" +
+        "?format=json" +
+        "&limit=1" +
+        "&countrycodes=uy" +
+        "&q=" +
+        encodeURIComponent(consulta);
+
+
+    const respuesta =
+        await fetch(url, {
+
+            headers: {
+
+                "Accept":
+                    "application/json"
+
+            }
+
+        });
+
+
+    if (!respuesta.ok) {
+
+        throw new Error(
+            "No se pudo localizar Flame Burger."
+        );
+    }
+
+
+    const resultados =
+        await respuesta.json();
+
+
+    if (
+        !resultados ||
+        !resultados.length
+    ) {
+
+        throw new Error(
+            "No se pudo localizar la dirección de Flame Burger."
+        );
+    }
+
+
+    return {
+
+        lat:
+            Number(
+                resultados[0].lat
+            ),
+
+        lon:
+            Number(
+                resultados[0].lon
+            )
+
+    };
+}
+
+
+// =====================================================
+// CALCULAR DISTANCIA POR CALLES
+// =====================================================
+
+async function calcularDistanciaPorCalles(
+    origen,
+    destino
+) {
+
+    const coordenadas =
+        `${origen.lon},${origen.lat};` +
+        `${destino.lon},${destino.lat}`;
+
+
+    const url =
+        "https://router.project-osrm.org/route/v1/driving/" +
+        coordenadas +
+        "?overview=false";
+
+
+    const respuesta =
+        await fetch(url);
+
+
+    if (!respuesta.ok) {
+
+        throw new Error(
+            "No se pudo calcular la ruta."
+        );
+    }
+
+
+    const resultado =
+        await respuesta.json();
+
+
+    if (
+        resultado.code !==
+        "Ok" ||
+        !resultado.routes ||
+        !resultado.routes.length
+    ) {
+
+        throw new Error(
+            "No se encontró una ruta hasta esa dirección."
+        );
+    }
+
+
+    // OSRM devuelve metros
+    const metros =
+        Number(
+            resultado.routes[0].distance
+        );
+
+
+    // Convertir a kilómetros
+    const kilometros =
+        metros / 1000;
+
+
+    return kilometros;
+}
+
+
+// =====================================================
+// CALCULAR ENVÍO
+// =====================================================
+
+async function calcularEnvio() {
+
+    const entrega =
+        obtenerEntrega();
+
+
+    // Retiro = envío gratis
+
+    if (entrega !== "delivery") {
+
+        costoEnvio = 0;
+
+        distanciaDelivery = null;
+
+        actualizarResumenTotal();
+
+        return true;
+    }
+
+
+    const direccion =
+        direccionInput?.value.trim() || "";
+
+
+    if (!direccion) {
+
+        costoEnvio = 0;
+
+        distanciaDelivery = null;
+
+        actualizarResumenTotal();
+
+        return false;
+    }
+
+
+    if (
+        !validarDireccion(
+            direccion
+        )
+    ) {
+
+        costoEnvio = 0;
+
+        distanciaDelivery = null;
+
+        actualizarResumenTotal();
+
+        return false;
+    }
+
+
+    if (calculandoDistancia) {
+
+        return false;
+    }
+
+
+    try {
+
+        calculandoDistancia = true;
+
+
+        if (confirmarPedidoBtn) {
+
+            confirmarPedidoBtn.disabled =
+                true;
+
+            confirmarPedidoBtn.textContent =
+                "Calculando envío...";
+        }
+
+
+        mostrarMensaje(
+            "Calculando distancia hasta tu domicilio...",
+            "success"
+        );
+
+
+        // Coordenadas del local
+
+        const origen =
+            await obtenerCoordenadasFlameBurger();
+
+
+        // Coordenadas del cliente
+
+        const destino =
+            await geocodificarDireccion(
+                direccion
+            );
+
+
+        // Distancia REAL por calles
+
+        const distancia =
+            await calcularDistanciaPorCalles(
+                origen,
+                destino
+            );
+
+
+        distanciaDelivery =
+            distancia;
+
+
+        console.log(
+            "📍 Distancia por calles:",
+            distanciaDelivery.toFixed(2),
+            "km"
+        );
+
+
+        // =============================================
+        // MÁS DE 6 KM
+        // =============================================
+
+        if (
+            distanciaDelivery >
+            DISTANCIA_MAXIMA_DELIVERY
+        ) {
+
+            costoEnvio = 0;
+
+            actualizarResumenTotal();
+
+
+            mostrarMensaje(
+                `La dirección está a ${distanciaDelivery.toFixed(2)} km de Flame Burger. No realizamos delivery a más de 6 km.`,
+                "error"
+            );
+
+
+            return false;
+        }
+
+
+        // =============================================
+        // HASTA 3 KM
+        // =============================================
+
+        if (
+            distanciaDelivery <=
+            DISTANCIA_ENVIO_GRATIS
+        ) {
+
+            costoEnvio = 0;
+
+            actualizarResumenTotal();
+
+
+            mostrarMensaje(
+                `Estás a ${distanciaDelivery.toFixed(2)} km. ¡El envío es GRATIS!`,
+                "success"
+            );
+
+
+            return true;
+        }
+
+
+        // =============================================
+        // MÁS DE 3 HASTA 6 KM
+        // =============================================
+
+        costoEnvio =
+            PRECIO_ENVIO;
+
+
+        actualizarResumenTotal();
+
+
+        mostrarMensaje(
+            `Estás a ${distanciaDelivery.toFixed(2)} km. El envío tiene un costo de $${PRECIO_ENVIO}.`,
+            "success"
+        );
+
+
+        return true;
+
+    } catch (error) {
+
+        console.error(
+            "❌ ERROR CALCULANDO ENVÍO:",
+            error
+        );
+
+
+        costoEnvio = 0;
+
+        distanciaDelivery = null;
+
+        actualizarResumenTotal();
+
+
+        mostrarMensaje(
+            "No pudimos calcular la distancia de tu dirección. Revisá la dirección e intentá nuevamente."
+        );
+
+
+        return false;
+
+    } finally {
+
+        calculandoDistancia =
+            false;
+
+
+        if (
+            confirmarPedidoBtn
+        ) {
+
+            confirmarPedidoBtn.disabled =
+                false;
+
+            confirmarPedidoBtn.textContent =
+                "Confirmar pedido";
+        }
+
+    }
+}
+
+
+// =====================================================
+// EVENTO AL SALIR DEL CAMPO DIRECCIÓN
+// =====================================================
+
+if (direccionInput) {
+
+    direccionInput.addEventListener(
+        "blur",
+        async () => {
+
+            if (
+                obtenerEntrega() !==
+                "delivery"
+            ) {
+
+                return;
+            }
+
+
+            const direccion =
+                direccionInput.value.trim();
+
+
+            if (!direccion) {
+
+                return;
+            }
+
+
+            if (
+                !validarDireccion(
+                    direccion
+                )
+            ) {
+
+                return;
+            }
+
+
+            await calcularEnvio();
+
+        }
+    );
+
 }
 
 
@@ -438,7 +1285,9 @@ function validarFormulario() {
     }
 
 
-    if (nombre.length < 2) {
+    if (
+        nombre.length < 2
+    ) {
 
         mostrarMensaje(
             "El nombre debe tener al menos 2 caracteres."
@@ -466,7 +1315,11 @@ function validarFormulario() {
     }
 
 
-    if (!/^\d{9}$/.test(telefono)) {
+    if (
+        !/^\d{9}$/.test(
+            telefono
+        )
+    ) {
 
         mostrarMensaje(
             "El número de teléfono debe tener exactamente 9 números."
@@ -496,7 +1349,9 @@ function validarFormulario() {
     // DIRECCIÓN DELIVERY
     // =================================================
 
-    if (entrega === "delivery") {
+    if (
+        entrega === "delivery"
+    ) {
 
         if (!direccion) {
 
@@ -510,13 +1365,46 @@ function validarFormulario() {
         }
 
 
-        if (!validarDireccion(direccion)) {
+        if (
+            !validarDireccion(
+                direccion
+            )
+        ) {
 
             mostrarMensaje(
                 "Ingresa una dirección válida con calle y número de puerta. Ej: Av. Italia 1234."
             );
 
             direccionInput?.focus();
+
+            return false;
+        }
+
+
+        // La dirección debe haber sido calculada
+
+        if (
+            distanciaDelivery === null
+        ) {
+
+            mostrarMensaje(
+                "Primero debemos calcular la distancia de tu domicilio."
+            );
+
+            return false;
+        }
+
+
+        // Más de 6 km
+
+        if (
+            distanciaDelivery >
+            DISTANCIA_MAXIMA_DELIVERY
+        ) {
+
+            mostrarMensaje(
+                "No realizamos delivery a más de 6 km de Flame Burger."
+            );
 
             return false;
         }
@@ -542,25 +1430,34 @@ function validarFormulario() {
     // CAMBIO
     // =================================================
 
-    let necesitaCambio = false;
+    let necesitaCambio =
+        false;
 
-    let cambio = null;
+    let cambio =
+        null;
 
 
-    if (pago === "efectivo") {
+    if (
+        pago === "efectivo"
+    ) {
 
         necesitaCambio =
-            obtenerNecesitaCambio() === "si";
+            obtenerNecesitaCambio() ===
+            "si";
 
 
         if (necesitaCambio) {
 
             cambio =
-                Number(cambioInput?.value);
+                Number(
+                    cambioInput?.value
+                );
 
 
             if (
-                !Number.isFinite(cambio) ||
+                !Number.isFinite(
+                    cambio
+                ) ||
                 cambio <= 0
             ) {
 
@@ -574,32 +1471,28 @@ function validarFormulario() {
             }
 
 
-            // Calcular total
-            const totalCarrito =
-                carrito.reduce(
-                    (total, producto) => {
+            // IMPORTANTE:
+            // Ahora se usa el total
+            // incluyendo envío.
 
-                        return total +
-                            (
-                                Number(producto.precio) *
-                                Number(producto.cantidad)
-                            );
-
-                    },
-                    0
-                );
+            const totalPedido =
+                obtenerTotalFinal();
 
 
-            if (cambio < totalCarrito) {
+            if (
+                cambio <
+                totalPedido
+            ) {
 
                 mostrarMensaje(
-                    `El monto ingresado debe ser igual o mayor al total de $${totalCarrito.toFixed(2)}.`
+                    `El monto ingresado debe ser igual o mayor al total de $${totalPedido.toFixed(2)}.`
                 );
 
                 cambioInput?.focus();
 
                 return false;
             }
+
         }
 
     }
@@ -631,17 +1524,58 @@ async function confirmarPedido() {
 
     try {
 
-        mostrarMensaje("", null);
+        mostrarMensaje(
+            "",
+            null
+        );
 
 
-        if (!validarFormulario()) {
+        if (
+            !validarFormulario()
+        ) {
+
             return;
         }
 
 
-        if (confirmarPedidoBtn) {
+        // =================================================
+        // VOLVER A CALCULAR DELIVERY
+        // =================================================
 
-            confirmarPedidoBtn.disabled = true;
+        if (
+            obtenerEntrega() ===
+            "delivery"
+        ) {
+
+            const envioValido =
+                await calcularEnvio();
+
+
+            if (!envioValido) {
+
+                return;
+            }
+
+        }
+
+
+        // Volver a validar después
+        // del cálculo
+
+        if (
+            !validarFormulario()
+        ) {
+
+            return;
+        }
+
+
+        if (
+            confirmarPedidoBtn
+        ) {
+
+            confirmarPedidoBtn.disabled =
+                true;
 
             confirmarPedidoBtn.textContent =
                 "Procesando...";
@@ -651,19 +1585,24 @@ async function confirmarPedido() {
         const nombre =
             nombreInput.value.trim();
 
+
         const telefono =
             telefonoInput.value.trim();
 
+
         const direccion =
             direccionInput.value.trim();
+
 
         const comentarios =
             comentariosInput
                 ? comentariosInput.value.trim()
                 : "";
 
+
         const entrega =
             obtenerEntrega();
+
 
         const pago =
             obtenerPago();
@@ -671,12 +1610,15 @@ async function confirmarPedido() {
 
         const necesitaCambio =
             pago === "efectivo" &&
-            obtenerNecesitaCambio() === "si";
+            obtenerNecesitaCambio() ===
+            "si";
 
 
         const cambio =
             necesitaCambio
-                ? Number(cambioInput.value)
+                ? Number(
+                    cambioInput.value
+                )
                 : null;
 
 
@@ -706,17 +1648,32 @@ async function confirmarPedido() {
 
             cambio,
 
-            productos: carrito.map(
-                (producto) => ({
+            // Envío
 
-                    producto_id:
-                        producto.producto_id,
+            costo_envio:
+                Number(costoEnvio || 0),
 
-                    cantidad:
-                        Number(producto.cantidad)
+            distancia_delivery:
+                distanciaDelivery !== null
+                    ? Number(
+                        distanciaDelivery.toFixed(2)
+                    )
+                    : null,
 
-                })
-            )
+            productos:
+                carrito.map(
+                    (producto) => ({
+
+                        producto_id:
+                            producto.producto_id,
+
+                        cantidad:
+                            Number(
+                                producto.cantidad
+                            )
+
+                    })
+                )
 
         };
 
@@ -732,21 +1689,27 @@ async function confirmarPedido() {
         // =================================================
 
         const respuesta =
-            await fetch(API_PEDIDOS, {
+            await fetch(
+                API_PEDIDOS,
+                {
 
-                method: "POST",
+                    method:
+                        "POST",
 
-                headers: {
+                    headers: {
 
-                    "Content-Type":
-                        "application/json"
+                        "Content-Type":
+                            "application/json"
 
-                },
+                    },
 
-                body:
-                    JSON.stringify(pedido)
+                    body:
+                        JSON.stringify(
+                            pedido
+                        )
 
-            });
+                }
+            );
 
 
         const resultado =
@@ -777,7 +1740,9 @@ async function confirmarPedido() {
 
         localStorage.setItem(
             "flamePedidoActual",
-            JSON.stringify(resultado)
+            JSON.stringify(
+                resultado
+            )
         );
 
 
@@ -785,7 +1750,10 @@ async function confirmarPedido() {
         // MERCADO PAGO
         // =================================================
 
-        if (pago === "mercado_pago") {
+        if (
+            pago ===
+            "mercado_pago"
+        ) {
 
             mostrarMensaje(
                 "Generando pago con Mercado Pago...",
@@ -794,25 +1762,30 @@ async function confirmarPedido() {
 
 
             const respuestaPago =
-                await fetch(API_PAGOS, {
+                await fetch(
+                    API_PAGOS,
+                    {
 
-                    method: "POST",
+                        method:
+                            "POST",
 
-                    headers: {
+                        headers: {
 
-                        "Content-Type":
-                            "application/json"
+                            "Content-Type":
+                                "application/json"
 
-                    },
+                        },
 
-                    body: JSON.stringify({
+                        body:
+                            JSON.stringify({
 
-                        pedidoId:
-                            resultado.id
+                                pedidoId:
+                                    resultado.id
 
-                    })
+                            })
 
-                });
+                    }
+                );
 
 
             const resultadoPago =
@@ -831,7 +1804,9 @@ async function confirmarPedido() {
             }
 
 
-            if (!resultadoPago.initPoint) {
+            if (
+                !resultadoPago.initPoint
+            ) {
 
                 throw new Error(
                     "Mercado Pago no devolvió el enlace de pago."
@@ -841,7 +1816,9 @@ async function confirmarPedido() {
 
             localStorage.setItem(
                 "flamePagoActual",
-                JSON.stringify(resultadoPago)
+                JSON.stringify(
+                    resultadoPago
+                )
             );
 
 
@@ -852,6 +1829,7 @@ async function confirmarPedido() {
 
             window.location.href =
                 resultadoPago.initPoint;
+
 
             return;
         }
@@ -877,18 +1855,24 @@ async function confirmarPedido() {
             );
 
 
-            if (confirmarPedidoBtn) {
+            if (
+                confirmarPedidoBtn
+            ) {
 
                 confirmarPedidoBtn.textContent =
                     "Pedido realizado";
             }
 
 
-            setTimeout(() => {
+            setTimeout(
+                () => {
 
-                window.location.href = "/";
+                    window.location.href =
+                        "/";
 
-            }, 4000);
+                },
+                4000
+            );
 
 
             return;
@@ -908,7 +1892,9 @@ async function confirmarPedido() {
         );
 
 
-        if (confirmarPedidoBtn) {
+        if (
+            confirmarPedidoBtn
+        ) {
 
             confirmarPedidoBtn.disabled =
                 false;
@@ -926,7 +1912,9 @@ async function confirmarPedido() {
 // BOTÓN CONFIRMAR
 // =====================================================
 
-if (confirmarPedidoBtn) {
+if (
+    confirmarPedidoBtn
+) {
 
     confirmarPedidoBtn.addEventListener(
         "click",
@@ -947,46 +1935,61 @@ function procesarResultadoMercadoPago() {
             window.location.search
         );
 
+
     const estado =
         parametros.get("estado");
 
 
     if (!estado) {
+
         return;
     }
 
 
-    if (estado === "success") {
+    if (
+        estado ===
+        "success"
+    ) {
 
         mostrarMensaje(
             "¡Pago aprobado! Tu pedido fue recibido correctamente.",
             "success"
         );
 
+
         localStorage.removeItem(
             "flameCarrito"
         );
+
 
         return;
     }
 
 
-    if (estado === "pending") {
+    if (
+        estado ===
+        "pending"
+    ) {
 
         mostrarMensaje(
             "El pago está pendiente. Estamos esperando la confirmación de Mercado Pago.",
             "success"
         );
 
+
         return;
     }
 
 
-    if (estado === "failure") {
+    if (
+        estado ===
+        "failure"
+    ) {
 
         mostrarMensaje(
             "El pago no pudo completarse. Puedes intentarlo nuevamente."
         );
+
 
         return;
     }
