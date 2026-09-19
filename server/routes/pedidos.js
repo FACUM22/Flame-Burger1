@@ -3,8 +3,10 @@ const express = require("express");
 const router = express.Router();
 
 const pool = require("../database");
+
+
 // =====================================================
-// COMPROBAR SI LA PÁGINA ESTÁ ACTIVA
+// COMPROBAR SI LA PÁGINA ESTÁ ACTIVA MANUALMENTE
 // =====================================================
 
 async function paginaEstaActiva() {
@@ -16,32 +18,35 @@ async function paginaEstaActiva() {
         LIMIT 1
     `);
 
-
     if (resultado.rows.length === 0) {
 
         // Si no existe la configuración,
         // por seguridad dejamos la página activa.
 
         return true;
-
     }
 
-
     return resultado.rows[0].pagina_activa === true;
-
 }
+
 
 // =====================================================
 // HORARIO DEL RESTAURANTE
 // =====================================================
 // Flame Burger:
-// Lunes, martes y jueves a domingo: 20:00 a 00:00
-// Miércoles: cerrado
 //
-// Zona horaria: Montevideo
+// Lunes, martes y jueves a domingo:
+// 20:00 a 00:00
+//
+// Miércoles:
+// cerrado
+//
+// Zona horaria:
+// America/Montevideo
 // =====================================================
 
 function restauranteEstaAbierto() {
+
     const ahora = new Date();
 
     const partes = new Intl.DateTimeFormat("es-UY", {
@@ -52,20 +57,41 @@ function restauranteEstaAbierto() {
         hourCycle: "h23"
     }).formatToParts(ahora);
 
-    const dia = partes.find(p => p.type === "weekday")?.value;
-    const hora = Number(partes.find(p => p.type === "hour")?.value);
+    const dia =
+        partes.find(
+            p => p.type === "weekday"
+        )?.value;
 
-    // Miércoles cerrado
+    const hora =
+        Number(
+            partes.find(
+                p => p.type === "hour"
+            )?.value
+        );
+
+
+    // =====================================================
+    // MIÉRCOLES CERRADO
+    // =====================================================
+
     if (dia === "mié") {
         return false;
     }
 
-    // Abierto de 20:00 a 23:59
+
+    // =====================================================
+    // ABIERTO DE 20:00 A 23:59
+    // =====================================================
+
     if (hora >= 20 && hora <= 23) {
         return true;
     }
 
-    // 00:00 cerrado
+
+    // =====================================================
+    // RESTO DEL HORARIO CERRADO
+    // =====================================================
+
     return false;
 }
 
@@ -90,15 +116,16 @@ const ESTADOS_PERMITIDOS = [
 
 router.post("/", async (req, res) => {
 
+    const client = await pool.connect();
+
     try {
 
         // =====================================================
-        // COMPROBAR SI LA PÁGINA ESTÁ ACTIVA
+        // COMPROBAR SI LA PÁGINA ESTÁ ACTIVA MANUALMENTE
         // =====================================================
 
         const paginaActiva =
             await paginaEstaActiva();
-
 
         if (!paginaActiva) {
 
@@ -107,15 +134,24 @@ router.post("/", async (req, res) => {
                 mensaje:
                     "Flame Burger está cerrado y no está recibiendo pedidos en este momento."
             });
-
         }
 
 
         // =====================================================
-        // RESTO DE TU CÓDIGO ORIGINAL
+        // COMPROBAR HORARIO DEL RESTAURANTE
         // =====================================================
 
-        // acá continúa TODO lo que ya tenías
+        const restauranteAbierto =
+            restauranteEstaAbierto();
+
+        if (!restauranteAbierto) {
+
+            return res.status(403).json({
+                ok: false,
+                mensaje:
+                    "Flame Burger está cerrado en este momento. Los pedidos se reciben de 20:00 a 00:00. Los miércoles permanecemos cerrados."
+            });
+        }
 
 
         // =====================================================
@@ -146,9 +182,22 @@ router.post("/", async (req, res) => {
             });
         }
 
-        const nombreCliente = String(cliente.nombre || "").trim();
-        const telefonoCliente = String(cliente.telefono || "").trim();
-        const direccionCliente = String(cliente.direccion || "").trim();
+
+        const nombreCliente =
+            String(
+                cliente.nombre || ""
+            ).trim();
+
+        const telefonoCliente =
+            String(
+                cliente.telefono || ""
+            ).trim();
+
+        const direccionCliente =
+            String(
+                cliente.direccion || ""
+            ).trim();
+
 
         if (!nombreCliente) {
 
@@ -157,6 +206,7 @@ router.post("/", async (req, res) => {
                 error: "El nombre es obligatorio."
             });
         }
+
 
         if (!telefonoCliente) {
 
@@ -171,7 +221,12 @@ router.post("/", async (req, res) => {
         // VALIDAR ENTREGA
         // =====================================================
 
-        if (!["delivery", "retiro"].includes(entrega)) {
+        if (
+            ![
+                "delivery",
+                "retiro"
+            ].includes(entrega)
+        ) {
 
             return res.status(400).json({
                 ok: false,
@@ -179,11 +234,16 @@ router.post("/", async (req, res) => {
             });
         }
 
-        if (entrega === "delivery" && !direccionCliente) {
+
+        if (
+            entrega === "delivery" &&
+            !direccionCliente
+        ) {
 
             return res.status(400).json({
                 ok: false,
-                error: "La dirección es obligatoria para delivery."
+                error:
+                    "La dirección es obligatoria para delivery."
             });
         }
 
@@ -198,11 +258,15 @@ router.post("/", async (req, res) => {
             "mercado_pago"
         ];
 
-        if (!formasPagoPermitidas.includes(pago)) {
+
+        if (
+            !formasPagoPermitidas.includes(pago)
+        ) {
 
             return res.status(400).json({
                 ok: false,
-                error: "Forma de pago inválida."
+                error:
+                    "Forma de pago inválida."
             });
         }
 
@@ -211,36 +275,54 @@ router.post("/", async (req, res) => {
         // PRODUCTOS
         // =====================================================
 
-        if (!Array.isArray(productos) || productos.length === 0) {
+        if (
+            !Array.isArray(productos) ||
+            productos.length === 0
+        ) {
 
             return res.status(400).json({
                 ok: false,
-                error: "El pedido no contiene productos."
+                error:
+                    "El pedido no contiene productos."
             });
         }
+
+
+        // =====================================================
+        // INICIAR TRANSACCIÓN
+        // =====================================================
+
+        await client.query("BEGIN");
 
 
         // =====================================================
         // CLIENTE
         // =====================================================
 
-        await client.query("BEGIN");
-
         let clienteId;
 
-        const clienteExistente = await client.query(
-            `
-            SELECT id
-            FROM clientes
-            WHERE telefono = $1
-            LIMIT 1
-            `,
-            [telefonoCliente]
-        );
 
-        if (clienteExistente.rows.length > 0) {
+        const clienteExistente =
+            await client.query(
+                `
+                SELECT id
+                FROM clientes
+                WHERE telefono = $1
+                LIMIT 1
+                `,
+                [
+                    telefonoCliente
+                ]
+            );
 
-            clienteId = clienteExistente.rows[0].id;
+
+        if (
+            clienteExistente.rows.length > 0
+        ) {
+
+            clienteId =
+                clienteExistente.rows[0].id;
+
 
             await client.query(
                 `
@@ -259,30 +341,33 @@ router.post("/", async (req, res) => {
 
         } else {
 
-            const nuevoCliente = await client.query(
-                `
-                INSERT INTO clientes
-                (
-                    nombre,
-                    telefono,
-                    direccion
-                )
-                VALUES
-                (
-                    $1,
-                    $2,
-                    $3
-                )
-                RETURNING id
-                `,
-                [
-                    nombreCliente,
-                    telefonoCliente,
-                    direccionCliente || null
-                ]
-            );
+            const nuevoCliente =
+                await client.query(
+                    `
+                    INSERT INTO clientes
+                    (
+                        nombre,
+                        telefono,
+                        direccion
+                    )
+                    VALUES
+                    (
+                        $1,
+                        $2,
+                        $3
+                    )
+                    RETURNING id
+                    `,
+                    [
+                        nombreCliente,
+                        telefonoCliente,
+                        direccionCliente || null
+                    ]
+                );
 
-            clienteId = nuevoCliente.rows[0].id;
+
+            clienteId =
+                nuevoCliente.rows[0].id;
         }
 
 
@@ -291,54 +376,88 @@ router.post("/", async (req, res) => {
         // =====================================================
 
         let costoEnvioFinal = 0;
+
         let distanciaDeliveryFinal = null;
+
 
         if (entrega === "delivery") {
 
-            const distancia = Number(distancia_delivery);
-
-            if (!Number.isFinite(distancia) || distancia < 0) {
-
-                await client.query("ROLLBACK");
-
-                return res.status(400).json({
-                    ok: false,
-                    error: "No se pudo determinar correctamente la distancia del delivery."
-                });
-            }
-
-            distanciaDeliveryFinal = Number(
-                distancia.toFixed(2)
-            );
+            const distancia =
+                Number(
+                    distancia_delivery
+                );
 
 
-            // Más de 6 km
-            if (distanciaDeliveryFinal > 6) {
+            if (
+                !Number.isFinite(distancia) ||
+                distancia < 0
+            ) {
 
-                await client.query("ROLLBACK");
+                await client.query(
+                    "ROLLBACK"
+                );
 
                 return res.status(400).json({
                     ok: false,
-                    error: "La dirección está a más de 6 km. Flame Burger no realiza delivery hasta esa zona."
+                    error:
+                        "No se pudo determinar correctamente la distancia del delivery."
                 });
             }
 
 
-            // Hasta 3 km GRATIS
-            if (distanciaDeliveryFinal <= 3) {
+            distanciaDeliveryFinal =
+                Number(
+                    distancia.toFixed(2)
+                );
+
+
+            // =================================================
+            // MÁS DE 6 KM
+            // =================================================
+
+            if (
+                distanciaDeliveryFinal > 6
+            ) {
+
+                await client.query(
+                    "ROLLBACK"
+                );
+
+                return res.status(400).json({
+                    ok: false,
+                    error:
+                        "La dirección está a más de 6 km. Flame Burger no realiza delivery hasta esa zona."
+                });
+            }
+
+
+            // =================================================
+            // HASTA 3 KM GRATIS
+            // =================================================
+
+            if (
+                distanciaDeliveryFinal <= 3
+            ) {
 
                 costoEnvioFinal = 0;
 
             } else {
 
-                // Más de 3 km y hasta 6 km
+                // =================================================
+                // MÁS DE 3 KM Y HASTA 6 KM
+                // =================================================
+
                 costoEnvioFinal = 100;
             }
 
         } else {
 
-            // Retiro en local
+            // =================================================
+            // RETIRO EN LOCAL
+            // =================================================
+
             costoEnvioFinal = 0;
+
             distanciaDeliveryFinal = null;
         }
 
@@ -354,101 +473,142 @@ router.post("/", async (req, res) => {
 
         for (const item of productos) {
 
-            const productoId = Number(item.id);
-            const cantidad = Number(item.cantidad);
+            const productoId =
+                Number(item.id);
+
+            const cantidad =
+                Number(item.cantidad);
+
 
             if (
                 !Number.isInteger(productoId) ||
                 productoId <= 0
             ) {
 
-                await client.query("ROLLBACK");
+                await client.query(
+                    "ROLLBACK"
+                );
 
                 return res.status(400).json({
                     ok: false,
-                    error: "Producto inválido."
+                    error:
+                        "Producto inválido."
                 });
             }
+
 
             if (
                 !Number.isInteger(cantidad) ||
                 cantidad <= 0
             ) {
 
-                await client.query("ROLLBACK");
+                await client.query(
+                    "ROLLBACK"
+                );
 
                 return res.status(400).json({
                     ok: false,
-                    error: "Cantidad de producto inválida."
+                    error:
+                        "Cantidad de producto inválida."
                 });
             }
 
 
-            // =====================================================
+            // =================================================
             // BUSCAR PRODUCTO
-            // =====================================================
+            // =================================================
 
-            const productoResult = await client.query(
-                `
-                SELECT
-                    id,
-                    nombre,
-                    precio,
-                    disponible
-                FROM productos
-                WHERE id = $1
-                `,
-                [productoId]
-            );
+            const productoResult =
+                await client.query(
+                    `
+                    SELECT
+                        id,
+                        nombre,
+                        precio,
+                        disponible
+                    FROM productos
+                    WHERE id = $1
+                    `,
+                    [
+                        productoId
+                    ]
+                );
 
-            if (productoResult.rows.length === 0) {
 
-                await client.query("ROLLBACK");
+            if (
+                productoResult.rows.length === 0
+            ) {
+
+                await client.query(
+                    "ROLLBACK"
+                );
 
                 return res.status(400).json({
                     ok: false,
-                    error: `El producto ${productoId} no existe.`
+                    error:
+                        `El producto ${productoId} no existe.`
                 });
             }
 
-            const producto = productoResult.rows[0];
+
+            const producto =
+                productoResult.rows[0];
 
 
-            // =====================================================
+            // =================================================
             // DISPONIBILIDAD
-            // =====================================================
+            // =================================================
 
-            if (!producto.disponible) {
+            if (
+                !producto.disponible
+            ) {
 
-                await client.query("ROLLBACK");
+                await client.query(
+                    "ROLLBACK"
+                );
 
                 return res.status(400).json({
                     ok: false,
-                    error: `El producto "${producto.nombre}" no está disponible.`
+                    error:
+                        `El producto "${producto.nombre}" no está disponible.`
                 });
             }
 
 
-            // =====================================================
+            // =================================================
             // PRECIO
-            // =====================================================
+            // =================================================
 
-            const precio = Number(producto.precio);
+            const precio =
+                Number(
+                    producto.precio
+                );
 
-            if (!Number.isFinite(precio)) {
 
-                await client.query("ROLLBACK");
+            if (
+                !Number.isFinite(precio)
+            ) {
+
+                await client.query(
+                    "ROLLBACK"
+                );
 
                 return res.status(500).json({
                     ok: false,
-                    error: `El precio del producto "${producto.nombre}" no es válido.`
+                    error:
+                        `El precio del producto "${producto.nombre}" no es válido.`
                 });
             }
 
 
-            const subtotal = Number(
-                (precio * cantidad).toFixed(2)
-            );
+            const subtotal =
+                Number(
+                    (
+                        precio *
+                        cantidad
+                    ).toFixed(2)
+                );
+
 
             total += subtotal;
 
@@ -467,9 +627,13 @@ router.post("/", async (req, res) => {
         // SUMAR DELIVERY AL TOTAL
         // =====================================================
 
-        total = Number(
-            (total + costoEnvioFinal).toFixed(2)
-        );
+        total =
+            Number(
+                (
+                    total +
+                    costoEnvioFinal
+                ).toFixed(2)
+            );
 
 
         // =====================================================
@@ -481,38 +645,56 @@ router.post("/", async (req, res) => {
                 ? Boolean(necesitaCambio)
                 : false;
 
+
         let cambioDeFinal = null;
 
-        if (pago === "efectivo" && necesitaCambioFinal) {
 
-            const cambioNumero = Number(cambio);
+        if (
+            pago === "efectivo" &&
+            necesitaCambioFinal
+        ) {
+
+            const cambioNumero =
+                Number(cambio);
+
 
             if (
                 !Number.isFinite(cambioNumero) ||
                 cambioNumero <= 0
             ) {
 
-                await client.query("ROLLBACK");
+                await client.query(
+                    "ROLLBACK"
+                );
 
                 return res.status(400).json({
                     ok: false,
-                    error: "Ingresá correctamente el monto con el que se va a pagar."
+                    error:
+                        "Ingresá correctamente el monto con el que se va a pagar."
                 });
             }
 
-            if (cambioNumero < total) {
 
-                await client.query("ROLLBACK");
+            if (
+                cambioNumero < total
+            ) {
+
+                await client.query(
+                    "ROLLBACK"
+                );
 
                 return res.status(400).json({
                     ok: false,
-                    error: `El monto ingresado ($${cambioNumero}) es menor al total del pedido ($${total}).`
+                    error:
+                        `El monto ingresado ($${cambioNumero}) es menor al total del pedido ($${total}).`
                 });
             }
 
-            cambioDeFinal = Number(
-                cambioNumero.toFixed(2)
-            );
+
+            cambioDeFinal =
+                Number(
+                    cambioNumero.toFixed(2)
+                );
         }
 
 
@@ -530,66 +712,71 @@ router.post("/", async (req, res) => {
         // CREAR PEDIDO
         // =====================================================
 
-        const pedidoResult = await client.query(
-            `
-            INSERT INTO pedidos
-            (
-                cliente_id,
-                tipo_entrega,
-                forma_pago,
-                estado,
-                total,
-                necesita_cambio,
-                cambio_de,
-                costo_envio,
-                distancia_delivery
-            )
-            VALUES
-            (
-                $1,
-                $2,
-                $3,
-                $4,
-                $5,
-                $6,
-                $7,
-                $8,
-                $9
-            )
-            RETURNING
-                id,
-                total,
-                estado,
-                forma_pago,
-                tipo_entrega,
-                necesita_cambio,
-                cambio_de,
-                costo_envio,
-                distancia_delivery,
-                creado_en
-            `,
-            [
-                clienteId,
-                entrega,
-                pago,
-                estadoInicial,
-                total,
-                necesitaCambioFinal,
-                cambioDeFinal,
-                costoEnvioFinal,
-                distanciaDeliveryFinal
-            ]
-        );
+        const pedidoResult =
+            await client.query(
+                `
+                INSERT INTO pedidos
+                (
+                    cliente_id,
+                    tipo_entrega,
+                    forma_pago,
+                    estado,
+                    total,
+                    necesita_cambio,
+                    cambio_de,
+                    costo_envio,
+                    distancia_delivery
+                )
+                VALUES
+                (
+                    $1,
+                    $2,
+                    $3,
+                    $4,
+                    $5,
+                    $6,
+                    $7,
+                    $8,
+                    $9
+                )
+                RETURNING
+                    id,
+                    total,
+                    estado,
+                    forma_pago,
+                    tipo_entrega,
+                    necesita_cambio,
+                    cambio_de,
+                    costo_envio,
+                    distancia_delivery,
+                    creado_en
+                `,
+                [
+                    clienteId,
+                    entrega,
+                    pago,
+                    estadoInicial,
+                    total,
+                    necesitaCambioFinal,
+                    cambioDeFinal,
+                    costoEnvioFinal,
+                    distanciaDeliveryFinal
+                ]
+            );
 
 
-        const pedido = pedidoResult.rows[0];
+        const pedido =
+            pedidoResult.rows[0];
 
 
         // =====================================================
         // DETALLE DEL PEDIDO
         // =====================================================
 
-        for (const producto of productosFinales) {
+        for (
+            const producto
+            of productosFinales
+        ) {
 
             await client.query(
                 `
@@ -625,67 +812,77 @@ router.post("/", async (req, res) => {
         // CONFIRMAR TRANSACCIÓN
         // =====================================================
 
-        await client.query("COMMIT");
+        await client.query(
+            "COMMIT"
+        );
 
 
         // =====================================================
         // DATOS COMPLETOS PARA EL ADMIN
         // =====================================================
 
-        const pedidoCompletoResult = await pool.query(
-            `
-            SELECT
-                p.id,
-                p.cliente_id,
-                c.nombre AS cliente_nombre,
-                c.telefono,
-                c.direccion,
-                p.tipo_entrega,
-                p.forma_pago,
-                p.estado,
-                p.total,
-                p.costo_envio,
-                p.distancia_delivery,
-                p.observaciones,
-                p.necesita_cambio,
-                p.cambio_de,
-                p.creado_en
-            FROM pedidos p
-            LEFT JOIN clientes c
-                ON c.id = p.cliente_id
-            WHERE p.id = $1
-            `,
-            [pedido.id]
-        );
+        const pedidoCompletoResult =
+            await pool.query(
+                `
+                SELECT
+                    p.id,
+                    p.cliente_id,
+                    c.nombre AS cliente_nombre,
+                    c.telefono,
+                    c.direccion,
+                    p.tipo_entrega,
+                    p.forma_pago,
+                    p.estado,
+                    p.total,
+                    p.costo_envio,
+                    p.distancia_delivery,
+                    p.observaciones,
+                    p.necesita_cambio,
+                    p.cambio_de,
+                    p.creado_en
+                FROM pedidos p
+                LEFT JOIN clientes c
+                    ON c.id = p.cliente_id
+                WHERE p.id = $1
+                `,
+                [
+                    pedido.id
+                ]
+            );
 
 
-        const pedidoCompleto = pedidoCompletoResult.rows[0];
+        const pedidoCompleto =
+            pedidoCompletoResult.rows[0];
 
 
         // =====================================================
         // PRODUCTOS DEL PEDIDO
         // =====================================================
 
-        const detalleResult = await pool.query(
-            `
-            SELECT
-                dp.id,
-                dp.producto_id,
-                p.nombre,
-                dp.cantidad,
-                dp.precio_unitario,
-                dp.subtotal
-            FROM detalle_pedidos dp
-            LEFT JOIN productos p
-                ON p.id = dp.producto_id
-            WHERE dp.pedido_id = $1
-            ORDER BY dp.id ASC
-            `,
-            [pedido.id]
-        );
+        const detalleResult =
+            await pool.query(
+                `
+                SELECT
+                    dp.id,
+                    dp.producto_id,
+                    p.nombre,
+                    dp.cantidad,
+                    dp.precio_unitario,
+                    dp.subtotal
+                FROM detalle_pedidos dp
+                LEFT JOIN productos p
+                    ON p.id = dp.producto_id
+                WHERE dp.pedido_id = $1
+                ORDER BY dp.id ASC
+                `,
+                [
+                    pedido.id
+                ]
+            );
 
 
-        pedidoCompleto.productos = detalleResult.rows;
+        pedidoCompleto.productos =
+            detalleResult.rows;
 
 
         // =====================================================
@@ -710,26 +907,36 @@ router.post("/", async (req, res) => {
             pedido: pedidoCompleto
         });
 
+
     } catch (error) {
 
         try {
-            await client.query("ROLLBACK");
+
+            await client.query(
+                "ROLLBACK"
+            );
+
         } catch (rollbackError) {
+
             console.error(
                 "Error haciendo ROLLBACK:",
                 rollbackError
             );
         }
 
+
         console.error(
             "ERROR CREANDO PEDIDO:",
             error
         );
 
+
         return res.status(500).json({
             ok: false,
-            error: "Error interno al crear el pedido."
+            error:
+                "Error interno al crear el pedido."
         });
+
 
     } finally {
 
@@ -746,39 +953,169 @@ router.get("/", async (req, res) => {
 
     try {
 
-        const result = await pool.query(
-            `
-            SELECT
-                p.id,
-                p.cliente_id,
-                c.nombre AS cliente_nombre,
-                c.telefono,
-                c.direccion,
-                p.tipo_entrega,
-                p.forma_pago,
-                p.estado,
-                p.total,
-                p.costo_envio,
-                p.distancia_delivery,
-                p.observaciones,
-                p.necesita_cambio,
-                p.cambio_de,
-                p.creado_en
-            FROM pedidos p
-            LEFT JOIN clientes c
-                ON c.id = p.cliente_id
-            ORDER BY p.creado_en DESC
-            `
-        );
+        const result =
+            await pool.query(
+                `
+                SELECT
+                    p.id,
+                    p.cliente_id,
+                    c.nombre AS cliente_nombre,
+                    c.telefono,
+                    c.direccion,
+                    p.tipo_entrega,
+                    p.forma_pago,
+                    p.estado,
+                    p.total,
+                    p.costo_envio,
+                    p.distancia_delivery,
+                    p.observaciones,
+                    p.necesita_cambio,
+                    p.cambio_de,
+                    p.creado_en
+                FROM pedidos p
+                LEFT JOIN clientes c
+                    ON c.id = p.cliente_id
+                ORDER BY p.creado_en DESC
+                `
+            );
 
 
         // =====================================================
         // AGREGAR PRODUCTOS
         // =====================================================
 
-        for (const pedido of result.rows) {
+        for (
+            const pedido
+            of result.rows
+        ) {
 
-            const detalleResult = await pool.query(
+            const detalleResult =
+                await pool.query(
+                    `
+                    SELECT
+                        dp.id,
+                        dp.producto_id,
+                        p.nombre,
+                        dp.cantidad,
+                        dp.precio_unitario,
+                        dp.subtotal
+                    FROM detalle_pedidos dp
+                    LEFT JOIN productos p
+                        ON p.id = dp.producto_id
+                    WHERE dp.pedido_id = $1
+                    ORDER BY dp.id ASC
+                    `,
+                    [
+                        pedido.id
+                    ]
+                );
+
+
+            pedido.productos =
+                detalleResult.rows;
+        }
+
+
+        return res.json({
+            ok: true,
+            pedidos: result.rows
+        });
+
+
+    } catch (error) {
+
+        console.error(
+            "ERROR OBTENIENDO PEDIDOS:",
+            error
+        );
+
+
+        return res.status(500).json({
+            ok: false,
+            error:
+                "Error al obtener los pedidos."
+        });
+    }
+});
+
+
+// =====================================================
+// OBTENER UN PEDIDO
+// =====================================================
+
+router.get("/:id", async (req, res) => {
+
+    try {
+
+        const id =
+            Number(req.params.id);
+
+
+        if (
+            !Number.isInteger(id) ||
+            id <= 0
+        ) {
+
+            return res.status(400).json({
+                ok: false,
+                error:
+                    "ID de pedido inválido."
+            });
+        }
+
+
+        const result =
+            await pool.query(
+                `
+                SELECT
+                    p.id,
+                    p.cliente_id,
+                    c.nombre AS cliente_nombre,
+                    c.telefono,
+                    c.direccion,
+                    p.tipo_entrega,
+                    p.forma_pago,
+                    p.estado,
+                    p.total,
+                    p.costo_envio,
+                    p.distancia_delivery,
+                    p.observaciones,
+                    p.necesita_cambio,
+                    p.cambio_de,
+                    p.creado_en
+                FROM pedidos p
+                LEFT JOIN clientes c
+                    ON c.id = p.cliente_id
+                WHERE p.id = $1
+                `,
+                [
+                    id
+                ]
+            );
+
+
+        if (
+            result.rows.length === 0
+        ) {
+
+            return res.status(404).json({
+                ok: false,
+                error:
+                    "Pedido no encontrado."
+            });
+        }
+
+
+        const pedido =
+            result.rows[0];
+
+
+        // =====================================================
+        // PRODUCTOS
+        // =====================================================
+
+        const detalleResult =
+            await pool.query(
                 `
                 SELECT
                     dp.id,
@@ -793,121 +1130,21 @@ router.get("/", async (req, res) => {
                 WHERE dp.pedido_id = $1
                 ORDER BY dp.id ASC
                 `,
-                [pedido.id]
+                [
+                    id
+                ]
             );
 
-            pedido.productos = detalleResult.rows;
-        }
 
-
-        return res.json({
-            ok: true,
-            pedidos: result.rows
-        });
-
-    } catch (error) {
-
-        console.error(
-            "ERROR OBTENIENDO PEDIDOS:",
-            error
-        );
-
-        return res.status(500).json({
-            ok: false,
-            error: "Error al obtener los pedidos."
-        });
-    }
-});
-
-
-// =====================================================
-// OBTENER UN PEDIDO
-// =====================================================
-
-router.get("/:id", async (req, res) => {
-
-    try {
-
-        const id = Number(req.params.id);
-
-        if (!Number.isInteger(id) || id <= 0) {
-
-            return res.status(400).json({
-                ok: false,
-                error: "ID de pedido inválido."
-            });
-        }
-
-
-        const result = await pool.query(
-            `
-            SELECT
-                p.id,
-                p.cliente_id,
-                c.nombre AS cliente_nombre,
-                c.telefono,
-                c.direccion,
-                p.tipo_entrega,
-                p.forma_pago,
-                p.estado,
-                p.total,
-                p.costo_envio,
-                p.distancia_delivery,
-                p.observaciones,
-                p.necesita_cambio,
-                p.cambio_de,
-                p.creado_en
-            FROM pedidos p
-            LEFT JOIN clientes c
-                ON c.id = p.cliente_id
-            WHERE p.id = $1
-            `,
-            [id]
-        );
-
-
-        if (result.rows.length === 0) {
-
-            return res.status(404).json({
-                ok: false,
-                error: "Pedido no encontrado."
-            });
-        }
-
-
-        const pedido = result.rows[0];
-
-
-        // =====================================================
-        // PRODUCTOS
-        // =====================================================
-
-        const detalleResult = await pool.query(
-            `
-            SELECT
-                dp.id,
-                dp.producto_id,
-                p.nombre,
-                dp.cantidad,
-                dp.precio_unitario,
-                dp.subtotal
-            FROM detalle_pedidos dp
-            LEFT JOIN productos p
-                ON p.id = dp.producto_id
-            WHERE dp.pedido_id = $1
-            ORDER BY dp.id ASC
-            `,
-            [id]
-        );
-
-
-        pedido.productos = detalleResult.rows;
+        pedido.productos =
+            detalleResult.rows;
 
 
         return res.json({
             ok: true,
             pedido
         });
+
 
     } catch (error) {
 
@@ -916,9 +1153,11 @@ router.get("/:id", async (req, res) => {
             error
         );
 
+
         return res.status(500).json({
             ok: false,
-            error: "Error al obtener el pedido."
+            error:
+                "Error al obtener el pedido."
         });
     }
 });
@@ -932,49 +1171,65 @@ router.patch("/:id/estado", async (req, res) => {
 
     try {
 
-        const id = Number(req.params.id);
-        const { estado } = req.body;
+        const id =
+            Number(req.params.id);
+
+        const { estado } =
+            req.body;
 
 
-        if (!Number.isInteger(id) || id <= 0) {
+        if (
+            !Number.isInteger(id) ||
+            id <= 0
+        ) {
 
             return res.status(400).json({
                 ok: false,
-                error: "ID de pedido inválido."
+                error:
+                    "ID de pedido inválido."
             });
         }
 
 
-        if (!ESTADOS_PERMITIDOS.includes(estado)) {
-
-            return res.status(400).json({
-                ok: false,
-                error: "Estado inválido."
-            });
-        }
-
-
-        const result = await pool.query(
-            `
-            UPDATE pedidos
-            SET estado = $1
-            WHERE id = $2
-            RETURNING
-                id,
+        if (
+            !ESTADOS_PERMITIDOS.includes(
                 estado
-            `,
-            [
-                estado,
-                id
-            ]
-        );
+            )
+        ) {
+
+            return res.status(400).json({
+                ok: false,
+                error:
+                    "Estado inválido."
+            });
+        }
 
 
-        if (result.rows.length === 0) {
+        const result =
+            await pool.query(
+                `
+                UPDATE pedidos
+                SET estado = $1
+                WHERE id = $2
+                RETURNING
+                    id,
+                    estado
+                `,
+                [
+                    estado,
+                    id
+                ]
+            );
+
+
+        if (
+            result.rows.length === 0
+        ) {
 
             return res.status(404).json({
                 ok: false,
-                error: "Pedido no encontrado."
+                error:
+                    "Pedido no encontrado."
             });
         }
 
@@ -994,8 +1249,10 @@ router.patch("/:id/estado", async (req, res) => {
 
         return res.json({
             ok: true,
-            pedido: result.rows[0]
+            pedido:
+                result.rows[0]
         });
+
 
     } catch (error) {
 
@@ -1004,9 +1261,11 @@ router.patch("/:id/estado", async (req, res) => {
             error
         );
 
+
         return res.status(500).json({
             ok: false,
-            error: "Error al cambiar el estado del pedido."
+            error:
+                "Error al cambiar el estado del pedido."
         });
     }
 });
@@ -1020,35 +1279,47 @@ router.patch("/:id/cancelar", async (req, res) => {
 
     try {
 
-        const id = Number(req.params.id);
+        const id =
+            Number(req.params.id);
 
-        if (!Number.isInteger(id) || id <= 0) {
+
+        if (
+            !Number.isInteger(id) ||
+            id <= 0
+        ) {
 
             return res.status(400).json({
                 ok: false,
-                error: "ID de pedido inválido."
+                error:
+                    "ID de pedido inválido."
             });
         }
 
 
-        const result = await pool.query(
-            `
-            UPDATE pedidos
-            SET estado = 'cancelado'
-            WHERE id = $1
-            RETURNING
-                id,
-                estado
-            `,
-            [id]
-        );
+        const result =
+            await pool.query(
+                `
+                UPDATE pedidos
+                SET estado = 'cancelado'
+                WHERE id = $1
+                RETURNING
+                    id,
+                    estado
+                `,
+                [
+                    id
+                ]
+            );
 
 
-        if (result.rows.length === 0) {
+        if (
+            result.rows.length === 0
+        ) {
 
             return res.status(404).json({
                 ok: false,
-                error: "Pedido no encontrado."
+                error:
+                    "Pedido no encontrado."
             });
         }
 
@@ -1064,8 +1335,10 @@ router.patch("/:id/cancelar", async (req, res) => {
 
         return res.json({
             ok: true,
-            pedido: result.rows[0]
+            pedido:
+                result.rows[0]
         });
+
 
     } catch (error) {
 
@@ -1074,9 +1347,11 @@ router.patch("/:id/cancelar", async (req, res) => {
             error
         );
 
+
         return res.status(500).json({
             ok: false,
-            error: "Error al cancelar el pedido."
+            error:
+                "Error al cancelar el pedido."
         });
     }
 });
@@ -1090,80 +1365,97 @@ router.get("/:id/imprimir", async (req, res) => {
 
     try {
 
-        const id = Number(req.params.id);
+        const id =
+            Number(req.params.id);
 
-        if (!Number.isInteger(id) || id <= 0) {
+
+        if (
+            !Number.isInteger(id) ||
+            id <= 0
+        ) {
 
             return res.status(400).json({
                 ok: false,
-                error: "ID de pedido inválido."
+                error:
+                    "ID de pedido inválido."
             });
         }
 
 
-        const pedidoResult = await pool.query(
-            `
-            SELECT
-                p.id,
-                p.cliente_id,
-                c.nombre AS cliente_nombre,
-                c.telefono,
-                c.direccion,
-                p.tipo_entrega,
-                p.forma_pago,
-                p.estado,
-                p.total,
-                p.costo_envio,
-                p.distancia_delivery,
-                p.observaciones,
-                p.necesita_cambio,
-                p.cambio_de,
-                p.creado_en
-            FROM pedidos p
-            LEFT JOIN clientes c
-                ON c.id = p.cliente_id
-            WHERE p.id = $1
-            `,
-            [id]
-        );
+        const pedidoResult =
+            await pool.query(
+                `
+                SELECT
+                    p.id,
+                    p.cliente_id,
+                    c.nombre AS cliente_nombre,
+                    c.telefono,
+                    c.direccion,
+                    p.tipo_entrega,
+                    p.forma_pago,
+                    p.estado,
+                    p.total,
+                    p.costo_envio,
+                    p.distancia_delivery,
+                    p.observaciones,
+                    p.necesita_cambio,
+                    p.cambio_de,
+                    p.creado_en
+                FROM pedidos p
+                LEFT JOIN clientes c
+                    ON c.id = p.cliente_id
+                WHERE p.id = $1
+                `,
+                [
+                    id
+                ]
+            );
 
 
-        if (pedidoResult.rows.length === 0) {
+        if (
+            pedidoResult.rows.length === 0
+        ) {
 
             return res.status(404).json({
                 ok: false,
-                error: "Pedido no encontrado."
+                error:
+                    "Pedido no encontrado."
             });
         }
 
 
-        const pedido = pedidoResult.rows[0];
+        const pedido =
+            pedidoResult.rows[0];
 
 
         // =====================================================
         // PRODUCTOS
         // =====================================================
 
-        const detalleResult = await pool.query(
-            `
-            SELECT
-                dp.id,
-                dp.producto_id,
-                p.nombre,
-                dp.cantidad,
-                dp.precio_unitario,
-                dp.subtotal
-            FROM detalle_pedidos dp
-            LEFT JOIN productos p
-                ON p.id = dp.producto_id
-            WHERE dp.pedido_id = $1
-            ORDER BY dp.id ASC
-            `,
-            [id]
-        );
+        const detalleResult =
+            await pool.query(
+                `
+                SELECT
+                    dp.id,
+                    dp.producto_id,
+                    p.nombre,
+                    dp.cantidad,
+                    dp.precio_unitario,
+                    dp.subtotal
+                FROM detalle_pedidos dp
+                LEFT JOIN productos p
+                    ON p.id = dp.producto_id
+                WHERE dp.pedido_id = $1
+                ORDER BY dp.id ASC
+                `,
+                [
+                    id
+                ]
+            );
 
 
-        pedido.productos = detalleResult.rows;
+        pedido.productos =
+            detalleResult.rows;
 
 
         // =====================================================
@@ -1184,6 +1476,7 @@ router.get("/:id/imprimir", async (req, res) => {
             pedido
         });
 
+
     } catch (error) {
 
         console.error(
@@ -1191,9 +1484,11 @@ router.get("/:id/imprimir", async (req, res) => {
             error
         );
 
+
         return res.status(500).json({
             ok: false,
-            error: "Error al obtener el pedido para imprimir."
+            error:
+                "Error al obtener el pedido para imprimir."
         });
     }
 });
