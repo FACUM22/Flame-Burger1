@@ -2,34 +2,34 @@
 // ESTADO MANUAL DE LA PÁGINA - FLAME BURGER
 // =====================================================
 
-let paginaActiva = true;
+let flamePaginaActiva = true;
 
 
 // =====================================================
 // ELEMENTOS
 // =====================================================
 
-const avisoCerrado =
+const flameAvisoCerrado =
     document.getElementById("avisoCerrado");
 
-const mensajeCerrado =
+const flameMensajeCerrado =
     document.getElementById("mensajeCerrado");
 
-const botonPedirAhora =
+const flameBotonPedirAhora =
     document.querySelector(".hero-button");
 
-const botonCheckout =
+const flameBotonCheckout =
     document.getElementById("irCheckout");
 
-const botonAbrirCarrito =
+const flameBotonAbrirCarrito =
     document.getElementById("abrirCarrito");
 
 
 // =====================================================
-// COMPROBAR ESTADO
+// COMPROBAR ESTADO EN EL SERVIDOR
 // =====================================================
 
-async function comprobarEstadoPagina() {
+async function flameComprobarEstadoPagina() {
 
     try {
 
@@ -45,7 +45,7 @@ async function comprobarEstadoPagina() {
         if (!respuesta.ok) {
 
             throw new Error(
-                "No se pudo consultar el estado."
+                "No se pudo consultar el estado de la página."
             );
         }
 
@@ -54,11 +54,11 @@ async function comprobarEstadoPagina() {
             await respuesta.json();
 
 
-        paginaActiva =
+        flamePaginaActiva =
             datos.pagina_activa === true;
 
 
-        actualizarPagina();
+        flameActualizarPagina();
 
 
     } catch (error) {
@@ -72,36 +72,36 @@ async function comprobarEstadoPagina() {
 
 
 // =====================================================
-// ACTUALIZAR PÁGINA
+// ACTUALIZAR ESTADO VISUAL
 // =====================================================
 
-function actualizarPagina() {
+function flameActualizarPagina() {
 
-    if (paginaActiva) {
+    if (flamePaginaActiva) {
 
         // =============================================
         // PÁGINA ENCENDIDA
         // =============================================
 
-        if (avisoCerrado) {
+        if (flameAvisoCerrado) {
 
-            avisoCerrado.style.display =
+            flameAvisoCerrado.style.display =
                 "none";
         }
 
 
-        activarBoton(
-            botonPedirAhora
+        flameActivarBoton(
+            flameBotonPedirAhora
         );
 
 
-        activarBoton(
-            botonCheckout
+        flameActivarBoton(
+            flameBotonCheckout
         );
 
 
-        activarBoton(
-            botonAbrirCarrito
+        flameActivarBoton(
+            flameBotonAbrirCarrito
         );
 
 
@@ -111,44 +111,44 @@ function actualizarPagina() {
         // PÁGINA APAGADA
         // =============================================
 
-        if (avisoCerrado) {
+        if (flameAvisoCerrado) {
 
-            avisoCerrado.style.display =
+            flameAvisoCerrado.style.display =
                 "flex";
         }
 
 
-        if (mensajeCerrado) {
+        if (flameMensajeCerrado) {
 
-            mensajeCerrado.textContent =
+            flameMensajeCerrado.textContent =
                 "En este momento no estamos tomando pedidos. Volvé a visitarnos más tarde.";
         }
 
 
-        desactivarBoton(
-            botonPedirAhora
+        flameDesactivarBoton(
+            flameBotonPedirAhora
         );
 
 
-        desactivarBoton(
-            botonCheckout
+        flameDesactivarBoton(
+            flameBotonCheckout
         );
 
 
-        desactivarBoton(
-            botonAbrirCarrito
+        flameDesactivarBoton(
+            flameBotonAbrirCarrito
         );
 
 
-        const carritoOverlay =
+        const flameCarritoOverlay =
             document.getElementById(
                 "carritoOverlay"
             );
 
 
-        if (carritoOverlay) {
+        if (flameCarritoOverlay) {
 
-            carritoOverlay.classList.remove(
+            flameCarritoOverlay.classList.remove(
                 "active"
             );
         }
@@ -160,7 +160,7 @@ function actualizarPagina() {
 // DESACTIVAR BOTÓN
 // =====================================================
 
-function desactivarBoton(boton) {
+function flameDesactivarBoton(boton) {
 
     if (!boton) {
         return;
@@ -187,7 +187,7 @@ function desactivarBoton(boton) {
 // ACTIVAR BOTÓN
 // =====================================================
 
-function activarBoton(boton) {
+function flameActivarBoton(boton) {
 
     if (!boton) {
         return;
@@ -209,14 +209,14 @@ function activarBoton(boton) {
 
 
 // =====================================================
-// BLOQUEAR CLICS CUANDO ESTÁ APAGADA
+// BLOQUEAR CLICS CUANDO LA PÁGINA ESTÁ APAGADA
 // =====================================================
 
 document.addEventListener(
     "click",
     function (evento) {
 
-        if (paginaActiva) {
+        if (flamePaginaActiva) {
             return;
         }
 
@@ -247,17 +247,17 @@ document.addEventListener(
 
 
 // =====================================================
-// COMPROBAR AL CARGAR
+// INICIAR
 // =====================================================
 
-comprobarEstadoPagina();
+flameComprobarEstadoPagina();
 
 
 // =====================================================
-// COMPROBAR CADA 10 SEGUNDOS
+// ACTUALIZAR CADA 10 SEGUNDOS
 // =====================================================
 
 setInterval(
-    comprobarEstadoPagina,
+    flameComprobarEstadoPagina,
     10000
 );
