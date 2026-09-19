@@ -1,5 +1,5 @@
 // =====================================================
-// CONTROL DE ESTADO DE LA PÁGINA
+// ESTADO DE LA PÁGINA - FLAME BURGER
 // =====================================================
 
 let paginaActiva = true;
@@ -26,7 +26,66 @@ const botonAbrirCarrito =
 
 
 // =====================================================
-// CONSULTAR ESTADO
+// COMPROBAR HORARIO DE FLAME BURGER
+// =====================================================
+
+function restauranteEstaAbierto() {
+
+    const ahora = new Date();
+
+    // Convertimos la hora actual a Montevideo
+    const partes =
+        new Intl.DateTimeFormat("es-UY", {
+            timeZone: "America/Montevideo",
+            weekday: "short",
+            hour: "2-digit",
+            minute: "2-digit",
+            hourCycle: "h23"
+        }).formatToParts(ahora);
+
+
+    const dia =
+        partes.find(
+            parte => parte.type === "weekday"
+        )?.value;
+
+
+    const hora =
+        Number(
+            partes.find(
+                parte => parte.type === "hour"
+            )?.value
+        );
+
+
+    // =====================================================
+    // MIÉRCOLES CERRADO
+    // =====================================================
+
+    if (dia === "mié") {
+        return false;
+    }
+
+
+    // =====================================================
+    // 20:00 A 23:59
+    // =====================================================
+
+    if (hora >= 20 && hora <= 23) {
+        return true;
+    }
+
+
+    // =====================================================
+    // RESTO DEL DÍA CERRADO
+    // =====================================================
+
+    return false;
+}
+
+
+// =====================================================
+// COMPROBAR ESTADO DESDE RENDER
 // =====================================================
 
 async function comprobarEstadoPagina() {
@@ -45,9 +104,8 @@ async function comprobarEstadoPagina() {
         if (!respuesta.ok) {
 
             throw new Error(
-                "No se pudo consultar el estado."
+                "No se pudo consultar el estado de la página."
             );
-
         }
 
 
@@ -70,7 +128,6 @@ async function comprobarEstadoPagina() {
         );
 
     }
-
 }
 
 
@@ -80,94 +137,122 @@ async function comprobarEstadoPagina() {
 
 function actualizarPagina() {
 
-    if (paginaActiva) {
-
-        // =============================================
-        // PÁGINA ACTIVA
-        // =============================================
-
-        if (avisoCerrado) {
-
-            avisoCerrado.style.display =
-                "none";
-
-        }
+    const abiertoPorHorario =
+        restauranteEstaAbierto();
 
 
-        if (mensajeCerrado) {
+    // =====================================================
+    // CASO 1
+    // APAGADA MANUALMENTE
+    // =====================================================
 
-            mensajeCerrado.textContent =
-                "Nuestro horario de atención es de 20:00 a 00:00.";
+    if (!paginaActiva) {
 
-        }
-
-
-        activarBoton(
-            botonPedirAhora
+        mostrarPaginaCerrada(
+            "En este momento no estamos tomando pedidos. Volvé a visitarnos durante nuestro horario de atención."
         );
 
-        activarBoton(
-            botonCheckout
-        );
-
-        activarBoton(
-            botonAbrirCarrito
-        );
-
-
-    } else {
-
-        // =============================================
-        // PÁGINA APAGADA
-        // =============================================
-
-        if (avisoCerrado) {
-
-            avisoCerrado.style.display =
-                "flex";
-
-        }
-
-
-        if (mensajeCerrado) {
-
-            mensajeCerrado.textContent =
-                "En este momento no estamos tomando pedidos. Volvé a visitarnos durante nuestro horario de atención.";
-
-        }
-
-
-        desactivarBoton(
-            botonPedirAhora
-        );
-
-        desactivarBoton(
-            botonCheckout
-        );
-
-        desactivarBoton(
-            botonAbrirCarrito
-        );
-
-
-        // Cerrar carrito si estaba abierto
-
-        const carritoOverlay =
-            document.getElementById(
-                "carritoOverlay"
-            );
-
-
-        if (carritoOverlay) {
-
-            carritoOverlay.classList.remove(
-                "active"
-            );
-
-        }
-
+        return;
     }
 
+
+    // =====================================================
+    // CASO 2
+    // CERRADA POR HORARIO
+    // =====================================================
+
+    if (!abiertoPorHorario) {
+
+        mostrarPaginaCerrada(
+            "En este momento estamos cerrados. Nuestro horario de atención es de 20:00 a 00:00. Los miércoles permanecemos cerrados."
+        );
+
+        return;
+    }
+
+
+    // =====================================================
+    // CASO 3
+    // ACTIVA Y DENTRO DEL HORARIO
+    // =====================================================
+
+    mostrarPaginaAbierta();
+}
+
+
+// =====================================================
+// MOSTRAR PÁGINA CERRADA
+// =====================================================
+
+function mostrarPaginaCerrada(mensaje) {
+
+    if (avisoCerrado) {
+
+        avisoCerrado.style.display = "flex";
+    }
+
+
+    if (mensajeCerrado) {
+
+        mensajeCerrado.textContent = mensaje;
+    }
+
+
+    desactivarBoton(
+        botonPedirAhora
+    );
+
+
+    desactivarBoton(
+        botonCheckout
+    );
+
+
+    desactivarBoton(
+        botonAbrirCarrito
+    );
+
+
+    const carritoOverlay =
+        document.getElementById(
+            "carritoOverlay"
+        );
+
+
+    if (carritoOverlay) {
+
+        carritoOverlay.classList.remove(
+            "active"
+        );
+    }
+}
+
+
+// =====================================================
+// MOSTRAR PÁGINA ABIERTA
+// =====================================================
+
+function mostrarPaginaAbierta() {
+
+    if (avisoCerrado) {
+
+        avisoCerrado.style.display = "none";
+    }
+
+
+    activarBoton(
+        botonPedirAhora
+    );
+
+
+    activarBoton(
+        botonCheckout
+    );
+
+
+    activarBoton(
+        botonAbrirCarrito
+    );
 }
 
 
@@ -195,7 +280,6 @@ function desactivarBoton(boton) {
 
     boton.dataset.paginaBloqueada =
         "true";
-
 }
 
 
@@ -221,22 +305,16 @@ function activarBoton(boton) {
 
 
     delete boton.dataset.paginaBloqueada;
-
 }
 
 
 // =====================================================
-// EVITAR ACCIONES CUANDO ESTÁ APAGADA
+// BLOQUEAR CLICS SI ESTÁ CERRADA
 // =====================================================
 
 document.addEventListener(
     "click",
     function (evento) {
-
-        if (paginaActiva) {
-            return;
-        }
-
 
         const boton =
             evento.target.closest(
@@ -245,6 +323,19 @@ document.addEventListener(
 
 
         if (!boton) {
+            return;
+        }
+
+
+        const abiertoPorHorario =
+            restauranteEstaAbierto();
+
+
+        if (
+            paginaActiva &&
+            abiertoPorHorario
+        ) {
+
             return;
         }
 
@@ -264,14 +355,14 @@ document.addEventListener(
 
 
 // =====================================================
-// COMPROBAR AL ENTRAR
+// COMPROBACIÓN INICIAL
 // =====================================================
 
 comprobarEstadoPagina();
 
 
 // =====================================================
-// COMPROBAR CADA 10 SEGUNDOS
+// ACTUALIZAR CADA 10 SEGUNDOS
 // =====================================================
 
 setInterval(
