@@ -663,6 +663,359 @@ function mostrarVentasPorDia(
     );
 
 }
+// =====================================================
+// CONTROL DE ESTADO DE LA PÁGINA
+// =====================================================
+
+const estadoPaginaPunto =
+    document.getElementById("estadoPaginaPunto");
+
+const estadoPaginaTexto =
+    document.getElementById("estadoPaginaTexto");
+
+const estadoPaginaDescripcion =
+    document.getElementById("estadoPaginaDescripcion");
+
+const botonEstadoPagina =
+    document.getElementById("botonEstadoPagina");
+
+
+// =====================================================
+// CARGAR ESTADO DE LA PÁGINA
+// =====================================================
+
+async function cargarEstadoPagina() {
+
+    try {
+
+        const respuesta = await fetch(
+            "/api/configuracion/estado",
+            {
+                cache: "no-store"
+            }
+        );
+
+
+        if (!respuesta.ok) {
+
+            throw new Error(
+                "No se pudo obtener el estado de la página."
+            );
+
+        }
+
+
+        const datos =
+            await respuesta.json();
+
+
+        actualizarEstadoPagina(
+            datos.pagina_activa
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "ERROR ESTADO PÁGINA:",
+            error
+        );
+
+
+        if (estadoPaginaTexto) {
+
+            estadoPaginaTexto.textContent =
+                "Error";
+
+        }
+
+
+        if (estadoPaginaDescripcion) {
+
+            estadoPaginaDescripcion.textContent =
+                "No se pudo consultar el estado.";
+
+        }
+
+
+        if (botonEstadoPagina) {
+
+            botonEstadoPagina.textContent =
+                "Reintentar";
+
+        }
+
+    }
+
+}
+
+
+// =====================================================
+// ACTUALIZAR VISUALMENTE EL ESTADO
+// =====================================================
+
+function actualizarEstadoPagina(activa) {
+
+    if (
+        !estadoPaginaPunto ||
+        !estadoPaginaTexto ||
+        !estadoPaginaDescripcion ||
+        !botonEstadoPagina
+    ) {
+
+        return;
+
+    }
+
+
+    if (activa) {
+
+        // PUNTO VERDE
+
+        estadoPaginaPunto.classList.remove(
+            "inactive"
+        );
+
+        estadoPaginaPunto.classList.add(
+            "active"
+        );
+
+
+        // TEXTO
+
+        estadoPaginaTexto.textContent =
+            "Página activa";
+
+
+        estadoPaginaDescripcion.textContent =
+            "La web está recibiendo pedidos.";
+
+
+        // BOTÓN
+
+        botonEstadoPagina.textContent =
+            "🔴 Apagar página";
+
+
+        botonEstadoPagina.classList.remove(
+            "turn-on"
+        );
+
+        botonEstadoPagina.classList.add(
+            "turn-off"
+        );
+
+
+    } else {
+
+        // PUNTO ROJO
+
+        estadoPaginaPunto.classList.remove(
+            "active"
+        );
+
+        estadoPaginaPunto.classList.add(
+            "inactive"
+        );
+
+
+        // TEXTO
+
+        estadoPaginaTexto.textContent =
+            "Página apagada";
+
+
+        estadoPaginaDescripcion.textContent =
+            "La web no está recibiendo pedidos.";
+
+
+        // BOTÓN
+
+        botonEstadoPagina.textContent =
+            "🟢 Encender página";
+
+
+        botonEstadoPagina.classList.remove(
+            "turn-off"
+        );
+
+        botonEstadoPagina.classList.add(
+            "turn-on"
+        );
+
+    }
+
+}
+
+
+// =====================================================
+// CAMBIAR ESTADO
+// =====================================================
+
+async function cambiarEstadoPagina() {
+
+    try {
+
+        if (!botonEstadoPagina) {
+            return;
+        }
+
+
+        botonEstadoPagina.disabled = true;
+
+        botonEstadoPagina.textContent =
+            "Guardando...";
+
+
+        // Obtener estado actual
+
+        const respuestaEstado =
+            await fetch(
+                "/api/configuracion/estado",
+                {
+                    cache: "no-store"
+                }
+            );
+
+
+        if (!respuestaEstado.ok) {
+
+            throw new Error(
+                "No se pudo consultar el estado actual."
+            );
+
+        }
+
+
+        const datosEstado =
+            await respuestaEstado.json();
+
+
+        const nuevoEstado =
+            !datosEstado.pagina_activa;
+
+
+        // Confirmación
+
+        const confirmar = confirm(
+            nuevoEstado
+                ? "¿Querés ENCENDER la página y volver a recibir pedidos?"
+                : "¿Querés APAGAR la página y dejar de recibir pedidos?"
+        );
+
+
+        if (!confirmar) {
+
+            actualizarEstadoPagina(
+                datosEstado.pagina_activa
+            );
+
+            botonEstadoPagina.disabled = false;
+
+            return;
+
+        }
+
+
+        // Guardar nuevo estado
+
+        const respuesta =
+            await fetch(
+                "/api/configuracion/estado",
+                {
+                    method: "PATCH",
+
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        pagina_activa: nuevoEstado
+                    })
+                }
+            );
+
+
+        if (!respuesta.ok) {
+
+            const error =
+                await respuesta.json()
+                    .catch(() => ({}));
+
+
+            throw new Error(
+                error.mensaje ||
+                "No se pudo cambiar el estado."
+            );
+
+        }
+
+
+        const resultado =
+            await respuesta.json();
+
+
+        actualizarEstadoPagina(
+            resultado.pagina_activa
+        );
+
+
+        alert(
+            resultado.pagina_activa
+                ? "La página está nuevamente ACTIVA."
+                : "La página fue APAGADA."
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "ERROR CAMBIANDO ESTADO:",
+            error
+        );
+
+
+        alert(
+            "No se pudo cambiar el estado de la página.\n\n" +
+            error.message
+        );
+
+
+        cargarEstadoPagina();
+
+
+    } finally {
+
+        if (botonEstadoPagina) {
+
+            botonEstadoPagina.disabled = false;
+
+        }
+
+    }
+
+}
+
+
+// =====================================================
+// EVENTO DEL BOTÓN
+// =====================================================
+
+if (botonEstadoPagina) {
+
+    botonEstadoPagina.addEventListener(
+        "click",
+        cambiarEstadoPagina
+    );
+
+}
+
+
+// =====================================================
+// CARGAR ESTADO AL ABRIR DASHBOARD
+// =====================================================
+
+cargarEstadoPagina();
 
 
 // =====================================================
