@@ -8,6 +8,200 @@ let pedidos = [];
 let filtroActual = "todos";
 
 // =====================================================
+// CONFIGURACIÓN DEL SONIDO
+// =====================================================
+
+let audioContext = null;
+let sonidoActivado = false;
+let idsPedidosConocidos = new Set();
+let primeraCargaPedidos = true;
+
+// =====================================================
+// ACTIVAR SONIDO
+// =====================================================
+
+function activarSonido() {
+
+    try {
+
+        if (!audioContext) {
+
+            const AudioContext =
+                window.AudioContext ||
+                window.webkitAudioContext;
+
+            if (!AudioContext) {
+                return;
+            }
+
+            audioContext =
+                new AudioContext();
+        }
+
+        if (
+            audioContext.state === "suspended"
+        ) {
+
+            audioContext.resume();
+        }
+
+        sonidoActivado = true;
+
+        console.log(
+            "🔊 Sonido de pedidos activado."
+        );
+
+    } catch (error) {
+
+        console.error(
+            "No se pudo activar el sonido:",
+            error
+        );
+    }
+}
+
+// =====================================================
+// SONIDO DE NUEVO PEDIDO
+// =====================================================
+
+function reproducirSonidoPedido() {
+
+    try {
+
+        if (!sonidoActivado) {
+            return;
+        }
+
+        if (!audioContext) {
+            return;
+        }
+
+        if (
+            audioContext.state === "suspended"
+        ) {
+
+            audioContext.resume();
+        }
+
+        const ahora =
+            audioContext.currentTime;
+
+        // Primer sonido
+        const oscilador1 =
+            audioContext.createOscillator();
+
+        const ganancia1 =
+            audioContext.createGain();
+
+        oscilador1.type = "sine";
+
+        oscilador1.frequency.setValueAtTime(
+            880,
+            ahora
+        );
+
+        ganancia1.gain.setValueAtTime(
+            0.0001,
+            ahora
+        );
+
+        ganancia1.gain.exponentialRampToValueAtTime(
+            0.25,
+            ahora + 0.03
+        );
+
+        ganancia1.gain.exponentialRampToValueAtTime(
+            0.0001,
+            ahora + 0.35
+        );
+
+        oscilador1.connect(
+            ganancia1
+        );
+
+        ganancia1.connect(
+            audioContext.destination
+        );
+
+        oscilador1.start(
+            ahora
+        );
+
+        oscilador1.stop(
+            ahora + 0.35
+        );
+
+        // Segundo sonido
+        const oscilador2 =
+            audioContext.createOscillator();
+
+        const ganancia2 =
+            audioContext.createGain();
+
+        oscilador2.type = "sine";
+
+        oscilador2.frequency.setValueAtTime(
+            1174,
+            ahora + 0.18
+        );
+
+        ganancia2.gain.setValueAtTime(
+            0.0001,
+            ahora + 0.18
+        );
+
+        ganancia2.gain.exponentialRampToValueAtTime(
+            0.25,
+            ahora + 0.21
+        );
+
+        ganancia2.gain.exponentialRampToValueAtTime(
+            0.0001,
+            ahora + 0.55
+        );
+
+        oscilador2.connect(
+            ganancia2
+        );
+
+        ganancia2.connect(
+            audioContext.destination
+        );
+
+        oscilador2.start(
+            ahora + 0.18
+        );
+
+        oscilador2.stop(
+            ahora + 0.55
+        );
+
+    } catch (error) {
+
+        console.error(
+            "ERROR REPRODUCIENDO SONIDO:",
+            error
+        );
+    }
+}
+
+// =====================================================
+// ACTIVAR SONIDO CON EL PRIMER CLIC
+// =====================================================
+
+document.addEventListener(
+    "click",
+    () => {
+
+        activarSonido();
+
+    },
+    {
+        once: true
+    }
+);
+
+// =====================================================
 // CARGAR PEDIDOS
 // =====================================================
 
@@ -15,44 +209,109 @@ async function cargarPedidos() {
 
     try {
 
-        const respuesta = await fetch(
-            API_PEDIDOS,
-            {
-                method: "GET",
-                cache: "no-store"
-            }
-        );
+        const respuesta =
+            await fetch(
+                API_PEDIDOS,
+                {
+                    method: "GET",
+                    cache: "no-store"
+                }
+            );
 
         if (!respuesta.ok) {
+
             throw new Error(
                 `Error HTTP ${respuesta.status}`
             );
         }
 
-        const datos = await respuesta.json();
+        const datos =
+            await respuesta.json();
 
         console.log(
             "RESPUESTA API PEDIDOS:",
             datos
         );
 
-        if (Array.isArray(datos)) {
+        let nuevosPedidos = [];
 
-            pedidos = datos;
+        if (
+            Array.isArray(datos)
+        ) {
+
+            nuevosPedidos =
+                datos;
 
         } else if (
             datos &&
             Array.isArray(datos.pedidos)
         ) {
 
-            pedidos = datos.pedidos;
+            nuevosPedidos =
+                datos.pedidos;
 
         } else {
 
-            pedidos = [];
+            nuevosPedidos = [];
         }
 
+        // =================================================
+        // DETECTAR PEDIDOS NUEVOS
+        // =================================================
+
+        const idsActuales =
+            new Set(
+                nuevosPedidos.map(
+                    pedido =>
+                        Number(pedido.id)
+                )
+            );
+
+        if (
+            !primeraCargaPedidos
+        ) {
+
+            const hayPedidoNuevo =
+                nuevosPedidos.some(
+                    pedido => {
+
+                        const id =
+                            Number(
+                                pedido.id
+                            );
+
+                        return (
+                            !idsPedidosConocidos.has(
+                                id
+                            ) &&
+                            pedido.estado ===
+                                "nuevo"
+                        );
+                    }
+                );
+
+            if (
+                hayPedidoNuevo
+            ) {
+
+                console.log(
+                    "🔔 NUEVO PEDIDO RECIBIDO"
+                );
+
+                reproducirSonidoPedido();
+            }
+        }
+
+        idsPedidosConocidos =
+            idsActuales;
+
+        primeraCargaPedidos = false;
+
+        pedidos =
+            nuevosPedidos;
+
         actualizarContador();
+
         renderizarPedidos();
 
     } catch (error) {
@@ -61,9 +320,7 @@ async function cargarPedidos() {
             "ERROR PEDIDOS:",
             error
         );
-
     }
-
 }
 
 // =====================================================
@@ -84,11 +341,20 @@ function actualizarContador() {
     const nuevos =
         pedidos.filter(
             pedido =>
-                pedido.estado === "nuevo"
+                pedido.estado ===
+                "nuevo"
         ).length;
 
     contador.textContent =
-        `${nuevos} ${nuevos === 1 ? "pedido" : "pedidos"} nuevo${nuevos === 1 ? "" : "s"}`;
+        `${nuevos} ${
+            nuevos === 1
+                ? "pedido"
+                : "pedidos"
+        } nuevo${
+            nuevos === 1
+                ? ""
+                : "s"
+        }`;
 }
 
 // =====================================================
@@ -166,10 +432,13 @@ function renderizarPedidos() {
 // CREAR HTML DE PEDIDO
 // =====================================================
 
-function crearPedidoHTML(pedido) {
+function crearPedidoHTML(
+    pedido
+) {
 
     const estado =
-        pedido.estado || "nuevo";
+        pedido.estado ||
+        "nuevo";
 
     const claseNuevo =
         estado === "nuevo"
@@ -204,7 +473,8 @@ function crearPedidoHTML(pedido) {
 
                         const cantidad =
                             Number(
-                                producto.cantidad || 1
+                                producto.cantidad ||
+                                1
                             );
 
                         const nombre =
@@ -220,7 +490,8 @@ function crearPedidoHTML(pedido) {
                             );
 
                         const subtotal =
-                            cantidad * precio;
+                            cantidad *
+                            precio;
 
                         return `
                             <div class="order-product">
@@ -228,17 +499,25 @@ function crearPedidoHTML(pedido) {
                                 <div>
 
                                     <strong>
-                                        ${escaparHTML(nombre)}
+                                        ${escaparHTML(
+                                            nombre
+                                        )}
                                     </strong>
 
                                     <small>
-                                        ${cantidad} x $${precio.toLocaleString("es-UY")}
+                                        ${cantidad}
+                                        x
+                                        $${precio.toLocaleString(
+                                            "es-UY"
+                                        )}
                                     </small>
 
                                 </div>
 
                                 <strong>
-                                    $${subtotal.toLocaleString("es-UY")}
+                                    $${subtotal.toLocaleString(
+                                        "es-UY"
+                                    )}
                                 </strong>
 
                             </div>
@@ -248,11 +527,17 @@ function crearPedidoHTML(pedido) {
                 .join("")
             : `
                 <div class="order-product">
+
                     <strong>
                         Sin productos
                     </strong>
+
                 </div>
             `;
+
+    // =================================================
+    // DELIVERY
+    // =================================================
 
     const tipoEntrega =
         pedido.tipo_entrega ||
@@ -261,21 +546,26 @@ function crearPedidoHTML(pedido) {
 
     const costoEnvio =
         Number(
-            pedido.costo_envio || 0
+            pedido.costo_envio ||
+            0
         );
 
     const distancia =
-        pedido.distancia_delivery !== null &&
-        pedido.distancia_delivery !== undefined
+        pedido.distancia_delivery !==
+            null &&
+        pedido.distancia_delivery !==
+            undefined
             ? Number(
                 pedido.distancia_delivery
             )
             : null;
 
-    let informacionDelivery = "";
+    let informacionDelivery =
+        "";
 
     if (
-        tipoEntrega === "delivery"
+        tipoEntrega ===
+        "delivery"
     ) {
 
         informacionDelivery = `
@@ -288,7 +578,9 @@ function crearPedidoHTML(pedido) {
                 <strong>
                     ${
                         distancia !== null
-                            ? `${distancia.toFixed(2)} km`
+                            ? `${distancia.toFixed(
+                                2
+                            )} km`
                             : "Distancia no disponible"
                     }
                 </strong>
@@ -298,7 +590,9 @@ function crearPedidoHTML(pedido) {
                     ${
                         costoEnvio === 0
                             ? "GRATIS"
-                            : `$${costoEnvio.toLocaleString("es-UY")}`
+                            : `$${costoEnvio.toLocaleString(
+                                "es-UY"
+                            )}`
                     }
                 </small>
 
@@ -326,6 +620,10 @@ function crearPedidoHTML(pedido) {
         `;
     }
 
+    // =================================================
+    // CAMBIO
+    // =================================================
+
     const metodoPago =
         pedido.forma_pago ||
         pedido.metodo_pago ||
@@ -334,7 +632,8 @@ function crearPedidoHTML(pedido) {
     const cambio =
         pedido.cambio;
 
-    let informacionCambio = "";
+    let informacionCambio =
+        "";
 
     if (
         metodoPago === "efectivo" &&
@@ -351,12 +650,20 @@ function crearPedidoHTML(pedido) {
                 </span>
 
                 <strong>
-                    $${Number(cambio).toLocaleString("es-UY")}
+                    $${Number(
+                        cambio
+                    ).toLocaleString(
+                        "es-UY"
+                    )}
                 </strong>
 
             </div>
         `;
     }
+
+    // =================================================
+    // DATOS CLIENTE
+    // =================================================
 
     const observacion =
         pedido.observacion ||
@@ -381,7 +688,8 @@ function crearPedidoHTML(pedido) {
 
     const total =
         Number(
-            pedido.total || 0
+            pedido.total ||
+            0
         );
 
     return `
@@ -398,7 +706,9 @@ function crearPedidoHTML(pedido) {
                     </div>
 
                     <div class="order-date">
-                        ${formatearFecha(pedido.fecha)}
+                        ${formatearFecha(
+                            pedido.fecha
+                        )}
                     </div>
 
                     ${etiquetaNuevo}
@@ -408,7 +718,9 @@ function crearPedidoHTML(pedido) {
                 <div
                     class="order-status status-${estado}"
                 >
-                    ${formatearEstado(estado)}
+                    ${formatearEstado(
+                        estado
+                    )}
                 </div>
 
             </div>
@@ -423,7 +735,9 @@ function crearPedidoHTML(pedido) {
                     </span>
 
                     <strong>
-                        ${escaparHTML(cliente)}
+                        ${escaparHTML(
+                            cliente
+                        )}
                     </strong>
 
                 </div>
@@ -436,7 +750,9 @@ function crearPedidoHTML(pedido) {
                     </span>
 
                     <strong>
-                        ${escaparHTML(telefono)}
+                        ${escaparHTML(
+                            telefono
+                        )}
                     </strong>
 
                 </div>
@@ -449,7 +765,9 @@ function crearPedidoHTML(pedido) {
                     </span>
 
                     <strong>
-                        ${escaparHTML(direccion)}
+                        ${escaparHTML(
+                            direccion
+                        )}
                     </strong>
 
                 </div>
@@ -462,7 +780,9 @@ function crearPedidoHTML(pedido) {
                     </span>
 
                     <strong>
-                        ${formatearPago(metodoPago)}
+                        ${formatearPago(
+                            metodoPago
+                        )}
                     </strong>
 
                 </div>
@@ -492,7 +812,9 @@ function crearPedidoHTML(pedido) {
                                 Observación:
                             </strong>
 
-                            ${escaparHTML(observacion)}
+                            ${escaparHTML(
+                                observacion
+                            )}
 
                         </div>
                     `
@@ -509,7 +831,9 @@ function crearPedidoHTML(pedido) {
                     </div>
 
                     <div class="order-total">
-                        $${total.toLocaleString("es-UY")}
+                        $${total.toLocaleString(
+                            "es-UY"
+                        )}
                     </div>
 
                 </div>
@@ -517,18 +841,24 @@ function crearPedidoHTML(pedido) {
 
                 <div class="order-actions">
 
-                    ${crearBotonesEstado(pedido)}
+                    ${crearBotonesEstado(
+                        pedido
+                    )}
 
                     <button
                         type="button"
-                        onclick="verPedido(${pedido.id})"
+                        onclick="verPedido(
+                            ${pedido.id}
+                        )"
                     >
                         VER
                     </button>
 
                     <button
                         type="button"
-                        onclick="imprimirPedido(${pedido.id})"
+                        onclick="imprimirPedido(
+                            ${pedido.id}
+                        )"
                     >
                         IMPRIMIR
                     </button>
@@ -545,7 +875,9 @@ function crearPedidoHTML(pedido) {
 // BOTONES SEGÚN ESTADO
 // =====================================================
 
-function crearBotonesEstado(pedido) {
+function crearBotonesEstado(
+    pedido
+) {
 
     const estado =
         pedido.estado;
@@ -560,12 +892,14 @@ function crearBotonesEstado(pedido) {
             <button
                 type="button"
                 class="btn-preparing"
-                onclick="cambiarEstado(${pedido.id}, 'preparando')"
+                onclick="cambiarEstado(
+                    ${pedido.id},
+                    'preparando'
+                )"
             >
                 COMENZAR A PREPARAR
             </button>
         `;
-
     }
 
     if (
@@ -576,12 +910,14 @@ function crearBotonesEstado(pedido) {
             <button
                 type="button"
                 class="btn-ready"
-                onclick="cambiarEstado(${pedido.id}, 'listo')"
+                onclick="cambiarEstado(
+                    ${pedido.id},
+                    'listo'
+                )"
             >
                 MARCAR LISTO
             </button>
         `;
-
     }
 
     if (
@@ -592,12 +928,14 @@ function crearBotonesEstado(pedido) {
             <button
                 type="button"
                 class="btn-delivered"
-                onclick="cambiarEstado(${pedido.id}, 'entregado')"
+                onclick="cambiarEstado(
+                    ${pedido.id},
+                    'entregado'
+                )"
             >
                 ENTREGADO
             </button>
         `;
-
     }
 
     if (
@@ -609,12 +947,13 @@ function crearBotonesEstado(pedido) {
             <button
                 type="button"
                 class="btn-cancel"
-                onclick="cancelarPedido(${pedido.id})"
+                onclick="cancelarPedido(
+                    ${pedido.id}
+                )"
             >
                 CANCELAR
             </button>
         `;
-
     }
 
     return botones;
@@ -680,7 +1019,9 @@ async function cambiarEstado(
 // CANCELAR PEDIDO
 // =====================================================
 
-async function cancelarPedido(id) {
+async function cancelarPedido(
+    id
+) {
 
     const confirmar =
         confirm(
@@ -733,7 +1074,9 @@ async function cancelarPedido(id) {
 // VER PEDIDO
 // =====================================================
 
-function verPedido(id) {
+function verPedido(
+    id
+) {
 
     const pedido =
         pedidos.find(
@@ -794,7 +1137,8 @@ function verPedido(id) {
 
     texto +=
         `Entrega: ${
-            pedido.tipo_entrega === "delivery"
+            pedido.tipo_entrega ===
+            "delivery"
                 ? "Delivery"
                 : "Retira en local"
         }\n`;
@@ -813,7 +1157,8 @@ function verPedido(id) {
 
         const envio =
             Number(
-                pedido.costo_envio || 0
+                pedido.costo_envio ||
+                0
             );
 
         texto +=
@@ -823,7 +1168,9 @@ function verPedido(id) {
             `Envío: ${
                 envio === 0
                     ? "GRATIS"
-                    : `$${envio.toLocaleString("es-UY")}`
+                    : `$${envio.toLocaleString(
+                        "es-UY"
+                    )}`
             }\n`;
     }
 
@@ -836,7 +1183,9 @@ function verPedido(id) {
         texto +=
             `Cambio: $${Number(
                 pedido.cambio
-            ).toLocaleString("es-UY")}\n`;
+            ).toLocaleString(
+                "es-UY"
+            )}\n`;
     }
 
     texto +=
@@ -847,7 +1196,8 @@ function verPedido(id) {
 
             const cantidad =
                 Number(
-                    producto.cantidad || 1
+                    producto.cantidad ||
+                    1
                 );
 
             const nombre =
@@ -862,8 +1212,11 @@ function verPedido(id) {
 
     texto +=
         `\nTOTAL: $${Number(
-            pedido.total || 0
-        ).toLocaleString("es-UY")}`;
+            pedido.total ||
+            0
+        ).toLocaleString(
+            "es-UY"
+        )}`;
 
     alert(
         texto
@@ -874,7 +1227,9 @@ function verPedido(id) {
 // IMPRIMIR PEDIDO
 // =====================================================
 
-function imprimirPedido(id) {
+function imprimirPedido(
+    id
+) {
 
     const pedido =
         pedidos.find(
@@ -910,7 +1265,8 @@ function imprimirPedido(id) {
 
                     const cantidad =
                         Number(
-                            producto.cantidad || 1
+                            producto.cantidad ||
+                            1
                         );
 
                     const nombre =
@@ -926,7 +1282,8 @@ function imprimirPedido(id) {
                         );
 
                     const subtotal =
-                        cantidad * precio;
+                        cantidad *
+                        precio;
 
                     return `
                         <tr>
@@ -936,13 +1293,17 @@ function imprimirPedido(id) {
                             </td>
 
                             <td>
-                                ${escaparHTML(nombre)}
+                                ${escaparHTML(
+                                    nombre
+                                )}
                             </td>
 
                             <td
                                 style="text-align:right"
                             >
-                                $${subtotal.toLocaleString("es-UY")}
+                                $${subtotal.toLocaleString(
+                                    "es-UY"
+                                )}
                             </td>
 
                         </tr>
@@ -957,7 +1318,8 @@ function imprimirPedido(id) {
 
     const costoEnvio =
         Number(
-            pedido.costo_envio || 0
+            pedido.costo_envio ||
+            0
         );
 
     const distancia =
@@ -970,7 +1332,8 @@ function imprimirPedido(id) {
     let deliveryHTML = "";
 
     if (
-        tipoEntrega === "delivery"
+        tipoEntrega ===
+        "delivery"
     ) {
 
         deliveryHTML = `
@@ -995,7 +1358,9 @@ function imprimirPedido(id) {
                 ${
                     costoEnvio === 0
                         ? "GRATIS"
-                        : `$${costoEnvio.toLocaleString("es-UY")}`
+                        : `$${costoEnvio.toLocaleString(
+                            "es-UY"
+                        )}`
                 }
 
             </div>
@@ -1005,9 +1370,11 @@ function imprimirPedido(id) {
 
         deliveryHTML = `
             <div>
+
                 <strong>
                     RETIRA EN LOCAL
                 </strong>
+
             </div>
         `;
     }
@@ -1022,10 +1389,14 @@ function imprimirPedido(id) {
 
         cambioHTML = `
             <div>
+
                 Cambio:
                 $${Number(
                     pedido.cambio
-                ).toLocaleString("es-UY")}
+                ).toLocaleString(
+                    "es-UY"
+                )}
+
             </div>
         `;
     }
@@ -1142,36 +1513,56 @@ function imprimirPedido(id) {
             <div class="linea"></div>
 
             <div class="dato">
-                <strong>Cliente:</strong>
+
+                <strong>
+                    Cliente:
+                </strong>
+
                 ${escaparHTML(
                     pedido.nombre ||
                     pedido.cliente_nombre ||
                     "Sin nombre"
                 )}
+
             </div>
 
             <div class="dato">
-                <strong>Teléfono:</strong>
+
+                <strong>
+                    Teléfono:
+                </strong>
+
                 ${escaparHTML(
                     pedido.telefono ||
                     "Sin teléfono"
                 )}
+
             </div>
 
             <div class="dato">
-                <strong>Dirección:</strong>
+
+                <strong>
+                    Dirección:
+                </strong>
+
                 ${escaparHTML(
                     pedido.direccion ||
                     "Sin dirección"
                 )}
+
             </div>
 
             <div class="dato">
-                <strong>Pago:</strong>
+
+                <strong>
+                    Pago:
+                </strong>
+
                 ${formatearPago(
                     pedido.forma_pago ||
                     pedido.metodo_pago
                 )}
+
             </div>
 
             <div class="linea"></div>
@@ -1191,16 +1582,22 @@ function imprimirPedido(id) {
             <div class="linea"></div>
 
             <div class="total">
+
                 TOTAL:
                 $${Number(
-                    pedido.total || 0
-                ).toLocaleString("es-UY")}
+                    pedido.total ||
+                    0
+                ).toLocaleString(
+                    "es-UY"
+                )}
+
             </div>
 
             ${
                 pedido.observacion
                     ? `
                         <div class="observacion">
+
                             <strong>
                                 Observación:
                             </strong>
@@ -1208,6 +1605,7 @@ function imprimirPedido(id) {
                             ${escaparHTML(
                                 pedido.observacion
                             )}
+
                         </div>
                     `
                     : ""
@@ -1262,7 +1660,6 @@ function configurarFiltros() {
                             otroBoton.classList.remove(
                                 "active"
                             );
-
                         }
                     );
 
@@ -1278,7 +1675,6 @@ function configurarFiltros() {
 
                 }
             );
-
         }
     );
 }
@@ -1287,7 +1683,9 @@ function configurarFiltros() {
 // FORMATEAR ESTADO
 // =====================================================
 
-function formatearEstado(estado) {
+function formatearEstado(
+    estado
+) {
 
     const estados = {
 
@@ -1311,7 +1709,6 @@ function formatearEstado(estado) {
 
         cancelado:
             "Cancelado"
-
     };
 
     return (
@@ -1325,7 +1722,9 @@ function formatearEstado(estado) {
 // FORMATEAR PAGO
 // =====================================================
 
-function formatearPago(pago) {
+function formatearPago(
+    pago
+) {
 
     const pagos = {
 
@@ -1340,7 +1739,6 @@ function formatearPago(pago) {
 
         transferencia:
             "Transferencia"
-
     };
 
     return (
@@ -1354,7 +1752,9 @@ function formatearPago(pago) {
 // FORMATEAR FECHA
 // =====================================================
 
-function formatearFecha(fecha) {
+function formatearFecha(
+    fecha
+) {
 
     if (!fecha) {
         return "-";
@@ -1388,7 +1788,9 @@ function formatearFecha(fecha) {
 // ESCAPAR HTML
 // =====================================================
 
-function escaparHTML(valor) {
+function escaparHTML(
+    valor
+) {
 
     if (
         valor === null ||
