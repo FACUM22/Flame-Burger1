@@ -95,14 +95,11 @@
 
             <a
                 href="ventas.html"
-                class="menu-item active"
+                class="menu-item"
             >
                 <span>💰</span>
                 Ventas
             </a>
-
-
-          
 
 
         </nav>
@@ -341,6 +338,75 @@
 
 
             <!-- =====================================
+                 CONTROL DE ESTADO DE LA PÁGINA
+            ====================================== -->
+
+            <div class="panel page-control-panel">
+
+
+                <div class="panel-header">
+
+                    <div>
+
+                        <h3>
+                            Estado de la página
+                        </h3>
+
+                        <p>
+                            Controlá si la web está recibiendo pedidos.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div class="page-control">
+
+
+                    <div class="page-status">
+
+
+                        <span
+                            id="estadoPaginaPunto"
+                            class="page-status-dot"
+                        ></span>
+
+
+                        <div>
+
+                            <strong id="estadoPaginaTexto">
+                                Cargando estado...
+                            </strong>
+
+
+                            <small id="estadoPaginaDescripcion">
+                                Consultando estado de la página...
+                            </small>
+
+                        </div>
+
+
+                    </div>
+
+
+                    <button
+                        id="botonEstadoPagina"
+                        class="page-toggle-btn"
+                        type="button"
+                    >
+                        Cargando...
+                    </button>
+
+
+                </div>
+
+
+            </div>
+
+
+
+            <!-- =====================================
                  ESTADÍSTICAS PRINCIPALES
             ====================================== -->
 
@@ -554,6 +620,7 @@
 
             <div class="panel dashboard-panel">
 
+
                 <div class="panel-header">
 
                     <div>
@@ -586,6 +653,7 @@
             ====================================== -->
 
             <div class="panel dashboard-panel">
+
 
                 <div class="panel-header">
 
@@ -626,6 +694,7 @@
 <script
     src="js/mobile-menu.js"
 ></script>
+
 
 <script
     src="js/dashboard.js"
