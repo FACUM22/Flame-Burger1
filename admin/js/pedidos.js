@@ -1,4 +1,4 @@
-```javascript
+
 const API_PEDIDOS = "/api/pedidos";
 
 let pedidos = [];
@@ -2388,4 +2388,4 @@ setInterval(
 // =====================================================
 
 cargarPedidos();
-```
+
