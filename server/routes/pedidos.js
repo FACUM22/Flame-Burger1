@@ -321,7 +321,10 @@ router.post("/", async (req, res) => {
 
         for (const item of productos) {
 
-            const productoId = Number(item.id);
+            // El frontend (checkout.js) manda cada línea del carrito
+            // como { producto_id, cantidad }. Se acepta también "id"
+            // por compatibilidad con integraciones futuras.
+            const productoId = Number(item.producto_id ?? item.id);
             const cantidad = Number(item.cantidad);
 
             if (
