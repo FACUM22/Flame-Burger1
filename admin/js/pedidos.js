@@ -3,23 +3,18 @@ const API_PEDIDOS = "/api/pedidos";
 let pedidos = [];
 let filtroActual = "todos";
 
-// ========================================
-// ELEMENTOS DEL DOM
-// ========================================
-
 const listaPedidos = document.getElementById("ordersList");
 const contadorNuevos = document.getElementById("pedidosNuevos");
-
-// ========================================
-// SONIDO DE NUEVO PEDIDO
-// ========================================
 
 let pedidosAnteriores = [];
 let audioContext = null;
 let sonidoActivado = false;
 
-// Activar el sistema de audio después
-// de la primera interacción del usuario
+
+// =====================================================
+// ACTIVAR SONIDO
+// =====================================================
+
 function activarSonido() {
 
     try {
@@ -47,10 +42,11 @@ function activarSonido() {
         );
 
     }
+
 }
 
-// El navegador permite audio después
-// de que el usuario hace clic en la página
+
+// El primer clic en la página habilita el audio
 document.addEventListener(
     "click",
     activarSonido,
@@ -58,9 +54,9 @@ document.addEventListener(
 );
 
 
-// ========================================
-// SONIDO TIPO NOTIFICACIÓN
-// ========================================
+// =====================================================
+// SONIDO DE NUEVO PEDIDO
+// =====================================================
 
 function reproducirSonidoPedido() {
 
@@ -78,143 +74,106 @@ function reproducirSonidoPedido() {
             audioContext.currentTime;
 
 
-        // ================================
-        // NOTA 1
-        // ================================
+        // ==========================================
+        // NOTIFICACIÓN ORIGINAL
+        // ==========================================
 
-        const oscilador1 =
-            audioContext.createOscillator();
+        const notas = [
 
-        const ganancia1 =
-            audioContext.createGain();
+            {
+                frecuencia: 1046.50,
+                inicio: 0,
+                duracion: 0.16,
+                volumen: 0.18
+            },
 
-        oscilador1.type = "sine";
+            {
+                frecuencia: 1318.51,
+                inicio: 0.07,
+                duracion: 0.20,
+                volumen: 0.20
+            },
 
-        oscilador1.frequency.setValueAtTime(
-            659.25,
-            ahora
-        );
+            {
+                frecuencia: 1567.98,
+                inicio: 0.15,
+                duracion: 0.28,
+                volumen: 0.16
+            }
 
-        ganancia1.gain.setValueAtTime(
-            0.0001,
-            ahora
-        );
-
-        ganancia1.gain.exponentialRampToValueAtTime(
-            0.25,
-            ahora + 0.02
-        );
-
-        ganancia1.gain.exponentialRampToValueAtTime(
-            0.0001,
-            ahora + 0.35
-        );
-
-        oscilador1.connect(ganancia1);
-
-        ganancia1.connect(
-            audioContext.destination
-        );
-
-        oscilador1.start(ahora);
-
-        oscilador1.stop(
-            ahora + 0.4
-        );
+        ];
 
 
-        // ================================
-        // NOTA 2
-        // ================================
+        notas.forEach(nota => {
 
-        const oscilador2 =
-            audioContext.createOscillator();
+            const oscilador =
+                audioContext.createOscillator();
 
-        const ganancia2 =
-            audioContext.createGain();
-
-        oscilador2.type = "sine";
-
-        oscilador2.frequency.setValueAtTime(
-            783.99,
-            ahora + 0.12
-        );
-
-        ganancia2.gain.setValueAtTime(
-            0.0001,
-            ahora + 0.12
-        );
-
-        ganancia2.gain.exponentialRampToValueAtTime(
-            0.25,
-            ahora + 0.14
-        );
-
-        ganancia2.gain.exponentialRampToValueAtTime(
-            0.0001,
-            ahora + 0.55
-        );
-
-        oscilador2.connect(ganancia2);
-
-        ganancia2.connect(
-            audioContext.destination
-        );
-
-        oscilador2.start(
-            ahora + 0.12
-        );
-
-        oscilador2.stop(
-            ahora + 0.6
-        );
+            const ganancia =
+                audioContext.createGain();
 
 
-        // ================================
-        // NOTA 3
-        // ================================
+            oscilador.type = "sine";
 
-        const oscilador3 =
-            audioContext.createOscillator();
 
-        const ganancia3 =
-            audioContext.createGain();
+            oscilador.frequency.setValueAtTime(
+                nota.frecuencia,
+                ahora + nota.inicio
+            );
 
-        oscilador3.type = "sine";
 
-        oscilador3.frequency.setValueAtTime(
-            987.77,
-            ahora + 0.25
-        );
+            // Pequeño brillo
+            oscilador.detune.setValueAtTime(
+                8,
+                ahora + nota.inicio
+            );
 
-        ganancia3.gain.setValueAtTime(
-            0.0001,
-            ahora + 0.25
-        );
 
-        ganancia3.gain.exponentialRampToValueAtTime(
-            0.22,
-            ahora + 0.27
-        );
+            ganancia.gain.setValueAtTime(
+                0.0001,
+                ahora + nota.inicio
+            );
 
-        ganancia3.gain.exponentialRampToValueAtTime(
-            0.0001,
-            ahora + 0.75
-        );
 
-        oscilador3.connect(ganancia3);
+            ganancia.gain.exponentialRampToValueAtTime(
+                nota.volumen,
+                ahora +
+                nota.inicio +
+                0.015
+            );
 
-        ganancia3.connect(
-            audioContext.destination
-        );
 
-        oscilador3.start(
-            ahora + 0.25
-        );
+            ganancia.gain.exponentialRampToValueAtTime(
+                0.0001,
+                ahora +
+                nota.inicio +
+                nota.duracion
+            );
 
-        oscilador3.stop(
-            ahora + 0.8
-        );
+
+            oscilador.connect(
+                ganancia
+            );
+
+
+            ganancia.connect(
+                audioContext.destination
+            );
+
+
+            oscilador.start(
+                ahora + nota.inicio
+            );
+
+
+            oscilador.stop(
+                ahora +
+                nota.inicio +
+                nota.duracion +
+                0.05
+            );
+
+        });
 
     } catch (error) {
 
@@ -224,12 +183,13 @@ function reproducirSonidoPedido() {
         );
 
     }
+
 }
 
 
-// ========================================
+// =====================================================
 // CARGAR PEDIDOS
-// ========================================
+// =====================================================
 
 async function cargarPedidos() {
 
@@ -237,6 +197,7 @@ async function cargarPedidos() {
 
         const respuesta =
             await fetch(API_PEDIDOS);
+
 
         if (!respuesta.ok) {
 
@@ -246,33 +207,34 @@ async function cargarPedidos() {
 
         }
 
+
         const nuevosPedidos =
             await respuesta.json();
 
 
-        // ====================================
+        // ==========================================
         // PRIMERA CARGA
-        // ====================================
+        // No hace sonar nada
+        // ==========================================
 
-        // La primera vez NO hacemos sonar nada.
-        // Solo guardamos los pedidos actuales.
-
-        if (pedidosAnteriores.length === 0) {
+        if (
+            pedidosAnteriores.length === 0
+        ) {
 
             pedidosAnteriores =
-                nuevosPedidos.map(pedido => ({
-
-                    id: pedido.id,
-
-                    estado: pedido.estado
-
-                }));
+                nuevosPedidos.map(
+                    pedido => ({
+                        id: pedido.id,
+                        estado: pedido.estado
+                    })
+                );
 
         }
 
-        // ====================================
-        // COMPROBAR NUEVOS PEDIDOS
-        // ====================================
+
+        // ==========================================
+        // SIGUIENTES CARGAS
+        // ==========================================
 
         else {
 
@@ -285,6 +247,7 @@ async function cargarPedidos() {
                                 anterior.id ===
                                 pedido.id
                         );
+
 
                     return (
                         pedido.estado === "nuevo" &&
@@ -301,21 +264,20 @@ async function cargarPedidos() {
             }
 
 
-            // Actualizar memoria
             pedidosAnteriores =
-                nuevosPedidos.map(pedido => ({
-
-                    id: pedido.id,
-
-                    estado: pedido.estado
-
-                }));
+                nuevosPedidos.map(
+                    pedido => ({
+                        id: pedido.id,
+                        estado: pedido.estado
+                    })
+                );
 
         }
 
 
         pedidos =
             nuevosPedidos;
+
 
         mostrarPedidos();
 
@@ -331,13 +293,9 @@ async function cargarPedidos() {
         if (listaPedidos) {
 
             listaPedidos.innerHTML = `
-
                 <div class="error">
-
                     No se pudieron cargar los pedidos.
-
                 </div>
-
             `;
 
         }
@@ -347,9 +305,9 @@ async function cargarPedidos() {
 }
 
 
-// ========================================
+// =====================================================
 // MOSTRAR PEDIDOS
-// ========================================
+// =====================================================
 
 function mostrarPedidos() {
 
@@ -358,9 +316,7 @@ function mostrarPedidos() {
     }
 
 
-    // No mostrar pedidos que todavía
-    // están esperando el pago de Mercado Pago
-
+    // No mostrar pedidos esperando pago
     const pedidosVisibles =
         pedidos.filter(
             pedido =>
@@ -369,10 +325,7 @@ function mostrarPedidos() {
         );
 
 
-    // ====================================
-    // CONTAR PEDIDOS NUEVOS
-    // ====================================
-
+    // Contar pedidos nuevos
     const nuevos =
         pedidosVisibles.filter(
             pedido =>
@@ -388,13 +341,13 @@ function mostrarPedidos() {
     }
 
 
-    // ====================================
-    // APLICAR FILTRO
-    // ====================================
-
     let pedidosFiltrados =
         pedidosVisibles;
 
+
+    // ==========================================
+    // FILTRO
+    // ==========================================
 
     if (filtroActual !== "todos") {
 
@@ -408,10 +361,7 @@ function mostrarPedidos() {
     }
 
 
-    // ====================================
-    // ORDENAR
-    // ====================================
-
+    // Más recientes primero
     pedidosFiltrados.sort(
         (a, b) => {
 
@@ -424,20 +374,18 @@ function mostrarPedidos() {
     );
 
 
-    // ====================================
+    // ==========================================
     // SIN PEDIDOS
-    // ====================================
+    // ==========================================
 
-    if (pedidosFiltrados.length === 0) {
+    if (
+        pedidosFiltrados.length === 0
+    ) {
 
         listaPedidos.innerHTML = `
-
             <div class="sin-pedidos">
-
                 No hay pedidos para mostrar.
-
             </div>
-
         `;
 
         return;
@@ -447,10 +395,6 @@ function mostrarPedidos() {
 
     listaPedidos.innerHTML = "";
 
-
-    // ====================================
-    // CREAR TARJETAS
-    // ====================================
 
     pedidosFiltrados.forEach(
         pedido => {
@@ -465,9 +409,9 @@ function mostrarPedidos() {
 }
 
 
-// ========================================
-// CREAR TARJETA
-// ========================================
+// =====================================================
+// CREAR TARJETA DEL PEDIDO
+// =====================================================
 
 function crearTarjetaPedido(pedido) {
 
@@ -490,11 +434,9 @@ function crearTarjetaPedido(pedido) {
                 </h3>
 
                 <span class="order-date">
-
                     ${formatearFecha(
                         pedido.creado_en
                     )}
-
                 </span>
 
             </div>
@@ -503,11 +445,9 @@ function crearTarjetaPedido(pedido) {
             <span
                 class="estado estado-${pedido.estado}"
             >
-
                 ${obtenerTextoEstado(
                     pedido.estado
                 )}
-
             </span>
 
         </div>
@@ -626,9 +566,7 @@ function crearTarjetaPedido(pedido) {
                 <div
                     id="productos-${pedido.id}"
                 >
-
                     Cargando productos...
-
                 </div>
 
             </div>
@@ -645,11 +583,9 @@ function crearTarjetaPedido(pedido) {
                             </strong>
 
                             <p>
-
                                 ${escaparHTML(
                                     pedido.observaciones
                                 )}
-
                             </p>
 
                         </div>
@@ -665,13 +601,10 @@ function crearTarjetaPedido(pedido) {
                     TOTAL:
                 </strong>
 
-
                 <span>
-
                     $${Number(
                         pedido.total || 0
                     ).toFixed(2)}
-
                 </span>
 
             </div>
@@ -701,9 +634,9 @@ function crearTarjetaPedido(pedido) {
 }
 
 
-// ========================================
+// =====================================================
 // BOTONES DE ESTADO
-// ========================================
+// =====================================================
 
 function crearBotonesEstado(pedido) {
 
@@ -713,9 +646,7 @@ function crearBotonesEstado(pedido) {
             class="btn-print"
             onclick="imprimirPedido(${pedido.id})"
         >
-
             🖨️ IMPRIMIR PEDIDO
-
         </button>
 
 
@@ -723,15 +654,19 @@ function crearBotonesEstado(pedido) {
             class="btn-pdf"
             onclick="guardarPDF(${pedido.id})"
         >
-
             📄 GUARDAR PDF
-
         </button>
 
     `;
 
 
-    if (pedido.estado === "nuevo") {
+    // ==========================================
+    // NUEVO
+    // ==========================================
+
+    if (
+        pedido.estado === "nuevo"
+    ) {
 
         botones += `
 
@@ -742,9 +677,7 @@ function crearBotonesEstado(pedido) {
                     'preparando'
                 )"
             >
-
                 🍔 COMENZAR A PREPARAR
-
             </button>
 
 
@@ -755,15 +688,17 @@ function crearBotonesEstado(pedido) {
                     'cancelado'
                 )"
             >
-
                 ❌ CANCELAR
-
             </button>
 
         `;
 
     }
 
+
+    // ==========================================
+    // PREPARANDO
+    // ==========================================
 
     else if (
         pedido.estado === "preparando"
@@ -778,15 +713,17 @@ function crearBotonesEstado(pedido) {
                     'listo'
                 )"
             >
-
                 ✅ MARCAR COMO LISTO
-
             </button>
 
         `;
 
     }
 
+
+    // ==========================================
+    // LISTO
+    // ==========================================
 
     else if (
         pedido.estado === "listo"
@@ -801,15 +738,17 @@ function crearBotonesEstado(pedido) {
                     'entregado'
                 )"
             >
-
                 🏁 MARCAR COMO ENTREGADO
-
             </button>
 
         `;
 
     }
 
+
+    // ==========================================
+    // CANCELADO
+    // ==========================================
 
     else if (
         pedido.estado === "cancelado"
@@ -824,9 +763,7 @@ function crearBotonesEstado(pedido) {
                     'nuevo'
                 )"
             >
-
                 🔄 REACTIVAR PEDIDO
-
             </button>
 
         `;
@@ -839,9 +776,9 @@ function crearBotonesEstado(pedido) {
 }
 
 
-// ========================================
-// CARGAR DETALLE DEL PEDIDO
-// ========================================
+// =====================================================
+// CARGAR DETALLE
+// =====================================================
 
 async function cargarDetallePedido(id) {
 
@@ -887,11 +824,9 @@ async function cargarDetallePedido(id) {
         if (!detalles.length) {
 
             contenedor.innerHTML = `
-
                 <p>
                     No hay productos registrados.
                 </p>
-
             `;
 
             return;
@@ -923,12 +858,13 @@ async function cargarDetallePedido(id) {
 
                     return `
 
-                        <div class="producto-linea">
+                        <div
+                            class="producto-linea"
+                        >
 
                             <span>
 
                                 ${cantidad} x
-
                                 ${escaparHTML(
                                     nombre
                                 )}
@@ -970,11 +906,9 @@ async function cargarDetallePedido(id) {
         if (contenedor) {
 
             contenedor.innerHTML = `
-
                 <p>
                     No se pudieron cargar los productos.
                 </p>
-
             `;
 
         }
@@ -984,9 +918,9 @@ async function cargarDetallePedido(id) {
 }
 
 
-// ========================================
-// OBTENER DATOS COMPLETOS
-// ========================================
+// =====================================================
+// OBTENER DATOS DEL PEDIDO
+// =====================================================
 
 async function obtenerDatosPedido(id) {
 
@@ -1010,9 +944,9 @@ async function obtenerDatosPedido(id) {
 }
 
 
-// ========================================
+// =====================================================
 // CREAR TICKET
-// ========================================
+// =====================================================
 
 function crearTicketHTML(pedido) {
 
@@ -1050,13 +984,10 @@ function crearTicketHTML(pedido) {
                     <div class="producto">
 
                         <div>
-
                             ${cantidad} x
-
                             ${escaparHTML(
                                 nombre
                             )}
-
                         </div>
 
 
@@ -1088,7 +1019,7 @@ function crearTicketHTML(pedido) {
 <meta charset="UTF-8">
 
 <title>
-Pedido #${pedido.id}
+    Pedido #${pedido.id}
 </title>
 
 
@@ -1178,7 +1109,8 @@ h1 {
 
     display: flex;
 
-    justify-content: space-between;
+    justify-content:
+        space-between;
 
     gap: 5px;
 
@@ -1191,7 +1123,8 @@ h1 {
 
     display: flex;
 
-    justify-content: space-between;
+    justify-content:
+        space-between;
 
     font-size: 17px;
 
@@ -1246,7 +1179,6 @@ h1 {
 
 <body>
 
-
 <div class="ticket">
 
 
@@ -1261,9 +1193,7 @@ h1 {
 
 
     <h1>
-
         PEDIDO #${pedido.id}
-
     </h1>
 
 
@@ -1400,7 +1330,6 @@ h1 {
             TOTAL
         </span>
 
-
         <span>
 
             $${Number(
@@ -1425,7 +1354,6 @@ h1 {
 
 </div>
 
-
 </body>
 
 </html>
@@ -1435,9 +1363,9 @@ h1 {
 }
 
 
-// ========================================
+// =====================================================
 // ABRIR TICKET
-// ========================================
+// =====================================================
 
 function abrirTicket(pedido) {
 
@@ -1467,7 +1395,6 @@ function abrirTicket(pedido) {
 
     ventana.document.close();
 
-
     ventana.focus();
 
 
@@ -1493,9 +1420,9 @@ function abrirTicket(pedido) {
 }
 
 
-// ========================================
+// =====================================================
 // IMPRIMIR PEDIDO
-// ========================================
+// =====================================================
 
 async function imprimirPedido(id) {
 
@@ -1522,9 +1449,9 @@ async function imprimirPedido(id) {
 }
 
 
-// ========================================
+// =====================================================
 // GUARDAR PDF
-// ========================================
+// =====================================================
 
 async function guardarPDF(id) {
 
@@ -1560,7 +1487,6 @@ async function guardarPDF(id) {
 
         ventana.document.close();
 
-
         ventana.focus();
 
 
@@ -1588,9 +1514,9 @@ async function guardarPDF(id) {
 }
 
 
-// ========================================
+// =====================================================
 // CAMBIAR ESTADO
-// ========================================
+// =====================================================
 
 async function cambiarEstado(
     id,
@@ -1607,16 +1533,12 @@ async function cambiarEstado(
                     method: "PATCH",
 
                     headers: {
-
                         "Content-Type":
                             "application/json"
-
                     },
 
                     body: JSON.stringify({
-
                         estado: nuevoEstado
-
                     })
 
                 }
@@ -1649,9 +1571,9 @@ async function cambiarEstado(
 }
 
 
-// ========================================
+// =====================================================
 // FILTROS
-// ========================================
+// =====================================================
 
 document
     .querySelectorAll(".order-filter")
@@ -1693,9 +1615,9 @@ document
     );
 
 
-// ========================================
+// =====================================================
 // FORMATEAR FECHA
-// ========================================
+// =====================================================
 
 function formatearFecha(fecha) {
 
@@ -1728,9 +1650,9 @@ function formatearFecha(fecha) {
 }
 
 
-// ========================================
-// TEXTO ESTADO
-// ========================================
+// =====================================================
+// TEXTO DEL ESTADO
+// =====================================================
 
 function obtenerTextoEstado(estado) {
 
@@ -1757,24 +1679,30 @@ function obtenerTextoEstado(estado) {
     };
 
 
-    return estados[estado] ||
-        estado;
+    return (
+        estados[estado] ||
+        estado
+    );
 
 }
 
 
-// ========================================
+// =====================================================
 // TEXTO ENTREGA
-// ========================================
+// =====================================================
 
 function obtenerTextoEntrega(pedido) {
 
     if (
+
         pedido.tipo_entrega ===
-            "delivery" ||
+            "delivery"
+
+        ||
 
         pedido.entrega ===
             "delivery"
+
     ) {
 
         return "DELIVERY";
@@ -1787,9 +1715,9 @@ function obtenerTextoEntrega(pedido) {
 }
 
 
-// ========================================
+// =====================================================
 // TEXTO PAGO
-// ========================================
+// =====================================================
 
 function obtenerTextoPago(pedido) {
 
@@ -1831,9 +1759,9 @@ function obtenerTextoPago(pedido) {
 }
 
 
-// ========================================
+// =====================================================
 // ESCAPAR HTML
-// ========================================
+// =====================================================
 
 function escaparHTML(texto) {
 
@@ -1867,9 +1795,9 @@ function escaparHTML(texto) {
 }
 
 
-// ========================================
-// ACTUALIZAR AUTOMÁTICAMENTE
-// ========================================
+// =====================================================
+// ACTUALIZAR CADA 10 SEGUNDOS
+// =====================================================
 
 setInterval(
     cargarPedidos,
@@ -1877,8 +1805,8 @@ setInterval(
 );
 
 
-// ========================================
-// INICIAR
-// ========================================
+// =====================================================
+// CARGA INICIAL
+// =====================================================
 
 cargarPedidos();
