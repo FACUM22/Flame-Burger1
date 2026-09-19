@@ -894,6 +894,7 @@ button {
     border-bottom: 1px solid #eee;
 }
 
+
 .dashboard-row:last-child {
     border-bottom: none;
 }
@@ -1160,6 +1161,96 @@ button {
 
     .sale-detail-grid {
         grid-template-columns: 1fr;
+    }
+
+}
+/* =====================================================
+   CONTROL DE ESTADO DE LA PÁGINA
+===================================================== */
+
+.page-control-panel {
+    margin-bottom: 20px;
+}
+
+.page-control {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 18px;
+    background: #fafafa;
+    border-radius: 12px;
+}
+
+.page-status {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.page-status-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    display: block;
+    background: #999;
+}
+
+.page-status-dot.active {
+    background: #16a34a;
+    box-shadow: 0 0 0 5px rgba(22, 163, 74, 0.12);
+}
+
+.page-status-dot.inactive {
+    background: #dc2626;
+    box-shadow: 0 0 0 5px rgba(220, 38, 38, 0.12);
+}
+
+.page-status strong {
+    display: block;
+    font-size: 14px;
+}
+
+.page-status small {
+    display: block;
+    color: #888;
+    font-size: 11px;
+    margin-top: 4px;
+}
+
+.page-toggle-btn {
+    border: none;
+    padding: 11px 18px;
+    border-radius: 9px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 800;
+    transition: .2s;
+}
+
+.page-toggle-btn:hover {
+    transform: translateY(-1px);
+}
+
+.page-toggle-btn.turn-off {
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
+.page-toggle-btn.turn-on {
+    background: #ecfdf5;
+    color: #047857;
+}
+
+@media (max-width: 600px) {
+
+    .page-control {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .page-toggle-btn {
+        width: 100%;
     }
 
 }
