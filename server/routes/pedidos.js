@@ -90,21 +90,32 @@ const ESTADOS_PERMITIDOS = [
 
 router.post("/", async (req, res) => {
 
-    const client = await pool.connect();
-
     try {
 
         // =====================================================
-        // HORARIO
+        // COMPROBAR SI LA PÁGINA ESTÁ ACTIVA
         // =====================================================
 
-        if (!restauranteEstaAbierto()) {
+        const paginaActiva =
+            await paginaEstaActiva();
 
-            return res.status(400).json({
+
+        if (!paginaActiva) {
+
+            return res.status(403).json({
                 ok: false,
-                error: "Flame Burger está cerrado en este momento."
+                mensaje:
+                    "Flame Burger está cerrado y no está recibiendo pedidos en este momento."
             });
+
         }
+
+
+        // =====================================================
+        // RESTO DE TU CÓDIGO ORIGINAL
+        // =====================================================
+
+        // acá continúa TODO lo que ya tenías
 
 
         // =====================================================
