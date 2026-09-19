@@ -1,1527 +1,490 @@
-const API_PEDIDOS = "/api/pedidos";
+<!DOCTYPE html>
+<html lang="es">
 
-let pedidos = [];
-let filtroActual = "todos";
-let ultimoPedidoId = null;
-let primeraCarga = true;
+<head>
 
+    <meta charset="UTF-8">
 
-// =====================================================
-// INICIO
-// =====================================================
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
-document.addEventListener("DOMContentLoaded", () => {
+    <title>
+        Flame Burger | Categorías
+    </title>
 
-    cargarPedidos();
+    <link
+        rel="stylesheet"
+        href="css/admin.css"
+    >
 
-    // Actualizar pedidos cada 10 segundos
-    setInterval(cargarPedidos, 10000);
+    <style>
 
-    // Filtros
-    configurarFiltros();
-});
-
-
-// =====================================================
-// CARGAR PEDIDOS
-// =====================================================
-
-async function cargarPedidos() {
-
-    try {
-
-        const respuesta = await fetch(API_PEDIDOS);
-
-        if (!respuesta.ok) {
-            throw new Error(
-                `Error HTTP ${respuesta.status}`
-            );
+        .category-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
         }
 
-        const datos = await respuesta.json();
-
-        // =================================================
-        // IMPORTANTE:
-        // El backend devuelve:
-        //
-        // {
-        //    ok: true,
-        //    pedidos: [...]
-        // }
-        //
-        // Por eso NO usamos datos.map()
-        // =================================================
-
-        const nuevosPedidos = Array.isArray(datos.pedidos)
-            ? datos.pedidos
-            : [];
-
-        detectarPedidoNuevo(nuevosPedidos);
-
-        pedidos = nuevosPedidos;
-
-        renderizarPedidos();
-
-    } catch (error) {
-
-        console.error(
-            "ERROR PEDIDOS:",
-            error
-        );
-    }
-}
-
-
-// =====================================================
-// DETECTAR PEDIDO NUEVO
-// =====================================================
-
-function detectarPedidoNuevo(nuevosPedidos) {
-
-    if (primeraCarga) {
-
-        if (nuevosPedidos.length > 0) {
-
-            ultimoPedidoId = Math.max(
-                ...nuevosPedidos.map(p => Number(p.id))
-            );
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
         }
 
-        primeraCarga = false;
+        .category-card {
+            background: white;
+            border: 1px solid #e8e8e8;
+            border-radius: 15px;
+            padding: 18px;
+        }
+
+        .category-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .category-icon {
+            width: 45px;
+            height: 45px;
+            background: #fff1e8;
+            border-radius: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 21px;
+        }
+
+        .category-name {
+            font-size: 17px;
+            font-weight: 800;
+            margin-top: 12px;
+        }
+
+        .category-count {
+            color: #888;
+            font-size: 11px;
+            margin-top: 5px;
+        }
+
+        .category-status {
+            font-size: 9px;
+            font-weight: 800;
+            padding: 5px 8px;
+            border-radius: 6px;
+        }
+
+        .category-active {
+            background: #ecfdf3;
+            color: #15803d;
+        }
+
+        .category-inactive {
+            background: #fef2f2;
+            color: #b91c1c;
+        }
+
+        .category-actions {
+            display: flex;
+            gap: 7px;
+            margin-top: 17px;
+        }
+
+        .category-actions button {
+            flex: 1;
+            border: none;
+            border-radius: 8px;
+            padding: 9px;
+            font-size: 10px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .category-edit {
+            background: #f1f1f1;
+        }
+
+        .category-toggle {
+            background: #fff7ed;
+            color: #c2410c;
+        }
+
+        .category-delete {
+            background: #fef2f2;
+            color: #b91c1c;
+        }
+
+        .category-empty {
+            text-align: center;
+            padding: 60px;
+            color: #888;
+        }
+
+        @media (max-width: 950px) {
+
+            .categories-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+        }
+
+        @media (max-width: 600px) {
+
+            .categories-grid {
+                grid-template-columns: 1fr;
+            }
 
-        return;
-    }
+        }
 
+    </style>
 
-    if (nuevosPedidos.length === 0) {
-        return;
-    }
+</head>
 
 
-    const pedidosActivos = nuevosPedidos.filter(
-        pedido =>
-            pedido.estado === "nuevo"
-    );
+<body>
 
+<div class="app">
 
-    if (pedidosActivos.length === 0) {
-        return;
-    }
 
+    <!-- SIDEBAR -->
 
-    const pedidoMasReciente = pedidosActivos.reduce(
-        (mayor, actual) =>
-            Number(actual.id) > Number(mayor.id)
-                ? actual
-                : mayor
-    );
+    <aside class="sidebar">
 
+        <div class="brand">
 
-    if (
-        ultimoPedidoId !== null &&
-        Number(pedidoMasReciente.id) > Number(ultimoPedidoId)
-    ) {
-
-        reproducirSonido();
-
-    }
-
-
-    if (
-        ultimoPedidoId === null ||
-        Number(pedidoMasReciente.id) > Number(ultimoPedidoId)
-    ) {
-
-        ultimoPedidoId =
-            Number(pedidoMasReciente.id);
-    }
-}
-
-
-// =====================================================
-// RENDERIZAR PEDIDOS
-// =====================================================
-
-function renderizarPedidos() {
-
-    const contenedor =
-        document.getElementById("listaPedidos");
-
-    if (!contenedor) {
-
-        console.error(
-            "No existe #listaPedidos en pedidos.html"
-        );
-
-        return;
-    }
-
-
-    let pedidosFiltrados = [...pedidos];
-
-
-    // =================================================
-    // FILTRO
-    // =================================================
-
-    if (filtroActual !== "todos") {
-
-        pedidosFiltrados =
-            pedidosFiltrados.filter(
-                pedido =>
-                    pedido.estado === filtroActual
-            );
-    }
-
-
-    // =================================================
-    // SIN PEDIDOS
-    // =================================================
-
-    if (pedidosFiltrados.length === 0) {
-
-        contenedor.innerHTML = `
-            <div class="sin-pedidos">
-                <h2>No hay pedidos</h2>
-                <p>No hay pedidos para mostrar.</p>
-            </div>
-        `;
-
-        return;
-    }
-
-
-    // =================================================
-    // ORDENAR
-    // =================================================
-
-    pedidosFiltrados.sort(
-        (a, b) =>
-            Number(b.id) - Number(a.id)
-    );
-
-
-    contenedor.innerHTML =
-        pedidosFiltrados
-            .map(crearTarjetaPedido)
-            .join("");
-}
-
-
-// =====================================================
-// CREAR TARJETA
-// =====================================================
-
-function crearTarjetaPedido(pedido) {
-
-    const productos =
-        Array.isArray(pedido.productos)
-            ? pedido.productos
-            : [];
-
-
-    const productosHTML = productos
-        .map(producto => `
-            <div class="producto-pedido">
-                <div>
-                    <strong>
-                        ${escaparHTML(producto.nombre || "Producto")}
-                    </strong>
-
-                    <span>
-                        x${Number(producto.cantidad || 0)}
-                    </span>
-                </div>
-
-                <strong>
-                    $${formatearPrecio(producto.subtotal)}
-                </strong>
-            </div>
-        `)
-        .join("");
-
-
-    // =================================================
-    // ENTREGA
-    // =================================================
-
-    const tipoEntrega =
-        pedido.tipo_entrega === "delivery"
-            ? "DELIVERY"
-            : "RETIRO EN LOCAL";
-
-
-    // =================================================
-    // DELIVERY
-    // =================================================
-
-    let informacionDelivery = "";
-
-
-    if (pedido.tipo_entrega === "delivery") {
-
-        const costoEnvio =
-            Number(pedido.costo_envio || 0);
-
-
-        const distancia =
-            pedido.distancia_delivery != null
-                ? Number(pedido.distancia_delivery)
-                : null;
-
-
-        informacionDelivery = `
-            <div class="order-info">
-                <span>ENVÍO</span>
-
-                <strong>
-                    ${
-                        costoEnvio === 0
-                            ? "GRATIS"
-                            : `$${formatearPrecio(costoEnvio)}`
-                    }
-
-                    ${
-                        distancia !== null
-                            ? ` (${distancia.toFixed(2)} km)`
-                            : ""
-                    }
-                </strong>
-            </div>
-        `;
-    }
-
-
-    // =================================================
-    // FORMA DE PAGO
-    // =================================================
-
-    let formaPago = "—";
-
-
-    if (pedido.forma_pago === "efectivo") {
-        formaPago = "EFECTIVO";
-    }
-
-    if (pedido.forma_pago === "pos") {
-        formaPago = "POS";
-    }
-
-    if (pedido.forma_pago === "mercado_pago") {
-        formaPago = "MERCADO PAGO";
-    }
-
-
-    // =================================================
-    // CAMBIO
-    // =================================================
-
-    let cambioHTML = "";
-
-
-    if (
-        pedido.forma_pago === "efectivo" &&
-        pedido.necesita_cambio
-    ) {
-
-        cambioHTML = `
-            <div class="order-info">
-                <span>CAMBIO DE</span>
-
-                <strong>
-                    $${formatearPrecio(pedido.cambio_de)}
-                </strong>
-            </div>
-        `;
-    }
-
-
-    // =================================================
-    // ESTADO
-    // =================================================
-
-    const estadoTexto =
-        obtenerTextoEstado(pedido.estado);
-
-
-    // =================================================
-    // BOTONES
-    // =================================================
-
-    const botonesHTML =
-        crearBotonesEstado(pedido);
-
-
-    return `
-        <div
-            class="pedido-card estado-${escaparHTML(
-                pedido.estado || ""
-            )}"
-            data-id="${pedido.id}"
-        >
-
-            <div class="pedido-header">
-
-                <div>
-                    <h2>
-                        PEDIDO #${pedido.id}
-                    </h2>
-
-                    <span class="fecha-pedido">
-                        ${formatearFecha(pedido.creado_en)}
-                    </span>
-                </div>
-
-                <span class="estado-badge">
-                    ${estadoTexto}
-                </span>
-
+            <div class="brand-logo">
+                🍔
             </div>
 
+            <div>
 
-            <div class="pedido-cliente">
-
-                <h3>
-                    ${escaparHTML(
-                        pedido.cliente_nombre ||
-                        "Cliente"
-                    )}
-                </h3>
-
-                <p>
-                    📞
-                    ${escaparHTML(
-                        pedido.telefono || "Sin teléfono"
-                    )}
-                </p>
-
-                ${
-                    pedido.direccion
-                        ? `
-                            <p>
-                                📍
-                                ${escaparHTML(
-                                    pedido.direccion
-                                )}
-                            </p>
-                        `
-                        : ""
-                }
-
-            </div>
-
-
-            <div class="pedido-info">
-
-                <div class="order-info">
-                    <span>ENTREGA</span>
-
-                    <strong>
-                        ${tipoEntrega}
-                    </strong>
-                </div>
-
-
-                ${informacionDelivery}
-
-
-                <div class="order-info">
-                    <span>PAGO</span>
-
-                    <strong>
-                        ${formaPago}
-                    </strong>
-                </div>
-
-
-                ${cambioHTML}
-
-            </div>
-
-
-            <div class="productos-pedido">
-
-                <h3>
-                    PRODUCTOS
-                </h3>
-
-                ${
-                    productosHTML ||
-                    `
-                        <p>
-                            No hay productos registrados.
-                        </p>
-                    `
-                }
-
-            </div>
-
-
-            <div class="pedido-total">
+                <h1>
+                    FLAME
+                </h1>
 
                 <span>
-                    TOTAL
+                    BURGER
                 </span>
-
-                <strong>
-                    $${formatearPrecio(pedido.total)}
-                </strong>
-
-            </div>
-
-
-            <div class="pedido-acciones">
-
-                ${botonesHTML}
-
-                <button
-                    type="button"
-                    onclick="verDetallePedido(${pedido.id})"
-                >
-                    VER DETALLE
-                </button>
-
-                <button
-                    type="button"
-                    onclick="imprimirPedido(${pedido.id})"
-                >
-                    IMPRIMIR PEDIDO
-                </button>
-
-                <button
-                    type="button"
-                    onclick="generarPDF(${pedido.id})"
-                >
-                    PDF
-                </button>
 
             </div>
 
         </div>
-    `;
-}
 
 
-// =====================================================
-// BOTONES DE ESTADO
-// =====================================================
+        <nav class="menu">
 
-function crearBotonesEstado(pedido) {
-
-    let html = "";
-
-
-    if (pedido.estado === "en_proceso_pago") {
-
-        html += `
-            <button
-                type="button"
-                onclick="actualizarEstado(
-                    ${pedido.id},
-                    'nuevo'
-                )"
+            <a
+                href="dashboard.html"
+                class="menu-item"
             >
-                CONFIRMAR PAGO
-            </button>
-        `;
-    }
+                <span>📊</span>
+                Dashboard
+            </a>
 
 
-    if (pedido.estado === "nuevo") {
-
-        html += `
-            <button
-                type="button"
-                onclick="actualizarEstado(
-                    ${pedido.id},
-                    'preparando'
-                )"
+            <a
+                href="pedidos.html"
+                class="menu-item"
             >
-                COMENZAR A PREPARAR
-            </button>
-        `;
-    }
+                <span>🛒</span>
+                Pedidos
+            </a>
 
 
-    if (pedido.estado === "preparando") {
-
-        html += `
-            <button
-                type="button"
-                onclick="actualizarEstado(
-                    ${pedido.id},
-                    'listo'
-                )"
+            <a
+                href="productos.html"
+                class="menu-item"
             >
-                MARCAR COMO LISTO
-            </button>
-        `;
-    }
+                <span>🍔</span>
+                Productos
+            </a>
 
 
-    if (pedido.estado === "listo") {
-
-        html += `
-            <button
-                type="button"
-                onclick="actualizarEstado(
-                    ${pedido.id},
-                    'entregado'
-                )"
+            <a
+                href="categorias.html"
+                class="menu-item active"
             >
-                MARCAR ENTREGADO
-            </button>
-        `;
-    }
+                <span>📁</span>
+                Categorías
+            </a>
 
 
-    if (
-        pedido.estado !== "entregado" &&
-        pedido.estado !== "cancelado"
-    ) {
-
-        html += `
-            <button
-                type="button"
-                class="btn-cancelar"
-                onclick="cancelarPedido(${pedido.id})"
+            <a
+                href="ventas.html"
+                class="menu-item"
             >
-                CANCELAR
+                <span>💰</span>
+                Ventas
+            </a>
+
+
+            <a
+                href="#"
+                class="menu-item"
+            >
+                <span>⚙️</span>
+                Configuración
+            </a>
+
+        </nav>
+
+
+        <div class="sidebar-bottom">
+
+            <div class="store-status">
+
+                <span class="status-dot"></span>
+
+                <div>
+
+                    <strong>
+                        Local abierto
+                    </strong>
+
+                    <small>
+                        Recibiendo pedidos
+                    </small>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </aside>
+
+
+
+    <!-- MAIN -->
+
+    <main class="main">
+
+
+        <header class="topbar">
+
+            <button
+                class="mobile-menu"
+                type="button"
+            >
+                ☰
             </button>
-        `;
-    }
 
 
-    return html;
-}
+            <div class="topbar-title">
+
+                <h2>
+                    Categorías
+                </h2>
+
+                <p>
+                    Organizá el menú de Flame Burger
+                </p>
+
+            </div>
 
 
-// =====================================================
-// ACTUALIZAR ESTADO
-// =====================================================
+            <div class="topbar-actions">
 
-async function actualizarEstado(id, estado) {
+                <div class="user">
 
-    try {
+                    <div class="avatar">
+                        FB
+                    </div>
 
-        const respuesta = await fetch(
-            `${API_PEDIDOS}/${id}/estado`,
-            {
-                method: "PATCH",
+                    <div>
 
-                headers: {
-                    "Content-Type": "application/json"
-                },
+                        <strong>
+                            Flame Burger
+                        </strong>
 
-                body: JSON.stringify({
-                    estado
-                })
-            }
-        );
+                        <small>
+                            Administrador
+                        </small>
 
+                    </div>
 
-        const datos = await respuesta.json();
+                </div>
 
+            </div>
 
-        if (!respuesta.ok || !datos.ok) {
-
-            throw new Error(
-                datos.error ||
-                "No se pudo actualizar el estado."
-            );
-        }
+        </header>
 
 
-        await cargarPedidos();
 
-    } catch (error) {
-
-        console.error(
-            "ERROR ACTUALIZANDO ESTADO:",
-            error
-        );
-
-        alert(
-            error.message ||
-            "No se pudo actualizar el pedido."
-        );
-    }
-}
+        <section class="content">
 
 
-// =====================================================
-// CANCELAR PEDIDO
-// =====================================================
+            <div class="welcome">
 
-async function cancelarPedido(id) {
+                <div>
 
-    const confirmar =
-        confirm(
-            `¿Seguro que querés cancelar el pedido #${id}?`
-        );
+                    <span class="eyebrow">
+                        MENÚ
+                    </span>
 
+                    <h2>
+                        Categorías 📁
+                    </h2>
 
-    if (!confirmar) {
-        return;
-    }
+                    <p>
+                        Organizá los productos de tu menú.
+                    </p>
 
-
-    try {
-
-        const respuesta = await fetch(
-            `${API_PEDIDOS}/${id}/cancelar`,
-            {
-                method: "PATCH"
-            }
-        );
+                </div>
 
 
-        const datos = await respuesta.json();
+                <button
+                    class="primary-btn"
+                    id="nuevaCategoria"
+                    type="button"
+                >
+                    ＋ Nueva categoría
+                </button>
+
+            </div>
 
 
-        if (!respuesta.ok || !datos.ok) {
 
-            throw new Error(
-                datos.error ||
-                "No se pudo cancelar el pedido."
-            );
-        }
+            <div class="panel">
 
 
-        await cargarPedidos();
+                <div class="category-toolbar">
 
-    } catch (error) {
+                    <div>
 
-        console.error(
-            "ERROR CANCELANDO PEDIDO:",
-            error
-        );
+                        <h3>
+                            Categorías del menú
+                        </h3>
 
-        alert(
-            error.message ||
-            "No se pudo cancelar el pedido."
-        );
-    }
-}
+                        <p>
+                            Administrá las categorías disponibles.
+                        </p>
 
+                    </div>
 
-// =====================================================
-// VER DETALLE
-// =====================================================
-
-async function verDetallePedido(id) {
-
-    try {
-
-        const respuesta = await fetch(
-            `${API_PEDIDOS}/${id}`
-        );
+                </div>
 
 
-        const datos = await respuesta.json();
+                <div
+                    id="categorias"
+                    class="categories-grid"
+                ></div>
 
 
-        if (!respuesta.ok || !datos.ok) {
-
-            throw new Error(
-                datos.error ||
-                "No se pudo obtener el pedido."
-            );
-        }
+            </div>
 
 
-        mostrarDetallePedido(datos.pedido);
+        </section>
 
-    } catch (error) {
+    </main>
 
-        console.error(
-            "ERROR DETALLE:",
-            error
-        );
-
-        alert(
-            error.message ||
-            "No se pudo cargar el pedido."
-        );
-    }
-}
+</div>
 
 
-// =====================================================
-// MOSTRAR DETALLE
-// =====================================================
 
-function mostrarDetallePedido(pedido) {
+<!-- MODAL -->
 
-    const productos =
-        Array.isArray(pedido.productos)
-            ? pedido.productos
-            : [];
+<div
+    id="modalCategoria"
+    class="modal"
+>
 
 
-    const productosHTML = productos
-        .map(producto => `
+    <div class="modal-overlay"></div>
+
+
+    <div class="modal-box">
+
+
+        <div class="modal-header">
+
             <div>
-                <strong>
-                    ${escaparHTML(producto.nombre)}
-                </strong>
 
-                x${producto.cantidad}
-
-                —
-                $${formatearPrecio(producto.subtotal)}
-            </div>
-        `)
-        .join("");
-
-
-    let deliveryHTML = "";
-
-
-    if (pedido.tipo_entrega === "delivery") {
-
-        const costoEnvio =
-            Number(pedido.costo_envio || 0);
-
-
-        const distancia =
-            pedido.distancia_delivery != null
-                ? Number(pedido.distancia_delivery)
-                : null;
-
-
-        deliveryHTML = `
-            <p>
-                <strong>ENVÍO:</strong>
-
-                ${
-                    costoEnvio === 0
-                        ? "GRATIS"
-                        : `$${formatearPrecio(costoEnvio)}`
-                }
-
-                ${
-                    distancia !== null
-                        ? ` (${distancia.toFixed(2)} km)`
-                        : ""
-                }
-            </p>
-        `;
-    }
-
-
-    alert(
-        `PEDIDO #${pedido.id}\n\n` +
-
-        `CLIENTE: ${
-            pedido.cliente_nombre || "—"
-        }\n` +
-
-        `TELÉFONO: ${
-            pedido.telefono || "—"
-        }\n` +
-
-        `DIRECCIÓN: ${
-            pedido.direccion || "—"
-        }\n\n` +
-
-        `ENTREGA: ${
-            pedido.tipo_entrega === "delivery"
-                ? "DELIVERY"
-                : "RETIRO"
-        }\n` +
-
-        `ENVÍO: ${
-            Number(pedido.costo_envio || 0) === 0
-                ? "GRATIS"
-                : "$" +
-                  formatearPrecio(
-                      pedido.costo_envio
-                  )
-        }\n` +
-
-        `DISTANCIA: ${
-            pedido.distancia_delivery != null
-                ? Number(
-                    pedido.distancia_delivery
-                  ).toFixed(2) + " km"
-                : "—"
-        }\n\n` +
-
-        `PRODUCTOS:\n` +
-
-        productos
-            .map(
-                producto =>
-                    `${producto.cantidad}x ${
-                        producto.nombre
-                    } - $${formatearPrecio(
-                        producto.subtotal
-                    )}`
-            )
-            .join("\n") +
-
-        `\n\nTOTAL: $${formatearPrecio(
-            pedido.total
-        )}`
-    );
-}
-
-
-// =====================================================
-// IMPRIMIR PEDIDO
-// =====================================================
-
-function imprimirPedido(id) {
-
-    const pedido =
-        pedidos.find(
-            p => Number(p.id) === Number(id)
-        );
-
-
-    if (!pedido) {
-
-        alert(
-            "No se encontró el pedido."
-        );
-
-        return;
-    }
-
-
-    const productos =
-        Array.isArray(pedido.productos)
-            ? pedido.productos
-            : [];
-
-
-    const productosHTML = productos
-        .map(producto => `
-            <tr>
-
-                <td>
-                    ${escaparHTML(
-                        producto.nombre || "Producto"
-                    )}
-                </td>
-
-                <td class="cantidad">
-                    ${producto.cantidad}
-                </td>
-
-                <td class="precio">
-                    $${formatearPrecio(
-                        producto.subtotal
-                    )}
-                </td>
-
-            </tr>
-        `)
-        .join("");
-
-
-    // =================================================
-    // DELIVERY
-    // =================================================
-
-    let deliveryHTML = "";
-
-
-    if (pedido.tipo_entrega === "delivery") {
-
-        const costoEnvio =
-            Number(pedido.costo_envio || 0);
-
-
-        const distancia =
-            pedido.distancia_delivery != null
-                ? Number(pedido.distancia_delivery)
-                : null;
-
-
-        deliveryHTML = `
-            <strong>
-                ENVÍO:
-            </strong>
-
-            ${
-                costoEnvio === 0
-                    ? "GRATIS"
-                    : `$${formatearPrecio(
-                        costoEnvio
-                    )}`
-            }
-
-            ${
-                distancia !== null
-                    ? ` (${distancia.toFixed(2)} km)`
-                    : ""
-            }
-
-            <br>
-        `;
-    }
-
-
-    // =================================================
-    // CAMBIO
-    // =================================================
-
-    let cambioHTML = "";
-
-
-    if (
-        pedido.forma_pago === "efectivo" &&
-        pedido.necesita_cambio
-    ) {
-
-        cambioHTML = `
-            <strong>
-                CAMBIO DE:
-            </strong>
-
-            $${formatearPrecio(
-                pedido.cambio_de
-            )}
-
-            <br>
-        `;
-    }
-
-
-    const ventana =
-        window.open(
-            "",
-            "_blank",
-            "width=400,height=700"
-        );
-
-
-    if (!ventana) {
-
-        alert(
-            "El navegador bloqueó la ventana de impresión. Permití las ventanas emergentes."
-        );
-
-        return;
-    }
-
-
-    ventana.document.write(`
-        <!DOCTYPE html>
-
-        <html lang="es">
-
-        <head>
-
-            <meta charset="UTF-8">
-
-            <title>
-                Pedido #${pedido.id}
-            </title>
-
-            <style>
-
-                * {
-                    box-sizing: border-box;
-                }
-
-                body {
-                    width: 72mm;
-                    margin: 0 auto;
-                    padding: 5mm;
-                    font-family:
-                        Arial,
-                        Helvetica,
-                        sans-serif;
-                    font-size: 12px;
-                    color: #000;
-                }
-
-                h1 {
-                    text-align: center;
-                    font-size: 20px;
-                    margin: 0 0 5px;
-                }
-
-                h2 {
-                    text-align: center;
-                    font-size: 15px;
-                    margin: 5px 0 10px;
-                }
-
-                .centrado {
-                    text-align: center;
-                }
-
-                .linea {
-                    border-top: 1px dashed #000;
-                    margin: 8px 0;
-                }
-
-                .datos {
-                    line-height: 1.5;
-                }
-
-                table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    margin-top: 8px;
-                }
-
-                td {
-                    padding: 3px 0;
-                    vertical-align: top;
-                }
-
-                .cantidad {
-                    text-align: center;
-                    width: 12mm;
-                }
-
-                .precio {
-                    text-align: right;
-                    width: 20mm;
-                }
-
-                .total {
-                    display: flex;
-                    justify-content: space-between;
-                    font-size: 18px;
-                    font-weight: bold;
-                    margin-top: 10px;
-                }
-
-                .footer {
-                    text-align: center;
-                    margin-top: 15px;
-                    font-size: 11px;
-                }
-
-                @media print {
-
-                    body {
-                        width: 72mm;
-                    }
-
-                    @page {
-                        margin: 0;
-                    }
-
-                }
-
-            </style>
-
-        </head>
-
-        <body>
-
-            <h1>
-                FLAME BURGER
-            </h1>
-
-            <h2>
-                PEDIDO #${pedido.id}
-            </h2>
-
-            <div class="centrado">
-                ${formatearFecha(
-                    pedido.creado_en
-                )}
-            </div>
-
-            <div class="linea"></div>
-
-            <div class="datos">
-
-                <strong>
-                    CLIENTE:
-                </strong>
-
-                ${escaparHTML(
-                    pedido.cliente_nombre ||
-                    "—"
-                )}
-
-                <br>
-
-                <strong>
-                    TEL:
-                </strong>
-
-                ${escaparHTML(
-                    pedido.telefono ||
-                    "—"
-                )}
-
-                <br>
-
-                ${
-                    pedido.direccion
-                        ? `
-                            <strong>
-                                DIRECCIÓN:
-                            </strong>
-
-                            ${escaparHTML(
-                                pedido.direccion
-                            )}
-
-                            <br>
-                        `
-                        : ""
-                }
-
-                <strong>
-                    ENTREGA:
-                </strong>
-
-                ${
-                    pedido.tipo_entrega ===
-                    "delivery"
-                        ? "DELIVERY"
-                        : "RETIRO EN LOCAL"
-                }
-
-                <br>
-
-                ${deliveryHTML}
-
-                <strong>
-                    PAGO:
-                </strong>
-
-                ${
-                    pedido.forma_pago ===
-                    "mercado_pago"
-                        ? "MERCADO PAGO"
-                        : pedido.forma_pago ===
-                          "pos"
-                            ? "POS"
-                            : "EFECTIVO"
-                }
-
-                <br>
-
-                ${cambioHTML}
-
-            </div>
-
-            <div class="linea"></div>
-
-            <table>
-
-                <tbody>
-
-                    ${productosHTML}
-
-                </tbody>
-
-            </table>
-
-            <div class="linea"></div>
-
-            <div class="total">
-
-                <span>
-                    TOTAL
+                <span class="eyebrow">
+                    MENÚ
                 </span>
 
-                <span>
-                    $${formatearPrecio(
-                        pedido.total
-                    )}
-                </span>
+                <h2 id="modalTitulo">
+                    Nueva categoría
+                </h2>
 
             </div>
 
-            <div class="footer">
 
-                Gracias por elegir Flame Burger
+            <button
+                id="cerrarModal"
+                class="close-btn"
+                type="button"
+            >
+                ×
+            </button>
+
+        </div>
+
+
+        <form id="categoriaForm">
+
+
+            <div class="form-group">
+
+                <label>
+                    Nombre de la categoría
+                </label>
+
+                <input
+                    type="text"
+                    id="nombreCategoria"
+                    placeholder="Ej: Combos"
+                    required
+                >
 
             </div>
 
-        </body>
 
-        </html>
-    `);
+            <div
+                id="mensajeCategoria"
+                class="form-message"
+            ></div>
 
 
-    ventana.document.close();
+            <div class="modal-footer">
 
+                <button
+                    type="button"
+                    id="cancelarCategoria"
+                    class="secondary-btn"
+                >
+                    Cancelar
+                </button>
 
-    ventana.onload = () => {
 
-        ventana.focus();
+                <button
+                    type="submit"
+                    class="primary-btn"
+                >
+                    Guardar categoría
+                </button>
 
-        ventana.print();
+            </div>
 
-    };
-}
 
+        </form>
 
-// =====================================================
-// GENERAR PDF
-// =====================================================
+    </div>
 
-function generarPDF(id) {
+</div>
 
-    imprimirPedido(id);
-}
 
+<script
+    src="js/categorias.js"
+></script>
 
-// =====================================================
-// FILTROS
-// =====================================================
+</body>
 
-function configurarFiltros() {
-
-    const botones =
-        document.querySelectorAll(
-            "[data-filtro]"
-        );
-
-
-    botones.forEach(boton => {
-
-        boton.addEventListener(
-            "click",
-            () => {
-
-                filtroActual =
-                    boton.dataset.filtro ||
-                    "todos";
-
-
-                botones.forEach(
-                    otro =>
-                        otro.classList.remove(
-                            "activo"
-                        )
-                );
-
-
-                boton.classList.add(
-                    "activo"
-                );
-
-
-                renderizarPedidos();
-            }
-        );
-
-    });
-}
-
-
-// =====================================================
-// ESTADO
-// =====================================================
-
-function obtenerTextoEstado(estado) {
-
-    switch (estado) {
-
-        case "en_proceso_pago":
-            return "ESPERANDO PAGO";
-
-        case "nuevo":
-            return "NUEVO";
-
-        case "preparando":
-            return "PREPARANDO";
-
-        case "listo":
-            return "LISTO";
-
-        case "entregado":
-            return "ENTREGADO";
-
-        case "cancelado":
-            return "CANCELADO";
-
-        default:
-            return String(
-                estado || "SIN ESTADO"
-            ).toUpperCase();
-    }
-}
-
-
-// =====================================================
-// FECHA
-// =====================================================
-
-function formatearFecha(fecha) {
-
-    if (!fecha) {
-        return "—";
-    }
-
-
-    const fechaObj =
-        new Date(fecha);
-
-
-    if (
-        Number.isNaN(
-            fechaObj.getTime()
-        )
-    ) {
-
-        return String(fecha);
-    }
-
-
-    return fechaObj.toLocaleString(
-        "es-UY",
-        {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit"
-        }
-    );
-}
-
-
-// =====================================================
-// PRECIO
-// =====================================================
-
-function formatearPrecio(valor) {
-
-    const numero =
-        Number(valor || 0);
-
-
-    return numero.toLocaleString(
-        "es-UY",
-        {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 2
-        }
-    );
-}
-
-
-// =====================================================
-// ESCAPAR HTML
-// =====================================================
-
-function escaparHTML(valor) {
-
-    return String(valor ?? "")
-        .replace(
-            /&/g,
-            "&amp;"
-        )
-        .replace(
-            /</g,
-            "&lt;"
-        )
-        .replace(
-            />/g,
-            "&gt;"
-        )
-        .replace(
-            /"/g,
-            "&quot;"
-        )
-        .replace(
-            /'/g,
-            "&#039;"
-        );
-}
-
-
-// =====================================================
-// SONIDO NUEVO PEDIDO
-// =====================================================
-
-function reproducirSonido() {
-
-    try {
-
-        const AudioContext =
-            window.AudioContext ||
-            window.webkitAudioContext;
-
-
-        if (!AudioContext) {
-            return;
-        }
-
-
-        const contexto =
-            new AudioContext();
-
-
-        const oscilador =
-            contexto.createOscillator();
-
-
-        const ganancia =
-            contexto.createGain();
-
-
-        oscilador.type = "sine";
-
-        oscilador.frequency.setValueAtTime(
-            880,
-            contexto.currentTime
-        );
-
-        oscilador.frequency.setValueAtTime(
-            660,
-            contexto.currentTime + 0.15
-        );
-
-        oscilador.frequency.setValueAtTime(
-            880,
-            contexto.currentTime + 0.30
-        );
-
-
-        ganancia.gain.setValueAtTime(
-            0.001,
-            contexto.currentTime
-        );
-
-        ganancia.gain.exponentialRampToValueAtTime(
-            0.4,
-            contexto.currentTime + 0.02
-        );
-
-        ganancia.gain.exponentialRampToValueAtTime(
-            0.001,
-            contexto.currentTime + 0.5
-        );
-
-
-        oscilador.connect(
-            ganancia
-        );
-
-        ganancia.connect(
-            contexto.destination
-        );
-
-
-        oscilador.start();
-
-        oscilador.stop(
-            contexto.currentTime + 0.5
-        );
-
-
-    } catch (error) {
-
-        console.error(
-            "No se pudo reproducir el sonido:",
-            error
-        );
-    }
-}
+</html>
