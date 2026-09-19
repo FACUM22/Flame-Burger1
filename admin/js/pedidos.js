@@ -3,349 +3,37 @@ const API_PEDIDOS = "/api/pedidos";
 let pedidos = [];
 let filtroActual = "todos";
 
-// ========================================
-// ELEMENTOS DEL DOM
-// ========================================
-
 const listaPedidos = document.getElementById("ordersList");
 const contadorNuevos = document.getElementById("pedidosNuevos");
-
-// ========================================
-// SONIDO DE NUEVO PEDIDO
-// ========================================
-
-let pedidosAnteriores = [];
-let audioContext = null;
-let sonidoActivado = false;
-
-// Activar el sistema de audio después
-// de la primera interacción del usuario
-function activarSonido() {
-
-    try {
-
-        if (!audioContext) {
-
-            audioContext = new (
-                window.AudioContext ||
-                window.webkitAudioContext
-            )();
-
-        }
-
-        if (audioContext.state === "suspended") {
-            audioContext.resume();
-        }
-
-        sonidoActivado = true;
-
-    } catch (error) {
-
-        console.error(
-            "No se pudo activar el sonido:",
-            error
-        );
-
-    }
-}
-
-// El navegador permite audio después
-// de que el usuario hace clic en la página
-document.addEventListener(
-    "click",
-    activarSonido,
-    { once: true }
-);
-
-
-// ========================================
-// SONIDO TIPO NOTIFICACIÓN
-// ========================================
-
-function reproducirSonidoPedido() {
-
-    if (!sonidoActivado || !audioContext) {
-        return;
-    }
-
-    try {
-
-        if (audioContext.state === "suspended") {
-            audioContext.resume();
-        }
-
-        const ahora =
-            audioContext.currentTime;
-
-
-        // ================================
-        // NOTA 1
-        // ================================
-
-        const oscilador1 =
-            audioContext.createOscillator();
-
-        const ganancia1 =
-            audioContext.createGain();
-
-        oscilador1.type = "sine";
-
-        oscilador1.frequency.setValueAtTime(
-            659.25,
-            ahora
-        );
-
-        ganancia1.gain.setValueAtTime(
-            0.0001,
-            ahora
-        );
-
-        ganancia1.gain.exponentialRampToValueAtTime(
-            0.25,
-            ahora + 0.02
-        );
-
-        ganancia1.gain.exponentialRampToValueAtTime(
-            0.0001,
-            ahora + 0.35
-        );
-
-        oscilador1.connect(ganancia1);
-
-        ganancia1.connect(
-            audioContext.destination
-        );
-
-        oscilador1.start(ahora);
-
-        oscilador1.stop(
-            ahora + 0.4
-        );
-
-
-        // ================================
-        // NOTA 2
-        // ================================
-
-        const oscilador2 =
-            audioContext.createOscillator();
-
-        const ganancia2 =
-            audioContext.createGain();
-
-        oscilador2.type = "sine";
-
-        oscilador2.frequency.setValueAtTime(
-            783.99,
-            ahora + 0.12
-        );
-
-        ganancia2.gain.setValueAtTime(
-            0.0001,
-            ahora + 0.12
-        );
-
-        ganancia2.gain.exponentialRampToValueAtTime(
-            0.25,
-            ahora + 0.14
-        );
-
-        ganancia2.gain.exponentialRampToValueAtTime(
-            0.0001,
-            ahora + 0.55
-        );
-
-        oscilador2.connect(ganancia2);
-
-        ganancia2.connect(
-            audioContext.destination
-        );
-
-        oscilador2.start(
-            ahora + 0.12
-        );
-
-        oscilador2.stop(
-            ahora + 0.6
-        );
-
-
-        // ================================
-        // NOTA 3
-        // ================================
-
-        const oscilador3 =
-            audioContext.createOscillator();
-
-        const ganancia3 =
-            audioContext.createGain();
-
-        oscilador3.type = "sine";
-
-        oscilador3.frequency.setValueAtTime(
-            987.77,
-            ahora + 0.25
-        );
-
-        ganancia3.gain.setValueAtTime(
-            0.0001,
-            ahora + 0.25
-        );
-
-        ganancia3.gain.exponentialRampToValueAtTime(
-            0.22,
-            ahora + 0.27
-        );
-
-        ganancia3.gain.exponentialRampToValueAtTime(
-            0.0001,
-            ahora + 0.75
-        );
-
-        oscilador3.connect(ganancia3);
-
-        ganancia3.connect(
-            audioContext.destination
-        );
-
-        oscilador3.start(
-            ahora + 0.25
-        );
-
-        oscilador3.stop(
-            ahora + 0.8
-        );
-
-    } catch (error) {
-
-        console.error(
-            "Error reproduciendo sonido:",
-            error
-        );
-
-    }
-}
-
 
 // ========================================
 // CARGAR PEDIDOS
 // ========================================
 
 async function cargarPedidos() {
-
     try {
-
-        const respuesta =
-            await fetch(API_PEDIDOS);
+        const respuesta = await fetch(API_PEDIDOS);
 
         if (!respuesta.ok) {
-
-            throw new Error(
-                "Error al obtener los pedidos"
-            );
-
+            throw new Error("Error al obtener los pedidos");
         }
 
-        const nuevosPedidos =
-            await respuesta.json();
-
-
-        // ====================================
-        // PRIMERA CARGA
-        // ====================================
-
-        // La primera vez NO hacemos sonar nada.
-        // Solo guardamos los pedidos actuales.
-
-        if (pedidosAnteriores.length === 0) {
-
-            pedidosAnteriores =
-                nuevosPedidos.map(pedido => ({
-
-                    id: pedido.id,
-
-                    estado: pedido.estado
-
-                }));
-
-        }
-
-        // ====================================
-        // COMPROBAR NUEVOS PEDIDOS
-        // ====================================
-
-        else {
-
-            const hayPedidoNuevo =
-                nuevosPedidos.some(pedido => {
-
-                    const pedidoAnterior =
-                        pedidosAnteriores.find(
-                            anterior =>
-                                anterior.id ===
-                                pedido.id
-                        );
-
-                    return (
-                        pedido.estado === "nuevo" &&
-                        !pedidoAnterior
-                    );
-
-                });
-
-
-            if (hayPedidoNuevo) {
-
-                reproducirSonidoPedido();
-
-            }
-
-
-            // Actualizar memoria
-            pedidosAnteriores =
-                nuevosPedidos.map(pedido => ({
-
-                    id: pedido.id,
-
-                    estado: pedido.estado
-
-                }));
-
-        }
-
-
-        pedidos =
-            nuevosPedidos;
+        pedidos = await respuesta.json();
 
         mostrarPedidos();
 
-
     } catch (error) {
-
-        console.error(
-            "Error cargando pedidos:",
-            error
-        );
-
+        console.error("Error cargando pedidos:", error);
 
         if (listaPedidos) {
-
             listaPedidos.innerHTML = `
-
                 <div class="error">
-
                     No se pudieron cargar los pedidos.
-
                 </div>
-
             `;
-
         }
-
     }
-
 }
-
 
 // ========================================
 // MOSTRAR PEDIDOS
@@ -353,311 +41,154 @@ async function cargarPedidos() {
 
 function mostrarPedidos() {
 
-    if (!listaPedidos) {
-        return;
-    }
+    if (!listaPedidos) return;
 
-
-    // No mostrar pedidos que todavía
-    // están esperando el pago de Mercado Pago
-
-    const pedidosVisibles =
-        pedidos.filter(
-            pedido =>
-                pedido.estado !==
-                "en_proceso_pago"
-        );
-
-
-    // ====================================
-    // CONTAR PEDIDOS NUEVOS
-    // ====================================
-
-    const nuevos =
-        pedidosVisibles.filter(
-            pedido =>
-                pedido.estado === "nuevo"
-        );
-
-
-    if (contadorNuevos) {
-
-        contadorNuevos.textContent =
-            nuevos.length;
-
-    }
-
-
-    // ====================================
-    // APLICAR FILTRO
-    // ====================================
-
-    let pedidosFiltrados =
-        pedidosVisibles;
-
-
-    if (filtroActual !== "todos") {
-
-        pedidosFiltrados =
-            pedidosVisibles.filter(
-                pedido =>
-                    pedido.estado ===
-                    filtroActual
-            );
-
-    }
-
-
-    // ====================================
-    // ORDENAR
-    // ====================================
-
-    pedidosFiltrados.sort(
-        (a, b) => {
-
-            return (
-                new Date(b.creado_en) -
-                new Date(a.creado_en)
-            );
-
-        }
+    // No mostrar pedidos que todavía están esperando
+    // la confirmación de Mercado Pago
+    const pedidosVisibles = pedidos.filter(
+        pedido => pedido.estado !== "en_proceso_pago"
     );
 
+    // Contar pedidos nuevos
+    const nuevos = pedidosVisibles.filter(
+        pedido => pedido.estado === "nuevo"
+    );
 
-    // ====================================
-    // SIN PEDIDOS
-    // ====================================
-
-    if (pedidosFiltrados.length === 0) {
-
-        listaPedidos.innerHTML = `
-
-            <div class="sin-pedidos">
-
-                No hay pedidos para mostrar.
-
-            </div>
-
-        `;
-
-        return;
-
+    if (contadorNuevos) {
+        contadorNuevos.textContent = nuevos.length;
     }
 
+    // Aplicar filtro
+    let pedidosFiltrados = pedidosVisibles;
+
+    if (filtroActual !== "todos") {
+        pedidosFiltrados = pedidosVisibles.filter(
+            pedido => pedido.estado === filtroActual
+        );
+    }
+
+    // Ordenar del más reciente al más antiguo
+    pedidosFiltrados.sort((a, b) => {
+        return new Date(b.creado_en) - new Date(a.creado_en);
+    });
+
+    if (pedidosFiltrados.length === 0) {
+        listaPedidos.innerHTML = `
+            <div class="sin-pedidos">
+                No hay pedidos para mostrar.
+            </div>
+        `;
+        return;
+    }
 
     listaPedidos.innerHTML = "";
 
-
-    // ====================================
-    // CREAR TARJETAS
-    // ====================================
-
-    pedidosFiltrados.forEach(
-        pedido => {
-
-            listaPedidos.appendChild(
-                crearTarjetaPedido(pedido)
-            );
-
-        }
-    );
-
+    pedidosFiltrados.forEach(pedido => {
+        listaPedidos.appendChild(
+            crearTarjetaPedido(pedido)
+        );
+    });
 }
 
-
 // ========================================
-// CREAR TARJETA
+// CREAR TARJETA DEL PEDIDO
 // ========================================
 
 function crearTarjetaPedido(pedido) {
 
-    const tarjeta =
-        document.createElement("div");
+    const tarjeta = document.createElement("div");
 
-
-    tarjeta.className =
-        "order-card";
-
+    tarjeta.className = "order-card";
 
     tarjeta.innerHTML = `
-
         <div class="order-header">
 
             <div>
-
                 <h3>
-                    PEDIDO #${pedido.id}
+                    NUEVO PEDIDO #${pedido.id}
                 </h3>
 
                 <span class="order-date">
-
-                    ${formatearFecha(
-                        pedido.creado_en
-                    )}
-
+                    ${formatearFecha(pedido.creado_en)}
                 </span>
-
             </div>
 
-
-            <span
-                class="estado estado-${pedido.estado}"
-            >
-
-                ${obtenerTextoEstado(
-                    pedido.estado
-                )}
-
+            <span class="estado estado-${pedido.estado}">
+                ${obtenerTextoEstado(pedido.estado)}
             </span>
 
         </div>
 
-
         <div class="order-body">
-
 
             <div class="cliente-info">
 
-
                 <p>
-
-                    <strong>
-                        CLIENTE:
-                    </strong>
-
-                    ${escaparHTML(
-                        pedido.nombre ||
-                        "Sin nombre"
-                    )}
-
+                    <strong>CLIENTE:</strong>
+                    ${escaparHTML(pedido.nombre || "Sin nombre")}
                 </p>
 
-
                 <p>
-
-                    <strong>
-                        TELÉFONO:
-                    </strong>
-
-                    ${escaparHTML(
-                        pedido.telefono ||
-                        "No indicado"
-                    )}
-
+                    <strong>TELÉFONO:</strong>
+                    ${escaparHTML(pedido.telefono || "No indicado")}
                 </p>
 
-
                 <p>
-
-                    <strong>
-                        ENTREGA:
-                    </strong>
-
-                    ${obtenerTextoEntrega(
-                        pedido
-                    )}
-
+                    <strong>ENTREGA:</strong>
+                    ${obtenerTextoEntrega(pedido)}
                 </p>
-
 
                 ${
                     pedido.direccion
                         ? `
-
                             <p>
-
-                                <strong>
-                                    DIRECCIÓN:
-                                </strong>
-
-                                ${escaparHTML(
-                                    pedido.direccion
-                                )}
-
+                                <strong>DIRECCIÓN:</strong>
+                                ${escaparHTML(pedido.direccion)}
                             </p>
-
                         `
                         : ""
                 }
 
-
                 <p>
-
-                    <strong>
-                        PAGO:
-                    </strong>
-
-                    ${obtenerTextoPago(
-                        pedido
-                    )}
-
+                    <strong>PAGO:</strong>
+                    ${obtenerTextoPago(pedido)}
                 </p>
-
 
                 ${
                     pedido.cambio
                         ? `
-
                             <p>
-
-                                <strong>
-                                    PRECISA CAMBIO DE:
-                                </strong>
-
+                                <strong>PRECISA CAMBIO DE:</strong>
                                 $${pedido.cambio}
-
                             </p>
-
                         `
                         : ""
                 }
 
-
             </div>
-
 
             <div class="productos-pedido">
 
-                <h4>
-                    PRODUCTOS
-                </h4>
+                <h4>PRODUCTOS</h4>
 
-
-                <div
-                    id="productos-${pedido.id}"
-                >
-
+                <div id="productos-${pedido.id}">
                     Cargando productos...
-
                 </div>
 
             </div>
 
-
             ${
                 pedido.observaciones
                     ? `
-
                         <div class="observaciones">
-
-                            <strong>
-                                OBSERVACIONES:
-                            </strong>
-
+                            <strong>OBSERVACIONES:</strong>
                             <p>
-
-                                ${escaparHTML(
-                                    pedido.observaciones
-                                )}
-
+                                ${escaparHTML(pedido.observaciones)}
                             </p>
-
                         </div>
-
                     `
                     : ""
             }
-
 
             <div class="order-total">
 
@@ -665,179 +196,105 @@ function crearTarjetaPedido(pedido) {
                     TOTAL:
                 </strong>
 
-
                 <span>
-
-                    $${Number(
-                        pedido.total || 0
-                    ).toFixed(2)}
-
+                    $${Number(pedido.total || 0).toFixed(2)}
                 </span>
 
             </div>
 
-
         </div>
-
 
         <div class="order-actions">
 
-            ${crearBotonesEstado(
-                pedido
-            )}
+            ${crearBotonesEstado(pedido)}
 
         </div>
-
     `;
 
-
-    cargarDetallePedido(
-        pedido.id
-    );
-
+    cargarDetallePedido(pedido.id);
 
     return tarjeta;
-
 }
 
-
 // ========================================
-// BOTONES DE ESTADO
+// BOTONES SEGÚN ESTADO
 // ========================================
 
 function crearBotonesEstado(pedido) {
 
     let botones = `
-
         <button
             class="btn-print"
             onclick="imprimirPedido(${pedido.id})"
         >
-
             🖨️ IMPRIMIR PEDIDO
-
         </button>
-
 
         <button
             class="btn-pdf"
             onclick="guardarPDF(${pedido.id})"
         >
-
             📄 GUARDAR PDF
-
         </button>
-
     `;
-
 
     if (pedido.estado === "nuevo") {
 
         botones += `
-
             <button
                 class="btn-preparar"
-                onclick="cambiarEstado(
-                    ${pedido.id},
-                    'preparando'
-                )"
+                onclick="cambiarEstado(${pedido.id}, 'preparando')"
             >
-
                 🍔 COMENZAR A PREPARAR
-
             </button>
-
 
             <button
                 class="btn-cancelar"
-                onclick="cambiarEstado(
-                    ${pedido.id},
-                    'cancelado'
-                )"
+                onclick="cambiarEstado(${pedido.id}, 'cancelado')"
             >
-
                 ❌ CANCELAR
-
             </button>
-
         `;
-
     }
 
-
-    else if (
-        pedido.estado === "preparando"
-    ) {
+    else if (pedido.estado === "preparando") {
 
         botones += `
-
             <button
                 class="btn-listo"
-                onclick="cambiarEstado(
-                    ${pedido.id},
-                    'listo'
-                )"
+                onclick="cambiarEstado(${pedido.id}, 'listo')"
             >
-
                 ✅ MARCAR COMO LISTO
-
             </button>
-
         `;
-
     }
 
-
-    else if (
-        pedido.estado === "listo"
-    ) {
+    else if (pedido.estado === "listo") {
 
         botones += `
-
             <button
                 class="btn-entregado"
-                onclick="cambiarEstado(
-                    ${pedido.id},
-                    'entregado'
-                )"
+                onclick="cambiarEstado(${pedido.id}, 'entregado')"
             >
-
                 🏁 MARCAR COMO ENTREGADO
-
             </button>
-
         `;
-
     }
 
-
-    else if (
-        pedido.estado === "cancelado"
-    ) {
+    else if (pedido.estado === "cancelado") {
 
         botones += `
-
             <button
                 class="btn-reactivar"
-                onclick="cambiarEstado(
-                    ${pedido.id},
-                    'nuevo'
-                )"
+                onclick="cambiarEstado(${pedido.id}, 'nuevo')"
             >
-
                 🔄 REACTIVAR PEDIDO
-
             </button>
-
         `;
-
     }
 
-
     return botones;
-
 }
-
 
 // ========================================
 // CARGAR DETALLE DEL PEDIDO
@@ -847,35 +304,21 @@ async function cargarDetallePedido(id) {
 
     try {
 
-        const respuesta =
-            await fetch(
-                `${API_PEDIDOS}/${id}`
-            );
-
+        const respuesta = await fetch(
+            `${API_PEDIDOS}/${id}`
+        );
 
         if (!respuesta.ok) {
-
-            throw new Error(
-                "No se pudo obtener el detalle"
-            );
-
+            throw new Error("No se pudo obtener el detalle");
         }
 
+        const pedido = await respuesta.json();
 
-        const pedido =
-            await respuesta.json();
+        const contenedor = document.getElementById(
+            `productos-${id}`
+        );
 
-
-        const contenedor =
-            document.getElementById(
-                `productos-${id}`
-            );
-
-
-        if (!contenedor) {
-            return;
-        }
-
+        if (!contenedor) return;
 
         const detalles =
             pedido.detalles ||
@@ -883,75 +326,51 @@ async function cargarDetallePedido(id) {
             pedido.detalle_pedidos ||
             [];
 
-
         if (!detalles.length) {
 
             contenedor.innerHTML = `
-
-                <p>
-                    No hay productos registrados.
-                </p>
-
+                <p>No hay productos registrados.</p>
             `;
 
             return;
-
         }
 
+        contenedor.innerHTML = detalles.map(detalle => {
 
-        contenedor.innerHTML =
-            detalles.map(
-                detalle => {
+            const cantidad =
+                detalle.cantidad || 1;
 
-                    const cantidad =
-                        detalle.cantidad || 1;
+            const nombre =
+                detalle.nombre ||
+                detalle.producto_nombre ||
+                detalle.producto?.nombre ||
+                "Producto";
 
+            const precio =
+                detalle.precio ||
+                detalle.precio_unitario ||
+                detalle.producto?.precio ||
+                0;
 
-                    const nombre =
-                        detalle.nombre ||
-                        detalle.producto_nombre ||
-                        detalle.producto?.nombre ||
-                        "Producto";
+            return `
+                <div class="producto-linea">
 
+                    <span>
+                        ${cantidad} x
+                        ${escaparHTML(nombre)}
+                    </span>
 
-                    const precio =
-                        detalle.precio ||
-                        detalle.precio_unitario ||
-                        detalle.producto?.precio ||
-                        0;
+                    <strong>
+                        $${(
+                            Number(precio) *
+                            Number(cantidad)
+                        ).toFixed(2)}
+                    </strong>
 
+                </div>
+            `;
 
-                    return `
-
-                        <div class="producto-linea">
-
-                            <span>
-
-                                ${cantidad} x
-
-                                ${escaparHTML(
-                                    nombre
-                                )}
-
-                            </span>
-
-
-                            <strong>
-
-                                $${(
-                                    Number(precio) *
-                                    Number(cantidad)
-                                ).toFixed(2)}
-
-                            </strong>
-
-                        </div>
-
-                    `;
-
-                }
-            ).join("");
-
+        }).join("");
 
     } catch (error) {
 
@@ -960,29 +379,19 @@ async function cargarDetallePedido(id) {
             error
         );
 
-
-        const contenedor =
-            document.getElementById(
-                `productos-${id}`
-            );
-
+        const contenedor = document.getElementById(
+            `productos-${id}`
+        );
 
         if (contenedor) {
-
             contenedor.innerHTML = `
-
                 <p>
                     No se pudieron cargar los productos.
                 </p>
-
             `;
-
         }
-
     }
-
 }
-
 
 // ========================================
 // OBTENER DATOS COMPLETOS
@@ -990,25 +399,18 @@ async function cargarDetallePedido(id) {
 
 async function obtenerDatosPedido(id) {
 
-    const respuesta =
-        await fetch(
-            `${API_PEDIDOS}/${id}`
-        );
-
+    const respuesta = await fetch(
+        `${API_PEDIDOS}/${id}`
+    );
 
     if (!respuesta.ok) {
-
         throw new Error(
             "No se pudo obtener el pedido"
         );
-
     }
 
-
     return await respuesta.json();
-
 }
-
 
 // ========================================
 // CREAR TICKET
@@ -1022,63 +424,44 @@ function crearTicketHTML(pedido) {
         pedido.detalle_pedidos ||
         [];
 
+    const productosHTML = detalles.map(detalle => {
 
-    const productosHTML =
-        detalles.map(
-            detalle => {
+        const cantidad =
+            detalle.cantidad || 1;
 
-                const cantidad =
-                    detalle.cantidad || 1;
+        const nombre =
+            detalle.nombre ||
+            detalle.producto_nombre ||
+            detalle.producto?.nombre ||
+            "Producto";
 
+        const precio =
+            detalle.precio ||
+            detalle.precio_unitario ||
+            detalle.producto?.precio ||
+            0;
 
-                const nombre =
-                    detalle.nombre ||
-                    detalle.producto_nombre ||
-                    detalle.producto?.nombre ||
-                    "Producto";
+        return `
+            <div class="producto">
 
+                <div>
+                    ${cantidad} x
+                    ${escaparHTML(nombre)}
+                </div>
 
-                const precio =
-                    detalle.precio ||
-                    detalle.precio_unitario ||
-                    detalle.producto?.precio ||
-                    0;
+                <div>
+                    $${(
+                        Number(precio) *
+                        Number(cantidad)
+                    ).toFixed(2)}
+                </div>
 
+            </div>
+        `;
 
-                return `
-
-                    <div class="producto">
-
-                        <div>
-
-                            ${cantidad} x
-
-                            ${escaparHTML(
-                                nombre
-                            )}
-
-                        </div>
-
-
-                        <div>
-
-                            $${(
-                                Number(precio) *
-                                Number(cantidad)
-                            ).toFixed(2)}
-
-                        </div>
-
-                    </div>
-
-                `;
-
-            }
-        ).join("");
-
+    }).join("");
 
     return `
-
 <!DOCTYPE html>
 
 <html lang="es">
@@ -1091,13 +474,11 @@ function crearTicketHTML(pedido) {
 Pedido #${pedido.id}
 </title>
 
-
 <style>
 
 * {
     box-sizing: border-box;
 }
-
 
 body {
 
@@ -1118,13 +499,11 @@ body {
 
 }
 
-
 .ticket {
 
     width: 100%;
 
 }
-
 
 .logo {
 
@@ -1133,7 +512,6 @@ body {
     margin-bottom: 8px;
 
 }
-
 
 .logo img {
 
@@ -1145,7 +523,6 @@ body {
 
 }
 
-
 h1 {
 
     text-align: center;
@@ -1156,7 +533,6 @@ h1 {
 
 }
 
-
 .line {
 
     border-top:
@@ -1166,13 +542,11 @@ h1 {
 
 }
 
-
 .info {
 
     margin-bottom: 5px;
 
 }
-
 
 .producto {
 
@@ -1185,7 +559,6 @@ h1 {
     margin: 4px 0;
 
 }
-
 
 .total {
 
@@ -1201,7 +574,6 @@ h1 {
 
 }
 
-
 .cambio {
 
     font-weight: bold;
@@ -1210,13 +582,11 @@ h1 {
 
 }
 
-
 .observaciones {
 
     margin-top: 8px;
 
 }
-
 
 .footer {
 
@@ -1227,7 +597,6 @@ h1 {
     font-size: 10px;
 
 }
-
 
 @media print {
 
@@ -1243,12 +612,9 @@ h1 {
 
 </head>
 
-
 <body>
 
-
 <div class="ticket">
-
 
     <div class="logo">
 
@@ -1259,16 +625,11 @@ h1 {
 
     </div>
 
-
     <h1>
-
         PEDIDO #${pedido.id}
-
     </h1>
 
-
     <div class="line"></div>
-
 
     <div class="info">
 
@@ -1277,12 +638,10 @@ h1 {
         </strong>
 
         ${escaparHTML(
-            pedido.nombre ||
-            "Sin nombre"
+            pedido.nombre || "Sin nombre"
         )}
 
     </div>
-
 
     <div class="info">
 
@@ -1291,12 +650,10 @@ h1 {
         </strong>
 
         ${escaparHTML(
-            pedido.telefono ||
-            "No indicado"
+            pedido.telefono || "No indicado"
         )}
 
     </div>
-
 
     <div class="info">
 
@@ -1304,17 +661,13 @@ h1 {
             ENTREGA:
         </strong>
 
-        ${obtenerTextoEntrega(
-            pedido
-        )}
+        ${obtenerTextoEntrega(pedido)}
 
     </div>
-
 
     ${
         pedido.direccion
             ? `
-
                 <div class="info">
 
                     <strong>
@@ -1326,11 +679,9 @@ h1 {
                     )}
 
                 </div>
-
             `
             : ""
     }
-
 
     <div class="info">
 
@@ -1338,17 +689,13 @@ h1 {
             PAGO:
         </strong>
 
-        ${obtenerTextoPago(
-            pedido
-        )}
+        ${obtenerTextoPago(pedido)}
 
     </div>
-
 
     ${
         pedido.cambio
             ? `
-
                 <div class="cambio">
 
                     PRECISA CAMBIO DE:
@@ -1356,22 +703,17 @@ h1 {
                     $${pedido.cambio}
 
                 </div>
-
             `
             : ""
     }
 
-
     <div class="line"></div>
 
-
     ${productosHTML}
-
 
     ${
         pedido.observaciones
             ? `
-
                 <div class="observaciones">
 
                     <strong>
@@ -1385,14 +727,11 @@ h1 {
                     )}
 
                 </div>
-
             `
             : ""
     }
 
-
     <div class="line"></div>
-
 
     <div class="total">
 
@@ -1400,17 +739,13 @@ h1 {
             TOTAL
         </span>
 
-
         <span>
-
             $${Number(
                 pedido.total || 0
             ).toFixed(2)}
-
         </span>
 
     </div>
-
 
     <div class="footer">
 
@@ -1422,18 +757,13 @@ h1 {
 
     </div>
 
-
 </div>
-
 
 </body>
 
 </html>
-
     `;
-
 }
-
 
 // ========================================
 // ABRIR TICKET
@@ -1441,13 +771,11 @@ h1 {
 
 function abrirTicket(pedido) {
 
-    const ventana =
-        window.open(
-            "",
-            "_blank",
-            "width=400,height=700"
-        );
-
+    const ventana = window.open(
+        "",
+        "_blank",
+        "width=400,height=700"
+    );
 
     if (!ventana) {
 
@@ -1456,42 +784,28 @@ function abrirTicket(pedido) {
         );
 
         return;
-
     }
-
 
     ventana.document.write(
         crearTicketHTML(pedido)
     );
 
-
     ventana.document.close();
-
 
     ventana.focus();
 
+    setTimeout(() => {
 
-    setTimeout(
-        () => {
+        ventana.print();
 
-            ventana.print();
+        setTimeout(() => {
 
+            ventana.close();
 
-            setTimeout(
-                () => {
+        }, 1000);
 
-                    ventana.close();
-
-                },
-                1000
-            );
-
-        },
-        500
-    );
-
+    }, 500);
 }
-
 
 // ========================================
 // IMPRIMIR PEDIDO
@@ -1504,23 +818,17 @@ async function imprimirPedido(id) {
         const pedido =
             await obtenerDatosPedido(id);
 
-
         abrirTicket(pedido);
-
 
     } catch (error) {
 
         console.error(error);
 
-
         alert(
             "No se pudo preparar el pedido para imprimir."
         );
-
     }
-
 }
-
 
 // ========================================
 // GUARDAR PDF
@@ -1533,14 +841,11 @@ async function guardarPDF(id) {
         const pedido =
             await obtenerDatosPedido(id);
 
-
-        const ventana =
-            window.open(
-                "",
-                "_blank",
-                "width=400,height=700"
-            );
-
+        const ventana = window.open(
+            "",
+            "_blank",
+            "width=400,height=700"
+        );
 
         if (!ventana) {
 
@@ -1549,105 +854,74 @@ async function guardarPDF(id) {
             );
 
             return;
-
         }
-
 
         ventana.document.write(
             crearTicketHTML(pedido)
         );
 
-
         ventana.document.close();
-
 
         ventana.focus();
 
+        setTimeout(() => {
 
-        setTimeout(
-            () => {
+            ventana.print();
 
-                ventana.print();
-
-            },
-            500
-        );
-
+        }, 500);
 
     } catch (error) {
 
         console.error(error);
 
-
         alert(
             "No se pudo generar el PDF."
         );
-
     }
-
 }
-
 
 // ========================================
 // CAMBIAR ESTADO
 // ========================================
 
-async function cambiarEstado(
-    id,
-    nuevoEstado
-) {
+async function cambiarEstado(id, nuevoEstado) {
 
     try {
 
-        const respuesta =
-            await fetch(
-                `${API_PEDIDOS}/${id}/estado`,
-                {
+        const respuesta = await fetch(
+            `${API_PEDIDOS}/${id}/estado`,
+            {
+                method: "PATCH",
 
-                    method: "PATCH",
+                headers: {
+                    "Content-Type":
+                        "application/json"
+                },
 
-                    headers: {
-
-                        "Content-Type":
-                            "application/json"
-
-                    },
-
-                    body: JSON.stringify({
-
-                        estado: nuevoEstado
-
-                    })
-
-                }
-            );
-
+                body: JSON.stringify({
+                    estado: nuevoEstado
+                })
+            }
+        );
 
         if (!respuesta.ok) {
 
             throw new Error(
                 "No se pudo cambiar el estado"
             );
-
         }
 
-
         await cargarPedidos();
-
 
     } catch (error) {
 
         console.error(error);
 
-
         alert(
             "No se pudo actualizar el estado del pedido."
         );
-
     }
-
 }
-
 
 // ========================================
 // FILTROS
@@ -1655,43 +929,30 @@ async function cambiarEstado(
 
 document
     .querySelectorAll(".order-filter")
-    .forEach(
-        boton => {
+    .forEach(boton => {
 
-            boton.addEventListener(
-                "click",
-                () => {
+        boton.addEventListener(
+            "click",
+            () => {
 
-                    document
-                        .querySelectorAll(
-                            ".order-filter"
-                        )
-                        .forEach(
-                            btn =>
-                                btn.classList.remove(
-                                    "active"
-                                )
-                        );
-
-
-                    boton.classList.add(
-                        "active"
+                document
+                    .querySelectorAll(".order-filter")
+                    .forEach(btn =>
+                        btn.classList.remove("active")
                     );
 
+                boton.classList.add("active");
 
-                    filtroActual =
-                        boton.dataset.filter ||
-                        "todos";
+                filtroActual =
+                    boton.dataset.filter ||
+                    "todos";
 
+                mostrarPedidos();
 
-                    mostrarPedidos();
+            }
+        );
 
-                }
-            );
-
-        }
-    );
-
+    });
 
 // ========================================
 // FORMATEAR FECHA
@@ -1703,30 +964,19 @@ function formatearFecha(fecha) {
         return "";
     }
 
-
-    const fechaObj =
-        new Date(fecha);
-
+    const fechaObj = new Date(fecha);
 
     return fechaObj.toLocaleString(
         "es-UY",
         {
-
             day: "2-digit",
-
             month: "2-digit",
-
             year: "numeric",
-
             hour: "2-digit",
-
             minute: "2-digit"
-
         }
     );
-
 }
-
 
 // ========================================
 // TEXTO ESTADO
@@ -1736,32 +986,23 @@ function obtenerTextoEstado(estado) {
 
     const estados = {
 
-        nuevo:
-            "NUEVO",
+        nuevo: "NUEVO",
 
-        preparando:
-            "PREPARANDO",
+        preparando: "PREPARANDO",
 
-        listo:
-            "LISTO",
+        listo: "LISTO",
 
-        entregado:
-            "ENTREGADO",
+        entregado: "ENTREGADO",
 
-        cancelado:
-            "CANCELADO",
+        cancelado: "CANCELADO",
 
         en_proceso_pago:
             "ESPERANDO PAGO"
 
     };
 
-
-    return estados[estado] ||
-        estado;
-
+    return estados[estado] || estado;
 }
-
 
 // ========================================
 // TEXTO ENTREGA
@@ -1770,22 +1011,16 @@ function obtenerTextoEstado(estado) {
 function obtenerTextoEntrega(pedido) {
 
     if (
-        pedido.tipo_entrega ===
-            "delivery" ||
-
-        pedido.entrega ===
-            "delivery"
+        pedido.tipo_entrega === "delivery" ||
+        pedido.entrega === "delivery"
     ) {
 
         return "DELIVERY";
 
     }
 
-
     return "RETIRO EN LOCAL";
-
 }
-
 
 // ========================================
 // TEXTO PAGO
@@ -1798,38 +1033,25 @@ function obtenerTextoPago(pedido) {
         pedido.pago ||
         "";
 
-
     const metodoNormalizado =
         metodo.toLowerCase();
 
-
     if (
-        metodoNormalizado.includes(
-            "mercado"
-        )
+        metodoNormalizado.includes("mercado")
     ) {
 
         return "MERCADO PAGO";
-
     }
 
-
     if (
-        metodoNormalizado.includes(
-            "efectivo"
-        )
+        metodoNormalizado.includes("efectivo")
     ) {
 
         return "EFECTIVO";
-
     }
 
-
-    return metodo ||
-        "No indicado";
-
+    return metodo || "No indicado";
 }
-
 
 // ========================================
 // ESCAPAR HTML
@@ -1838,34 +1060,12 @@ function obtenerTextoPago(pedido) {
 function escaparHTML(texto) {
 
     return String(texto)
-
-        .replace(
-            /&/g,
-            "&amp;"
-        )
-
-        .replace(
-            /</g,
-            "&lt;"
-        )
-
-        .replace(
-            />/g,
-            "&gt;"
-        )
-
-        .replace(
-            /"/g,
-            "&quot;"
-        )
-
-        .replace(
-            /'/g,
-            "&#039;"
-        );
-
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
-
 
 // ========================================
 // ACTUALIZAR AUTOMÁTICAMENTE
@@ -1875,7 +1075,6 @@ setInterval(
     cargarPedidos,
     10000
 );
-
 
 // ========================================
 // INICIAR
