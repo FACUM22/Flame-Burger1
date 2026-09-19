@@ -30,44 +30,7 @@ async function paginaEstaActiva() {
 }
 
 
-// =====================================================
-// HORARIO DEL RESTAURANTE
-// =====================================================
-// Flame Burger:
-//
-// Lunes, martes y jueves a domingo:
-// 20:00 a 00:00
-//
-// Miércoles:
-// cerrado
-//
-// Zona horaria:
-// America/Montevideo
-// =====================================================
 
-function restauranteEstaAbierto() {
-
-    const ahora = new Date();
-
-    const partes = new Intl.DateTimeFormat("es-UY", {
-        timeZone: "America/Montevideo",
-        weekday: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-        hourCycle: "h23"
-    }).formatToParts(ahora);
-
-    const dia =
-        partes.find(
-            p => p.type === "weekday"
-        )?.value;
-
-    const hora =
-        Number(
-            partes.find(
-                p => p.type === "hour"
-            )?.value
-        );
 
 
     // =====================================================
@@ -137,21 +100,7 @@ router.post("/", async (req, res) => {
         }
 
 
-        // =====================================================
-        // COMPROBAR HORARIO DEL RESTAURANTE
-        // =====================================================
 
-        const restauranteAbierto =
-            restauranteEstaAbierto();
-
-        if (!restauranteAbierto) {
-
-            return res.status(403).json({
-                ok: false,
-                mensaje:
-                    "Flame Burger está cerrado en este momento. Los pedidos se reciben de 20:00 a 00:00. Los miércoles permanecemos cerrados."
-            });
-        }
 
 
         // =====================================================
