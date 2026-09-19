@@ -3,10 +3,16 @@ const express = require("express");
 const router = express.Router();
 
 const pool = require("../database");
+const { esMiercolesEnMontevideo } = require("../utils/horario");
 
 
 // =====================================================
 // OBTENER ESTADO DE LA PÁGINA
+// =====================================================
+// La página se apaga AUTOMÁTICAMENTE todos los miércoles
+// (hora de Montevideo), sin importar lo que diga la base
+// de datos. El resto de los días, manda el valor que el
+// local haya elegido manualmente desde el panel.
 // =====================================================
 
 router.get("/estado", async (req, res) => {
@@ -31,9 +37,22 @@ router.get("/estado", async (req, res) => {
         }
 
 
+        const cerradoPorHorario = esMiercolesEnMontevideo();
+
+        const paginaActivaManual =
+            resultado.rows[0].pagina_activa;
+
+        const paginaActivaEfectiva =
+            cerradoPorHorario
+                ? false
+                : paginaActivaManual;
+
+
         res.json({
             ok: true,
-            pagina_activa: resultado.rows[0].pagina_activa
+            pagina_activa: paginaActivaEfectiva,
+            pagina_activa_manual: paginaActivaManual,
+            cerrado_por_horario: cerradoPorHorario
         });
 
 
@@ -57,6 +76,11 @@ router.get("/estado", async (req, res) => {
 // =====================================================
 // CAMBIAR ESTADO DE LA PÁGINA
 // =====================================================
+// El local puede prender/apagar la página a mano cualquier
+// día... excepto los miércoles, que quedan cerrados sí o sí.
+// Guardamos igual la preferencia manual para que, al llegar
+// el jueves, la página vuelva sola al estado que dejaron.
+// =====================================================
 
 router.patch("/estado", async (req, res) => {
 
@@ -70,6 +94,17 @@ router.patch("/estado", async (req, res) => {
             return res.status(400).json({
                 ok: false,
                 mensaje: "El estado debe ser true o false."
+            });
+
+        }
+
+
+        if (pagina_activa === true && esMiercolesEnMontevideo()) {
+
+            return res.status(400).json({
+                ok: false,
+                mensaje:
+                    "Los miércoles Flame Burger permanece cerrado automáticamente. La página vuelve a encenderse sola a partir del jueves."
             });
 
         }
@@ -98,7 +133,8 @@ router.patch("/estado", async (req, res) => {
         res.json({
             ok: true,
             pagina_activa:
-                resultado.rows[0].pagina_activa
+                resultado.rows[0].pagina_activa,
+            cerrado_por_horario: false
         });
 
 

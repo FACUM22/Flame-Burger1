@@ -3,6 +3,7 @@ const express = require("express");
 const router = express.Router();
 
 const pool = require("../database");
+const { esMiercolesEnMontevideo } = require("../utils/horario");
 // =====================================================
 // COMPROBAR SI LA PÁGINA ESTÁ ACTIVA
 // =====================================================
@@ -46,17 +47,16 @@ function restauranteEstaAbierto() {
 
     const partes = new Intl.DateTimeFormat("es-UY", {
         timeZone: "America/Montevideo",
-        weekday: "short",
         hour: "2-digit",
         minute: "2-digit",
         hourCycle: "h23"
     }).formatToParts(ahora);
 
-    const dia = partes.find(p => p.type === "weekday")?.value;
     const hora = Number(partes.find(p => p.type === "hour")?.value);
 
-    // Miércoles cerrado
-    if (dia === "mié") {
+    // Miércoles cerrado (mismo criterio que usa el
+    // encendido/apagado automático de la página)
+    if (esMiercolesEnMontevideo(ahora)) {
         return false;
     }
 
