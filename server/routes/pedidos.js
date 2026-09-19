@@ -163,14 +163,16 @@ router.post("/", async (req, res) => {
 
     try {
 
-        const {
-            cliente,
-            entrega,
-            pago,
-            necesitaCambio,
-            cambio,
-            productos
-        } = req.body;
+   const {
+    cliente,
+    entrega,
+    pago,
+    necesitaCambio,
+    cambio,
+    productos,
+    costo_envio,
+    distancia_delivery
+} = req.body;
 
 
         // =================================================
