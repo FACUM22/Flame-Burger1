@@ -3,19 +3,22 @@ const API_PEDIDOS = "/api/pedidos";
 let pedidos = [];
 let filtroActual = "todos";
 
-const listaPedidos = document.getElementById("ordersList");
-const contadorNuevos = document.getElementById("pedidosNuevos");
+const ordersList = document.getElementById("ordersList");
+const pedidosNuevos = document.getElementById("pedidosNuevos");
 
-// ========================================
+
+// =====================================================
 // CARGAR PEDIDOS
-// ========================================
+// =====================================================
 
 async function cargarPedidos() {
+
     try {
+
         const respuesta = await fetch(API_PEDIDOS);
 
         if (!respuesta.ok) {
-            throw new Error("Error al obtener los pedidos");
+            throw new Error("No se pudieron cargar los pedidos.");
         }
 
         pedidos = await respuesta.json();
@@ -23,76 +26,98 @@ async function cargarPedidos() {
         mostrarPedidos();
 
     } catch (error) {
-        console.error("Error cargando pedidos:", error);
 
-        if (listaPedidos) {
-            listaPedidos.innerHTML = `
-                <div class="error">
-                    No se pudieron cargar los pedidos.
+        console.error("ERROR PEDIDOS:", error);
+
+        if (ordersList) {
+
+            ordersList.innerHTML = `
+                <div class="empty-orders">
+                    <h3>Error al cargar los pedidos</h3>
+                    <p>${escaparHTML(error.message)}</p>
                 </div>
             `;
+
         }
     }
 }
 
-// ========================================
+
+// =====================================================
 // MOSTRAR PEDIDOS
-// ========================================
+// =====================================================
 
 function mostrarPedidos() {
 
-    if (!listaPedidos) return;
-
-    // No mostrar pedidos que todavía están esperando
-    // la confirmación de Mercado Pago
-    const pedidosVisibles = pedidos.filter(
-        pedido => pedido.estado !== "en_proceso_pago"
-    );
-
-    // Contar pedidos nuevos
-    const nuevos = pedidosVisibles.filter(
-        pedido => pedido.estado === "nuevo"
-    );
-
-    if (contadorNuevos) {
-        contadorNuevos.textContent = nuevos.length;
-    }
-
-    // Aplicar filtro
-    let pedidosFiltrados = pedidosVisibles;
-
-    if (filtroActual !== "todos") {
-        pedidosFiltrados = pedidosVisibles.filter(
-            pedido => pedido.estado === filtroActual
-        );
-    }
-
-    // Ordenar del más reciente al más antiguo
-    pedidosFiltrados.sort((a, b) => {
-        return new Date(b.creado_en) - new Date(a.creado_en);
-    });
-
-    if (pedidosFiltrados.length === 0) {
-        listaPedidos.innerHTML = `
-            <div class="sin-pedidos">
-                No hay pedidos para mostrar.
-            </div>
-        `;
+    if (!ordersList) {
         return;
     }
 
-    listaPedidos.innerHTML = "";
+    ordersList.innerHTML = "";
+
+    const cantidadNuevos = pedidos.filter(
+        pedido => pedido.estado === "nuevo"
+    ).length;
+
+    if (pedidosNuevos) {
+
+        pedidosNuevos.textContent =
+            `${cantidadNuevos} pedido${cantidadNuevos !== 1 ? "s" : ""} nuevo${cantidadNuevos !== 1 ? "s" : ""}`;
+
+    }
+
+
+    let pedidosFiltrados = pedidos.filter(
+        pedido => pedido.estado !== "en_proceso_pago"
+    );
+
+
+    if (filtroActual !== "todos") {
+
+        pedidosFiltrados = pedidosFiltrados.filter(
+            pedido => pedido.estado === filtroActual
+        );
+
+    }
+
+
+    if (pedidosFiltrados.length === 0) {
+
+        ordersList.innerHTML = `
+            <div class="empty-orders">
+
+                <div class="empty-icon">
+                    🛒
+                </div>
+
+                <h3>
+                    No hay pedidos
+                </h3>
+
+                <p>
+                    No hay pedidos en esta categoría.
+                </p>
+
+            </div>
+        `;
+
+        return;
+    }
+
 
     pedidosFiltrados.forEach(pedido => {
-        listaPedidos.appendChild(
-            crearTarjetaPedido(pedido)
-        );
+
+        const tarjeta = crearTarjetaPedido(pedido);
+
+        ordersList.appendChild(tarjeta);
+
     });
 }
 
-// ========================================
+
+// =====================================================
 // CREAR TARJETA DEL PEDIDO
-// ========================================
+// =====================================================
 
 function crearTarjetaPedido(pedido) {
 
@@ -100,624 +125,262 @@ function crearTarjetaPedido(pedido) {
 
     tarjeta.className = "order-card";
 
+
+    if (pedido.estado === "nuevo") {
+
+        tarjeta.classList.add("new-order");
+
+    }
+
+
+    const fecha =
+        formatearFecha(pedido.creado_en);
+
+    const estadoTexto =
+        obtenerTextoEstado(pedido.estado);
+
+    const claseEstado =
+        `status-${pedido.estado}`;
+
+
+    let informacionCambio = "";
+
+
+    if (pedido.forma_pago === "efectivo") {
+
+        if (
+            pedido.necesita_cambio === true ||
+            pedido.necesita_cambio === "true"
+        ) {
+
+            const total =
+                Number(pedido.total || 0);
+
+            const cambioDe =
+                Number(pedido.cambio_de || 0);
+
+            const vuelto =
+                cambioDe - total;
+
+
+            informacionCambio = `
+
+                <div class="order-info">
+
+                    <span>
+                        CAMBIO
+                    </span>
+
+                    <strong>
+                        💵 Sí
+                    </strong>
+
+                </div>
+
+
+                <div class="order-info">
+
+                    <span>
+                        PAGA CON
+                    </span>
+
+                    <strong>
+                        $${cambioDe.toLocaleString("es-UY")}
+                    </strong>
+
+                </div>
+
+
+                <div class="order-info">
+
+                    <span>
+                        VUELTO
+                    </span>
+
+                    <strong>
+                        $${vuelto.toLocaleString("es-UY")}
+                    </strong>
+
+                </div>
+
+            `;
+
+        } else {
+
+            informacionCambio = `
+
+                <div class="order-info">
+
+                    <span>
+                        CAMBIO
+                    </span>
+
+                    <strong>
+                        ❌ No necesita
+                    </strong>
+
+                </div>
+
+            `;
+
+        }
+    }
+
+
     tarjeta.innerHTML = `
-        <div class="order-header">
+
+        <div class="order-top">
 
             <div>
-                <h3>
-                    NUEVO PEDIDO #${pedido.id}
-                </h3>
 
-                <span class="order-date">
-                    ${formatearFecha(pedido.creado_en)}
-                </span>
+                <div class="order-number">
+                    Pedido #${pedido.id}
+                </div>
+
+                <div class="order-date">
+                    ${fecha}
+                </div>
+
+                ${
+                    pedido.estado === "nuevo"
+                    ? `
+                        <span class="new-label">
+                            🔔 NUEVO PEDIDO
+                        </span>
+                    `
+                    : ""
+                }
+
             </div>
 
-            <span class="estado estado-${pedido.estado}">
-                ${obtenerTextoEstado(pedido.estado)}
+
+            <span class="order-status ${claseEstado}">
+                ${estadoTexto}
             </span>
 
         </div>
 
-        <div class="order-body">
 
-            <div class="cliente-info">
+        <div class="order-info-grid">
 
-                <p>
-                    <strong>CLIENTE:</strong>
-                    ${escaparHTML(pedido.nombre || "Sin nombre")}
-                </p>
 
-                <p>
-                    <strong>TELÉFONO:</strong>
-                    ${escaparHTML(pedido.telefono || "No indicado")}
-                </p>
-
-                <p>
-                    <strong>ENTREGA:</strong>
-                    ${obtenerTextoEntrega(pedido)}
-                </p>
-
-                ${
-                    pedido.direccion
-                        ? `
-                            <p>
-                                <strong>DIRECCIÓN:</strong>
-                                ${escaparHTML(pedido.direccion)}
-                            </p>
-                        `
-                        : ""
-                }
-
-                <p>
-                    <strong>PAGO:</strong>
-                    ${obtenerTextoPago(pedido)}
-                </p>
-
-                ${
-                    pedido.cambio
-                        ? `
-                            <p>
-                                <strong>PRECISA CAMBIO DE:</strong>
-                                $${pedido.cambio}
-                            </p>
-                        `
-                        : ""
-                }
-
-            </div>
-
-            <div class="productos-pedido">
-
-                <h4>PRODUCTOS</h4>
-
-                <div id="productos-${pedido.id}">
-                    Cargando productos...
-                </div>
-
-            </div>
-
-            ${
-                pedido.observaciones
-                    ? `
-                        <div class="observaciones">
-                            <strong>OBSERVACIONES:</strong>
-                            <p>
-                                ${escaparHTML(pedido.observaciones)}
-                            </p>
-                        </div>
-                    `
-                    : ""
-            }
-
-            <div class="order-total">
-
-                <strong>
-                    TOTAL:
-                </strong>
+            <div class="order-info">
 
                 <span>
-                    $${Number(pedido.total || 0).toFixed(2)}
+                    CLIENTE
                 </span>
 
-            </div>
-
-        </div>
-
-        <div class="order-actions">
-
-            ${crearBotonesEstado(pedido)}
-
-        </div>
-    `;
-
-    cargarDetallePedido(pedido.id);
-
-    return tarjeta;
-}
-
-// ========================================
-// BOTONES SEGÚN ESTADO
-// ========================================
-
-function crearBotonesEstado(pedido) {
-
-    let botones = `
-        <button
-            class="btn-print"
-            onclick="imprimirPedido(${pedido.id})"
-        >
-            🖨️ IMPRIMIR PEDIDO
-        </button>
-
-        <button
-            class="btn-pdf"
-            onclick="guardarPDF(${pedido.id})"
-        >
-            📄 GUARDAR PDF
-        </button>
-    `;
-
-    if (pedido.estado === "nuevo") {
-
-        botones += `
-            <button
-                class="btn-preparar"
-                onclick="cambiarEstado(${pedido.id}, 'preparando')"
-            >
-                🍔 COMENZAR A PREPARAR
-            </button>
-
-            <button
-                class="btn-cancelar"
-                onclick="cambiarEstado(${pedido.id}, 'cancelado')"
-            >
-                ❌ CANCELAR
-            </button>
-        `;
-    }
-
-    else if (pedido.estado === "preparando") {
-
-        botones += `
-            <button
-                class="btn-listo"
-                onclick="cambiarEstado(${pedido.id}, 'listo')"
-            >
-                ✅ MARCAR COMO LISTO
-            </button>
-        `;
-    }
-
-    else if (pedido.estado === "listo") {
-
-        botones += `
-            <button
-                class="btn-entregado"
-                onclick="cambiarEstado(${pedido.id}, 'entregado')"
-            >
-                🏁 MARCAR COMO ENTREGADO
-            </button>
-        `;
-    }
-
-    else if (pedido.estado === "cancelado") {
-
-        botones += `
-            <button
-                class="btn-reactivar"
-                onclick="cambiarEstado(${pedido.id}, 'nuevo')"
-            >
-                🔄 REACTIVAR PEDIDO
-            </button>
-        `;
-    }
-
-    return botones;
-}
-
-// ========================================
-// CARGAR DETALLE DEL PEDIDO
-// ========================================
-
-async function cargarDetallePedido(id) {
-
-    try {
-
-        const respuesta = await fetch(
-            `${API_PEDIDOS}/${id}`
-        );
-
-        if (!respuesta.ok) {
-            throw new Error("No se pudo obtener el detalle");
-        }
-
-        const pedido = await respuesta.json();
-
-        const contenedor = document.getElementById(
-            `productos-${id}`
-        );
-
-        if (!contenedor) return;
-
-        const detalles =
-            pedido.detalles ||
-            pedido.productos ||
-            pedido.detalle_pedidos ||
-            [];
-
-        if (!detalles.length) {
-
-            contenedor.innerHTML = `
-                <p>No hay productos registrados.</p>
-            `;
-
-            return;
-        }
-
-        contenedor.innerHTML = detalles.map(detalle => {
-
-            const cantidad =
-                detalle.cantidad || 1;
-
-            const nombre =
-                detalle.nombre ||
-                detalle.producto_nombre ||
-                detalle.producto?.nombre ||
-                "Producto";
-
-            const precio =
-                detalle.precio ||
-                detalle.precio_unitario ||
-                detalle.producto?.precio ||
-                0;
-
-            return `
-                <div class="producto-linea">
-
-                    <span>
-                        ${cantidad} x
-                        ${escaparHTML(nombre)}
-                    </span>
-
-                    <strong>
-                        $${(
-                            Number(precio) *
-                            Number(cantidad)
-                        ).toFixed(2)}
-                    </strong>
-
-                </div>
-            `;
-
-        }).join("");
-
-    } catch (error) {
-
-        console.error(
-            `Error cargando detalle del pedido ${id}:`,
-            error
-        );
-
-        const contenedor = document.getElementById(
-            `productos-${id}`
-        );
-
-        if (contenedor) {
-            contenedor.innerHTML = `
-                <p>
-                    No se pudieron cargar los productos.
-                </p>
-            `;
-        }
-    }
-}
-
-// ========================================
-// OBTENER DATOS COMPLETOS
-// ========================================
-
-async function obtenerDatosPedido(id) {
-
-    const respuesta = await fetch(
-        `${API_PEDIDOS}/${id}`
-    );
-
-    if (!respuesta.ok) {
-        throw new Error(
-            "No se pudo obtener el pedido"
-        );
-    }
-
-    return await respuesta.json();
-}
-
-// ========================================
-// CREAR TICKET
-// ========================================
-
-function crearTicketHTML(pedido) {
-
-    const detalles =
-        pedido.detalles ||
-        pedido.productos ||
-        pedido.detalle_pedidos ||
-        [];
-
-    const productosHTML = detalles.map(detalle => {
-
-        const cantidad =
-            detalle.cantidad || 1;
-
-        const nombre =
-            detalle.nombre ||
-            detalle.producto_nombre ||
-            detalle.producto?.nombre ||
-            "Producto";
-
-        const precio =
-            detalle.precio ||
-            detalle.precio_unitario ||
-            detalle.producto?.precio ||
-            0;
-
-        return `
-            <div class="producto">
-
-                <div>
-                    ${cantidad} x
-                    ${escaparHTML(nombre)}
-                </div>
-
-                <div>
-                    $${(
-                        Number(precio) *
-                        Number(cantidad)
-                    ).toFixed(2)}
-                </div>
-
-            </div>
-        `;
-
-    }).join("");
-
-    return `
-<!DOCTYPE html>
-
-<html lang="es">
-
-<head>
-
-<meta charset="UTF-8">
-
-<title>
-Pedido #${pedido.id}
-</title>
-
-<style>
-
-* {
-    box-sizing: border-box;
-}
-
-body {
-
-    margin: 0;
-
-    padding: 10px;
-
-    width: 80mm;
-
-    font-family:
-        Arial,
-        Helvetica,
-        sans-serif;
-
-    font-size: 12px;
-
-    color: #000;
-
-}
-
-.ticket {
-
-    width: 100%;
-
-}
-
-.logo {
-
-    text-align: center;
-
-    margin-bottom: 8px;
-
-}
-
-.logo img {
-
-    max-width: 55mm;
-
-    max-height: 25mm;
-
-    object-fit: contain;
-
-}
-
-h1 {
-
-    text-align: center;
-
-    font-size: 18px;
-
-    margin: 5px 0;
-
-}
-
-.line {
-
-    border-top:
-        1px dashed #000;
-
-    margin: 8px 0;
-
-}
-
-.info {
-
-    margin-bottom: 5px;
-
-}
-
-.producto {
-
-    display: flex;
-
-    justify-content: space-between;
-
-    gap: 5px;
-
-    margin: 4px 0;
-
-}
-
-.total {
-
-    display: flex;
-
-    justify-content: space-between;
-
-    font-size: 17px;
-
-    font-weight: bold;
-
-    margin-top: 8px;
-
-}
-
-.cambio {
-
-    font-weight: bold;
-
-    margin-top: 8px;
-
-}
-
-.observaciones {
-
-    margin-top: 8px;
-
-}
-
-.footer {
-
-    text-align: center;
-
-    margin-top: 15px;
-
-    font-size: 10px;
-
-}
-
-@media print {
-
-    body {
-
-        padding: 0;
-
-    }
-
-}
-
-</style>
-
-</head>
-
-<body>
-
-<div class="ticket">
-
-    <div class="logo">
-
-        <img
-            src="/img/logoim.jpeg"
-            alt="Flame Burger"
-        >
-
-    </div>
-
-    <h1>
-        PEDIDO #${pedido.id}
-    </h1>
-
-    <div class="line"></div>
-
-    <div class="info">
-
-        <strong>
-            CLIENTE:
-        </strong>
-
-        ${escaparHTML(
-            pedido.nombre || "Sin nombre"
-        )}
-
-    </div>
-
-    <div class="info">
-
-        <strong>
-            TELÉFONO:
-        </strong>
-
-        ${escaparHTML(
-            pedido.telefono || "No indicado"
-        )}
-
-    </div>
-
-    <div class="info">
-
-        <strong>
-            ENTREGA:
-        </strong>
-
-        ${obtenerTextoEntrega(pedido)}
-
-    </div>
-
-    ${
-        pedido.direccion
-            ? `
-                <div class="info">
-
-                    <strong>
-                        DIRECCIÓN:
-                    </strong>
-
+                <strong>
                     ${escaparHTML(
-                        pedido.direccion
+                        pedido.cliente_nombre ||
+                        "Sin nombre"
                     )}
+                </strong>
 
-                </div>
-            `
-            : ""
-    }
+            </div>
 
-    <div class="info">
 
-        <strong>
-            PAGO:
-        </strong>
+            <div class="order-info">
 
-        ${obtenerTextoPago(pedido)}
+                <span>
+                    TELÉFONO
+                </span>
 
-    </div>
+                <strong>
+                    ${escaparHTML(
+                        pedido.cliente_telefono ||
+                        pedido.telefono ||
+                        "Sin teléfono"
+                    )}
+                </strong>
 
-    ${
-        pedido.cambio
+            </div>
+
+
+            <div class="order-info">
+
+                <span>
+                    ENTREGA
+                </span>
+
+                <strong>
+                    ${obtenerTextoEntrega(
+                        pedido.tipo_entrega
+                    )}
+                </strong>
+
+            </div>
+
+
+            <div class="order-info">
+
+                <span>
+                    DIRECCIÓN
+                </span>
+
+                <strong>
+                    ${escaparHTML(
+                        pedido.cliente_direccion ||
+                        pedido.direccion ||
+                        "—"
+                    )}
+                </strong>
+
+            </div>
+
+
+            <div class="order-info">
+
+                <span>
+                    PAGO
+                </span>
+
+                <strong>
+                    ${obtenerTextoPago(
+                        pedido.forma_pago
+                    )}
+                </strong>
+
+            </div>
+
+
+            <div class="order-info">
+
+                <span>
+                    ESTADO
+                </span>
+
+                <strong>
+                    ${estadoTexto}
+                </strong>
+
+            </div>
+
+
+            ${informacionCambio}
+
+        </div>
+
+
+        <div
+            class="order-products"
+            id="productos-${pedido.id}"
+        >
+
+            <div>
+                ⏳ Cargando productos...
+            </div>
+
+        </div>
+
+
+        ${
+            pedido.observaciones
             ? `
-                <div class="cambio">
-
-                    PRECISA CAMBIO DE:
-
-                    $${pedido.cambio}
-
-                </div>
-            `
-            : ""
-    }
-
-    <div class="line"></div>
-
-    ${productosHTML}
-
-    ${
-        pedido.observaciones
-            ? `
-                <div class="observaciones">
+                <div class="order-observation">
 
                     <strong>
-                        OBSERVACIONES:
+                        📝 Comentarios:
                     </strong>
 
                     <br>
@@ -729,203 +392,1220 @@ h1 {
                 </div>
             `
             : ""
+        }
+
+
+        <div class="order-bottom">
+
+            <div>
+
+                <div class="order-total-label">
+                    TOTAL
+                </div>
+
+                <div class="order-total">
+
+                    $${Number(
+                        pedido.total || 0
+                    ).toLocaleString("es-UY")}
+
+                </div>
+
+            </div>
+
+
+            <div class="order-actions">
+
+                ${crearBotonesEstado(pedido)}
+
+            </div>
+
+        </div>
+
+    `;
+
+
+    cargarDetallePedido(pedido.id);
+
+
+    return tarjeta;
+}
+
+
+// =====================================================
+// BOTONES
+// =====================================================
+
+function crearBotonesEstado(pedido) {
+
+    const botonImprimir = `
+
+        <button
+            class="btn-print"
+            onclick="imprimirPedido(${pedido.id})"
+        >
+            🖨️ Imprimir ticket
+        </button>
+
+    `;
+
+
+    const botonPDF = `
+
+        <button
+            class="btn-print"
+            onclick="guardarPDF(${pedido.id})"
+        >
+            📄 Guardar PDF
+        </button>
+
+    `;
+
+
+    if (pedido.estado === "cancelado") {
+
+        return `
+
+            ${botonImprimir}
+
+            ${botonPDF}
+
+            <button
+                class="btn-confirm"
+                onclick="cambiarEstado(${pedido.id}, 'nuevo')"
+            >
+                ↩️ Reactivar
+            </button>
+
+        `;
+
     }
 
-    <div class="line"></div>
 
-    <div class="total">
+    if (pedido.estado === "entregado") {
 
-        <span>
-            TOTAL
-        </span>
+        return `
 
-        <span>
-            $${Number(
-                pedido.total || 0
-            ).toFixed(2)}
-        </span>
+            ${botonImprimir}
 
-    </div>
+            ${botonPDF}
 
-    <div class="footer">
+            <button
+                class="btn-cancel"
+                onclick="cambiarEstado(${pedido.id}, 'cancelado')"
+            >
+                ❌ Cancelar
+            </button>
 
-        Flame Burger
+        `;
 
-        <br>
+    }
 
-        ¡Gracias por tu compra!
 
-    </div>
+    if (pedido.estado === "nuevo") {
 
-</div>
+        return `
 
-</body>
+            ${botonImprimir}
 
-</html>
+            ${botonPDF}
+
+            <button
+                class="btn-preparing"
+                onclick="cambiarEstado(${pedido.id}, 'preparando')"
+            >
+                👨‍🍳 Comenzar a preparar
+            </button>
+
+            <button
+                class="btn-cancel"
+                onclick="cambiarEstado(${pedido.id}, 'cancelado')"
+            >
+                ❌ Cancelar
+            </button>
+
+        `;
+
+    }
+
+
+    if (pedido.estado === "preparando") {
+
+        return `
+
+            ${botonImprimir}
+
+            ${botonPDF}
+
+            <button
+                class="btn-ready"
+                onclick="cambiarEstado(${pedido.id}, 'listo')"
+            >
+                🍔 Listo
+            </button>
+
+            <button
+                class="btn-cancel"
+                onclick="cambiarEstado(${pedido.id}, 'cancelado')"
+            >
+                ❌ Cancelar
+            </button>
+
+        `;
+
+    }
+
+
+    if (pedido.estado === "listo") {
+
+        return `
+
+            ${botonImprimir}
+
+            ${botonPDF}
+
+            <button
+                class="btn-delivered"
+                onclick="cambiarEstado(${pedido.id}, 'entregado')"
+            >
+                🛵 Entregado
+            </button>
+
+            <button
+                class="btn-cancel"
+                onclick="cambiarEstado(${pedido.id}, 'cancelado')"
+            >
+                ❌ Cancelar
+            </button>
+
+        `;
+
+    }
+
+
+    return `
+        ${botonImprimir}
+        ${botonPDF}
     `;
 }
 
-// ========================================
-// ABRIR TICKET
-// ========================================
 
-function abrirTicket(pedido) {
+// =====================================================
+// DETALLE DEL PEDIDO
+// =====================================================
 
-    const ventana = window.open(
-        "",
-        "_blank",
-        "width=400,height=700"
-    );
-
-    if (!ventana) {
-
-        alert(
-            "El navegador bloqueó la ventana de impresión. Permití las ventanas emergentes."
-        );
-
-        return;
-    }
-
-    ventana.document.write(
-        crearTicketHTML(pedido)
-    );
-
-    ventana.document.close();
-
-    ventana.focus();
-
-    setTimeout(() => {
-
-        ventana.print();
-
-        setTimeout(() => {
-
-            ventana.close();
-
-        }, 1000);
-
-    }, 500);
-}
-
-// ========================================
-// IMPRIMIR PEDIDO
-// ========================================
-
-async function imprimirPedido(id) {
+async function cargarDetallePedido(pedidoId) {
 
     try {
 
-        const pedido =
-            await obtenerDatosPedido(id);
+        const respuesta =
+            await fetch(
+                `${API_PEDIDOS}/${pedidoId}`
+            );
 
-        abrirTicket(pedido);
+
+        if (!respuesta.ok) {
+
+            throw new Error(
+                "No se pudo obtener el detalle."
+            );
+
+        }
+
+
+        const resultado =
+            await respuesta.json();
+
+
+        const contenedor =
+            document.getElementById(
+                `productos-${pedidoId}`
+            );
+
+
+        if (!contenedor) {
+            return;
+        }
+
+
+        if (
+            !resultado.productos ||
+            resultado.productos.length === 0
+        ) {
+
+            contenedor.innerHTML = `
+                <div>
+                    Sin productos
+                </div>
+            `;
+
+            return;
+        }
+
+
+        contenedor.innerHTML = "";
+
+
+        resultado.productos.forEach(producto => {
+
+            const elemento =
+                document.createElement("div");
+
+
+            elemento.className =
+                "order-product";
+
+
+            elemento.innerHTML = `
+
+                <div>
+
+                    <strong>
+                        ${escaparHTML(
+                            producto.nombre ||
+                            "Producto"
+                        )}
+                    </strong>
+
+                    <small>
+
+                        ${producto.cantidad}
+                        x
+                        $${Number(
+                            producto.precio_unitario || 0
+                        ).toLocaleString("es-UY")}
+
+                    </small>
+
+                </div>
+
+
+                <strong>
+
+                    $${Number(
+                        producto.subtotal || 0
+                    ).toLocaleString("es-UY")}
+
+                </strong>
+
+            `;
+
+
+            contenedor.appendChild(elemento);
+
+        });
+
 
     } catch (error) {
 
-        console.error(error);
-
-        alert(
-            "No se pudo preparar el pedido para imprimir."
+        console.error(
+            "ERROR DETALLE:",
+            error
         );
+
+
+        const contenedor =
+            document.getElementById(
+                `productos-${pedidoId}`
+            );
+
+
+        if (contenedor) {
+
+            contenedor.innerHTML = `
+                <div>
+                    ⚠️ No se pudo cargar el detalle
+                </div>
+            `;
+
+        }
+
     }
 }
 
-// ========================================
-// GUARDAR PDF
-// ========================================
 
-async function guardarPDF(id) {
+// =====================================================
+// OBTENER DATOS DEL PEDIDO
+// =====================================================
+
+async function obtenerDatosPedido(pedidoId) {
+
+    const pedido = pedidos.find(
+        p => Number(p.id) === Number(pedidoId)
+    );
+
+
+    if (!pedido) {
+
+        throw new Error(
+            "No se encontró el pedido."
+        );
+
+    }
+
+
+    const respuesta = await fetch(
+        `${API_PEDIDOS}/${pedidoId}`
+    );
+
+
+    if (!respuesta.ok) {
+
+        throw new Error(
+            "No se pudieron cargar los productos."
+        );
+
+    }
+
+
+    const resultado =
+        await respuesta.json();
+
+
+    return {
+        pedido: pedido,
+        productos: resultado.productos || []
+    };
+}
+
+
+// =====================================================
+// CREAR CONTENIDO DEL TICKET
+// =====================================================
+
+function crearTicketHTML(pedido, productos) {
+
+    let productosHTML = "";
+
+
+    productos.forEach(producto => {
+
+        productosHTML += `
+
+            <div class="producto">
+
+                <div class="producto-nombre">
+
+                    <strong>
+                        ${escaparHTML(
+                            producto.nombre ||
+                            "Producto"
+                        )}
+                    </strong>
+
+                    <br>
+
+                    ${producto.cantidad}
+                    x
+                    $${Number(
+                        producto.precio_unitario || 0
+                    ).toLocaleString("es-UY")}
+
+                </div>
+
+
+                <strong class="producto-precio">
+
+                    $${Number(
+                        producto.subtotal || 0
+                    ).toLocaleString("es-UY")}
+
+                </strong>
+
+            </div>
+
+        `;
+
+    });
+
+
+    let cambioHTML = "";
+
+
+    if (
+        pedido.forma_pago === "efectivo" &&
+        (
+            pedido.necesita_cambio === true ||
+            pedido.necesita_cambio === "true"
+        )
+    ) {
+
+        const pagaCon =
+            Number(pedido.cambio_de || 0);
+
+
+        const total =
+            Number(pedido.total || 0);
+
+
+        const vuelto =
+            pagaCon - total;
+
+
+        cambioHTML = `
+
+            <div class="info cambio">
+
+                <strong>
+                    PAGA CON:
+                </strong>
+
+                $${pagaCon.toLocaleString("es-UY")}
+
+                <br>
+
+                <strong>
+                    VUELTO:
+                </strong>
+
+                $${vuelto.toLocaleString("es-UY")}
+
+            </div>
+
+        `;
+
+    }
+
+
+    return `
+
+        <div class="ticket">
+
+
+            <!-- LOGO -->
+
+            <div class="logo-container">
+
+                <img
+                    src="/img/logoim.jpeg"
+                    class="logo-imagen"
+                    alt="Flame Burger"
+                >
+
+            </div>
+
+
+            <div class="centro">
+
+                <div class="titulo-ticket">
+                    COMPROBANTE DE PEDIDO
+                </div>
+
+                <div class="pedido">
+                    PEDIDO #${pedido.id}
+                </div>
+
+            </div>
+
+
+            <div class="linea"></div>
+
+
+            <div class="info">
+
+                <strong>
+                    FECHA:
+                </strong>
+
+                ${formatearFecha(
+                    pedido.creado_en
+                )}
+
+                <br>
+
+
+                <strong>
+                    CLIENTE:
+                </strong>
+
+                ${escaparHTML(
+                    pedido.cliente_nombre ||
+                    "Sin nombre"
+                )}
+
+                <br>
+
+
+                <strong>
+                    TELÉFONO:
+                </strong>
+
+                ${escaparHTML(
+                    pedido.cliente_telefono ||
+                    pedido.telefono ||
+                    "Sin teléfono"
+                )}
+
+                <br>
+
+
+                <strong>
+                    ENTREGA:
+                </strong>
+
+                ${obtenerTextoEntrega(
+                    pedido.tipo_entrega
+                )}
+
+                <br>
+
+
+                ${
+                    pedido.tipo_entrega === "delivery"
+                    ? `
+                        <strong>
+                            DIRECCIÓN:
+                        </strong>
+
+                        ${escaparHTML(
+                            pedido.cliente_direccion ||
+                            pedido.direccion ||
+                            "—"
+                        )}
+
+                        <br>
+                    `
+                    : ""
+                }
+
+
+                <strong>
+                    PAGO:
+                </strong>
+
+                ${obtenerTextoPago(
+                    pedido.forma_pago
+                )}
+
+            </div>
+
+
+            <div class="linea"></div>
+
+
+            <div class="titulo-productos">
+                PRODUCTOS
+            </div>
+
+
+            ${productosHTML}
+
+
+            ${
+                pedido.observaciones
+                ? `
+
+                    <div class="linea"></div>
+
+                    <div class="observaciones">
+
+                        <strong>
+                            OBSERVACIONES:
+                        </strong>
+
+                        <br>
+
+                        ${escaparHTML(
+                            pedido.observaciones
+                        )}
+
+                    </div>
+
+                `
+                : ""
+            }
+
+
+            <div class="linea"></div>
+
+
+            ${cambioHTML}
+
+
+            <div class="total">
+
+                <span>
+                    TOTAL
+                </span>
+
+                <span>
+                    $${Number(
+                        pedido.total || 0
+                    ).toLocaleString("es-UY")}
+                </span>
+
+            </div>
+
+
+            <div class="linea"></div>
+
+
+            <div class="centro gracias">
+
+                Gracias por tu compra
+
+            </div>
+
+
+            <div class="botones">
+
+                <button
+                    class="boton"
+                    onclick="window.print()"
+                >
+                    🖨️ IMPRIMIR TICKET
+                </button>
+
+
+                <button
+                    class="boton pdf"
+                    onclick="window.print()"
+                >
+                    📄 GUARDAR PDF
+                </button>
+
+            </div>
+
+
+        </div>
+
+    `;
+}
+
+
+// =====================================================
+// ABRIR TICKET
+// =====================================================
+
+async function abrirTicket(pedidoId) {
 
     try {
 
-        const pedido =
-            await obtenerDatosPedido(id);
+        const datos =
+            await obtenerDatosPedido(pedidoId);
 
-        const ventana = window.open(
-            "",
-            "_blank",
-            "width=400,height=700"
-        );
+
+        const ventana =
+            window.open(
+                "",
+                "_blank",
+                "width=450,height=800"
+            );
+
 
         if (!ventana) {
 
             alert(
-                "Permití las ventanas emergentes para guardar el PDF."
+                "⚠️ El navegador bloqueó la ventana. Permití las ventanas emergentes para esta página."
             );
 
             return;
         }
 
-        ventana.document.write(
-            crearTicketHTML(pedido)
-        );
+
+        ventana.document.write(`
+
+<!DOCTYPE html>
+
+<html lang="es">
+
+<head>
+
+<meta charset="UTF-8">
+
+<title>
+Pedido #${datos.pedido.id}
+</title>
+
+
+<style>
+
+@page {
+
+    size: 80mm auto;
+
+    margin: 0;
+
+}
+
+
+* {
+
+    box-sizing: border-box;
+
+}
+
+
+html,
+body {
+
+    margin: 0;
+
+    padding: 0;
+
+    background: white;
+
+}
+
+
+body {
+
+    color: black;
+
+    font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
+
+    font-size: 12px;
+
+}
+
+
+.ticket {
+
+    width: 80mm;
+
+    max-width: 80mm;
+
+    margin: auto;
+
+    padding: 4mm;
+
+}
+
+
+.centro {
+
+    text-align: center;
+
+}
+
+
+.logo-container {
+
+    width: 100%;
+
+    display: flex;
+
+    justify-content: center;
+
+    align-items: center;
+
+    margin-bottom: 3mm;
+
+}
+
+
+.logo-imagen {
+
+    display: block;
+
+    width: 48mm;
+
+    max-width: 100%;
+
+    max-height: 30mm;
+
+    height: auto;
+
+    object-fit: contain;
+
+}
+
+
+.titulo-ticket {
+
+    font-size: 12px;
+
+    font-weight: bold;
+
+    margin-top: 2mm;
+
+}
+
+
+.pedido {
+
+    font-size: 20px;
+
+    font-weight: bold;
+
+    margin: 5px 0;
+
+}
+
+
+.linea {
+
+    border-top: 1px dashed black;
+
+    margin: 8px 0;
+
+}
+
+
+.info {
+
+    line-height: 1.6;
+
+}
+
+
+.producto {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: flex-start;
+
+    gap: 8px;
+
+    margin: 8px 0;
+
+    line-height: 1.3;
+
+}
+
+
+.producto-nombre {
+
+    flex: 1;
+
+    min-width: 0;
+
+}
+
+
+.producto-precio {
+
+    white-space: nowrap;
+
+}
+
+
+.titulo-productos {
+
+    font-weight: bold;
+
+    margin-bottom: 5px;
+
+}
+
+
+.cambio {
+
+    line-height: 1.7;
+
+}
+
+
+.total {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    font-size: 20px;
+
+    font-weight: bold;
+
+    margin-top: 10px;
+
+}
+
+
+.observaciones {
+
+    margin-top: 8px;
+
+    line-height: 1.4;
+
+}
+
+
+.gracias {
+
+    font-weight: bold;
+
+    margin-top: 5px;
+
+    margin-bottom: 5px;
+
+}
+
+
+.botones {
+
+    margin-top: 20px;
+
+}
+
+
+.boton {
+
+    width: 100%;
+
+    border: 0;
+
+    padding: 12px;
+
+    margin-top: 8px;
+
+    background: black;
+
+    color: white;
+
+    font-size: 14px;
+
+    font-weight: bold;
+
+    cursor: pointer;
+
+    border-radius: 4px;
+
+}
+
+
+.boton.pdf {
+
+    background: #555;
+
+}
+
+
+@media print {
+
+    .botones {
+
+        display: none !important;
+
+    }
+
+
+    html,
+    body {
+
+        width: 80mm;
+
+        margin: 0;
+
+        padding: 0;
+
+    }
+
+
+    .ticket {
+
+        width: 80mm;
+
+        max-width: 80mm;
+
+        padding: 3mm;
+
+        margin: 0 auto;
+
+    }
+
+
+    .logo-imagen {
+
+        width: 48mm;
+
+        max-width: 100%;
+
+        max-height: 30mm;
+
+    }
+
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+${crearTicketHTML(
+    datos.pedido,
+    datos.productos
+)}
+
+
+<script>
+
+window.onload = function() {
+
+    setTimeout(function() {
+
+        window.print();
+
+    }, 500);
+
+};
+
+
+window.onafterprint = function() {
+
+    setTimeout(function() {
+
+        window.close();
+
+    }, 300);
+
+};
+
+</script>
+
+
+</body>
+
+</html>
+
+        `);
+
 
         ventana.document.close();
 
         ventana.focus();
 
-        setTimeout(() => {
-
-            ventana.print();
-
-        }, 500);
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "ERROR TICKET:",
+            error
+        );
+
 
         alert(
-            "No se pudo generar el PDF."
+            "❌ " + error.message
         );
+
     }
+
 }
 
-// ========================================
-// CAMBIAR ESTADO
-// ========================================
 
-async function cambiarEstado(id, nuevoEstado) {
+// =====================================================
+// IMPRIMIR TICKET
+// =====================================================
+
+async function imprimirPedido(pedidoId) {
+
+    await abrirTicket(pedidoId);
+
+}
+
+
+// =====================================================
+// GUARDAR PDF
+// =====================================================
+
+async function guardarPDF(pedidoId) {
+
+    await abrirTicket(pedidoId);
+
+}
+
+
+// =====================================================
+// CAMBIAR ESTADO
+// =====================================================
+
+async function cambiarEstado(
+    pedidoId,
+    nuevoEstado
+) {
 
     try {
 
-        const respuesta = await fetch(
-            `${API_PEDIDOS}/${id}/estado`,
-            {
-                method: "PATCH",
+        const confirmar =
+            confirm(
+                `¿Cambiar el pedido #${pedidoId} a "${obtenerTextoEstado(nuevoEstado)}"?`
+            );
 
-                headers: {
-                    "Content-Type":
-                        "application/json"
-                },
 
-                body: JSON.stringify({
-                    estado: nuevoEstado
-                })
-            }
-        );
+        if (!confirmar) {
+            return;
+        }
+
+
+        const respuesta =
+            await fetch(
+                `${API_PEDIDOS}/${pedidoId}/estado`,
+                {
+                    method: "PATCH",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body:
+                        JSON.stringify({
+                            estado:
+                                nuevoEstado
+                        })
+                }
+            );
+
+
+        const resultado =
+            await respuesta.json();
+
 
         if (!respuesta.ok) {
 
             throw new Error(
-                "No se pudo cambiar el estado"
+                resultado.error ||
+                "No se pudo cambiar el estado."
             );
+
         }
 
-        await cargarPedidos();
+
+        const pedido =
+            pedidos.find(
+                p =>
+                    Number(p.id) ===
+                    Number(pedidoId)
+            );
+
+
+        if (pedido) {
+
+            pedido.estado =
+                nuevoEstado;
+
+        }
+
+
+        mostrarPedidos();
+
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "ERROR CAMBIANDO ESTADO:",
+            error
+        );
+
 
         alert(
-            "No se pudo actualizar el estado del pedido."
+            "❌ " + error.message
         );
+
     }
+
 }
 
-// ========================================
+
+// =====================================================
 // FILTROS
-// ========================================
+// =====================================================
 
 document
     .querySelectorAll(".order-filter")
@@ -937,15 +1617,17 @@ document
 
                 document
                     .querySelectorAll(".order-filter")
-                    .forEach(btn =>
-                        btn.classList.remove("active")
+                    .forEach(b =>
+                        b.classList.remove("active")
                     );
+
 
                 boton.classList.add("active");
 
+
                 filtroActual =
-                    boton.dataset.filter ||
-                    "todos";
+                    boton.dataset.filter;
+
 
                 mostrarPedidos();
 
@@ -954,9 +1636,10 @@ document
 
     });
 
-// ========================================
-// FORMATEAR FECHA
-// ========================================
+
+// =====================================================
+// FECHA
+// =====================================================
 
 function formatearFecha(fecha) {
 
@@ -964,120 +1647,148 @@ function formatearFecha(fecha) {
         return "";
     }
 
-    const fechaObj = new Date(fecha);
 
-    return fechaObj.toLocaleString(
+    const fechaObjeto =
+        new Date(fecha);
+
+
+    return fechaObjeto.toLocaleString(
         "es-UY",
         {
+
             day: "2-digit",
+
             month: "2-digit",
+
             year: "numeric",
+
             hour: "2-digit",
+
             minute: "2-digit"
+
         }
     );
+
 }
 
-// ========================================
-// TEXTO ESTADO
-// ========================================
+
+// =====================================================
+// ESTADO
+// =====================================================
 
 function obtenerTextoEstado(estado) {
 
     const estados = {
 
-        nuevo: "NUEVO",
-
-        preparando: "PREPARANDO",
-
-        listo: "LISTO",
-
-        entregado: "ENTREGADO",
-
-        cancelado: "CANCELADO",
-
         en_proceso_pago:
-            "ESPERANDO PAGO"
+            "🟡 En proceso de pago",
+
+        nuevo:
+            "🆕 Nuevo",
+
+        preparando:
+            "👨‍🍳 Preparando",
+
+        listo:
+            "🍔 Listo",
+
+        entregado:
+            "🛵 Entregado",
+
+        cancelado:
+            "❌ Cancelado"
 
     };
 
-    return estados[estado] || estado;
+
+    return estados[estado] ||
+        estado ||
+        "Desconocido";
+
 }
 
-// ========================================
-// TEXTO ENTREGA
-// ========================================
 
-function obtenerTextoEntrega(pedido) {
+// =====================================================
+// ENTREGA
+// =====================================================
 
-    if (
-        pedido.tipo_entrega === "delivery" ||
-        pedido.entrega === "delivery"
-    ) {
+function obtenerTextoEntrega(entrega) {
 
-        return "DELIVERY";
+    if (entrega === "delivery") {
+
+        return "🛵 Delivery";
 
     }
 
-    return "RETIRO EN LOCAL";
-}
 
-// ========================================
-// TEXTO PAGO
-// ========================================
+    if (entrega === "retiro") {
 
-function obtenerTextoPago(pedido) {
+        return "🏪 Retiro";
 
-    const metodo =
-        pedido.metodo_pago ||
-        pedido.pago ||
-        "";
-
-    const metodoNormalizado =
-        metodo.toLowerCase();
-
-    if (
-        metodoNormalizado.includes("mercado")
-    ) {
-
-        return "MERCADO PAGO";
     }
 
-    if (
-        metodoNormalizado.includes("efectivo")
-    ) {
 
-        return "EFECTIVO";
-    }
+    return entrega || "—";
 
-    return metodo || "No indicado";
 }
 
-// ========================================
+
+// =====================================================
+// PAGO
+// =====================================================
+
+function obtenerTextoPago(pago) {
+
+    if (pago === "efectivo") {
+
+        return "💵 Efectivo";
+
+    }
+
+
+    if (pago === "mercado_pago") {
+
+        return "💳 Mercado Pago";
+
+    }
+
+
+    return pago || "—";
+
+}
+
+
+// =====================================================
 // ESCAPAR HTML
-// ========================================
+// =====================================================
 
 function escaparHTML(texto) {
 
-    return String(texto)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+    const div =
+        document.createElement("div");
+
+
+    div.textContent =
+        texto ?? "";
+
+
+    return div.innerHTML;
+
 }
 
-// ========================================
-// ACTUALIZAR AUTOMÁTICAMENTE
-// ========================================
+
+// =====================================================
+// ACTUALIZAR PEDIDOS
+// =====================================================
 
 setInterval(
     cargarPedidos,
     10000
 );
 
-// ========================================
+
+// =====================================================
 // INICIAR
-// ========================================
+// =====================================================
 
 cargarPedidos();
