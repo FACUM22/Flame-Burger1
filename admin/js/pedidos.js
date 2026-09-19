@@ -1,10 +1,211 @@
+```javascript
 const API_PEDIDOS = "/api/pedidos";
 
 let pedidos = [];
+let pedidosAnteriores = [];
 let filtroActual = "todos";
+
+let sonidoActivado = false;
+let audioContext = null;
 
 const ordersList = document.getElementById("ordersList");
 const pedidosNuevos = document.getElementById("pedidosNuevos");
+
+
+// =====================================================
+// SONIDO DE NUEVO PEDIDO
+// =====================================================
+
+// Inicializar sonido
+function iniciarSonido() {
+
+    try {
+
+        if (!audioContext) {
+
+            audioContext =
+                new (
+                    window.AudioContext ||
+                    window.webkitAudioContext
+                )();
+
+        }
+
+        if (audioContext.state === "suspended") {
+
+            audioContext.resume();
+
+        }
+
+        sonidoActivado = true;
+
+        console.log("🔔 Sonido de pedidos activado.");
+
+    } catch (error) {
+
+        console.error(
+            "ERROR ACTIVANDO SONIDO:",
+            error
+        );
+
+    }
+
+}
+
+
+// Activar el sonido cuando el usuario interactúa
+document.addEventListener(
+    "click",
+    iniciarSonido,
+    { once: true }
+);
+
+
+// =====================================================
+// GENERAR SONIDO
+// =====================================================
+
+function reproducirSonidoPedido() {
+
+    if (!sonidoActivado || !audioContext) {
+
+        return;
+
+    }
+
+
+    try {
+
+        const ahora =
+            audioContext.currentTime;
+
+
+        // =============================================
+        // PRIMER TONO
+        // =============================================
+
+        const oscilador1 =
+            audioContext.createOscillator();
+
+        const ganancia1 =
+            audioContext.createGain();
+
+
+        oscilador1.type = "sine";
+
+
+        oscilador1.frequency.setValueAtTime(
+            880,
+            ahora
+        );
+
+
+        ganancia1.gain.setValueAtTime(
+            0.001,
+            ahora
+        );
+
+
+        ganancia1.gain.exponentialRampToValueAtTime(
+            0.35,
+            ahora + 0.03
+        );
+
+
+        ganancia1.gain.exponentialRampToValueAtTime(
+            0.001,
+            ahora + 0.35
+        );
+
+
+        oscilador1.connect(
+            ganancia1
+        );
+
+
+        ganancia1.connect(
+            audioContext.destination
+        );
+
+
+        oscilador1.start(
+            ahora
+        );
+
+
+        oscilador1.stop(
+            ahora + 0.35
+        );
+
+
+        // =============================================
+        // SEGUNDO TONO
+        // =============================================
+
+        const oscilador2 =
+            audioContext.createOscillator();
+
+        const ganancia2 =
+            audioContext.createGain();
+
+
+        oscilador2.type = "sine";
+
+
+        oscilador2.frequency.setValueAtTime(
+            1174,
+            ahora + 0.18
+        );
+
+
+        ganancia2.gain.setValueAtTime(
+            0.001,
+            ahora + 0.18
+        );
+
+
+        ganancia2.gain.exponentialRampToValueAtTime(
+            0.35,
+            ahora + 0.21
+        );
+
+
+        ganancia2.gain.exponentialRampToValueAtTime(
+            0.001,
+            ahora + 0.55
+        );
+
+
+        oscilador2.connect(
+            ganancia2
+        );
+
+
+        ganancia2.connect(
+            audioContext.destination
+        );
+
+
+        oscilador2.start(
+            ahora + 0.18
+        );
+
+
+        oscilador2.stop(
+            ahora + 0.55
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "ERROR SONIDO:",
+            error
+        );
+
+    }
+
+}
 
 
 // =====================================================
@@ -15,31 +216,118 @@ async function cargarPedidos() {
 
     try {
 
-        const respuesta = await fetch(API_PEDIDOS);
+        const respuesta =
+            await fetch(API_PEDIDOS);
+
 
         if (!respuesta.ok) {
-            throw new Error("No se pudieron cargar los pedidos.");
+
+            throw new Error(
+                "No se pudieron cargar los pedidos."
+            );
+
         }
 
-        pedidos = await respuesta.json();
+
+        const nuevosPedidos =
+            await respuesta.json();
+
+
+        // =============================================
+        // DETECTAR PEDIDOS NUEVOS
+        // =============================================
+
+        if (pedidosAnteriores.length > 0) {
+
+            const idsAnteriores =
+                pedidosAnteriores.map(
+                    pedido =>
+                        Number(pedido.id)
+                );
+
+
+            const pedidosNuevosDetectados =
+                nuevosPedidos.filter(pedido =>
+
+                    pedido.estado === "nuevo" &&
+
+                    !idsAnteriores.includes(
+                        Number(pedido.id)
+                    )
+
+                );
+
+
+            if (
+                pedidosNuevosDetectados.length > 0
+            ) {
+
+                console.log(
+                    "🔔 NUEVO PEDIDO DETECTADO:",
+                    pedidosNuevosDetectados
+                );
+
+
+                reproducirSonidoPedido();
+
+            }
+
+        }
+
+
+        // =============================================
+        // GUARDAR PEDIDOS ACTUALES
+        // =============================================
+
+        pedidos =
+            nuevosPedidos;
+
+
+        pedidosAnteriores =
+            nuevosPedidos.map(pedido => ({
+
+                id: pedido.id,
+
+                estado: pedido.estado
+
+            }));
+
 
         mostrarPedidos();
 
+
     } catch (error) {
 
-        console.error("ERROR PEDIDOS:", error);
+        console.error(
+            "ERROR PEDIDOS:",
+            error
+        );
+
 
         if (ordersList) {
 
             ordersList.innerHTML = `
+
                 <div class="empty-orders">
-                    <h3>Error al cargar los pedidos</h3>
-                    <p>${escaparHTML(error.message)}</p>
+
+                    <h3>
+                        Error al cargar los pedidos
+                    </h3>
+
+                    <p>
+                        ${escaparHTML(
+                            error.message
+                        )}
+                    </p>
+
                 </div>
+
             `;
 
         }
+
     }
+
 }
 
 
@@ -50,33 +338,55 @@ async function cargarPedidos() {
 function mostrarPedidos() {
 
     if (!ordersList) {
+
         return;
+
     }
+
 
     ordersList.innerHTML = "";
 
-    const cantidadNuevos = pedidos.filter(
-        pedido => pedido.estado === "nuevo"
-    ).length;
+
+    const cantidadNuevos =
+        pedidos.filter(
+            pedido =>
+                pedido.estado === "nuevo"
+        ).length;
+
 
     if (pedidosNuevos) {
 
         pedidosNuevos.textContent =
-            `${cantidadNuevos} pedido${cantidadNuevos !== 1 ? "s" : ""} nuevo${cantidadNuevos !== 1 ? "s" : ""}`;
+
+            `${cantidadNuevos} pedido${
+                cantidadNuevos !== 1
+                    ? "s"
+                    : ""
+            } nuevo${
+                cantidadNuevos !== 1
+                    ? "s"
+                    : ""
+            }`;
 
     }
 
 
-    let pedidosFiltrados = pedidos.filter(
-        pedido => pedido.estado !== "en_proceso_pago"
-    );
+    let pedidosFiltrados =
+        pedidos.filter(
+            pedido =>
+                pedido.estado !==
+                "en_proceso_pago"
+        );
 
 
     if (filtroActual !== "todos") {
 
-        pedidosFiltrados = pedidosFiltrados.filter(
-            pedido => pedido.estado === filtroActual
-        );
+        pedidosFiltrados =
+            pedidosFiltrados.filter(
+                pedido =>
+                    pedido.estado ===
+                    filtroActual
+            );
 
     }
 
@@ -84,6 +394,7 @@ function mostrarPedidos() {
     if (pedidosFiltrados.length === 0) {
 
         ordersList.innerHTML = `
+
             <div class="empty-orders">
 
                 <div class="empty-icon">
@@ -99,19 +410,30 @@ function mostrarPedidos() {
                 </p>
 
             </div>
+
         `;
 
         return;
+
     }
 
 
-    pedidosFiltrados.forEach(pedido => {
+    pedidosFiltrados.forEach(
+        pedido => {
 
-        const tarjeta = crearTarjetaPedido(pedido);
+            const tarjeta =
+                crearTarjetaPedido(
+                    pedido
+                );
 
-        ordersList.appendChild(tarjeta);
 
-    });
+            ordersList.appendChild(
+                tarjeta
+            );
+
+        }
+    );
+
 }
 
 
@@ -121,23 +443,34 @@ function mostrarPedidos() {
 
 function crearTarjetaPedido(pedido) {
 
-    const tarjeta = document.createElement("div");
+    const tarjeta =
+        document.createElement("div");
 
-    tarjeta.className = "order-card";
+
+    tarjeta.className =
+        "order-card";
 
 
     if (pedido.estado === "nuevo") {
 
-        tarjeta.classList.add("new-order");
+        tarjeta.classList.add(
+            "new-order"
+        );
 
     }
 
 
     const fecha =
-        formatearFecha(pedido.creado_en);
+        formatearFecha(
+            pedido.creado_en
+        );
+
 
     const estadoTexto =
-        obtenerTextoEstado(pedido.estado);
+        obtenerTextoEstado(
+            pedido.estado
+        );
+
 
     const claseEstado =
         `status-${pedido.estado}`;
@@ -146,18 +479,31 @@ function crearTarjetaPedido(pedido) {
     let informacionCambio = "";
 
 
-    if (pedido.forma_pago === "efectivo") {
+    if (
+        pedido.forma_pago ===
+        "efectivo"
+    ) {
 
         if (
+
             pedido.necesita_cambio === true ||
-            pedido.necesita_cambio === "true"
+
+            pedido.necesita_cambio ===
+                "true"
+
         ) {
 
             const total =
-                Number(pedido.total || 0);
+                Number(
+                    pedido.total || 0
+                );
+
 
             const cambioDe =
-                Number(pedido.cambio_de || 0);
+                Number(
+                    pedido.cambio_de || 0
+                );
+
 
             const vuelto =
                 cambioDe - total;
@@ -185,7 +531,9 @@ function crearTarjetaPedido(pedido) {
                     </span>
 
                     <strong>
-                        $${cambioDe.toLocaleString("es-UY")}
+                        $${cambioDe.toLocaleString(
+                            "es-UY"
+                        )}
                     </strong>
 
                 </div>
@@ -198,7 +546,9 @@ function crearTarjetaPedido(pedido) {
                     </span>
 
                     <strong>
-                        $${vuelto.toLocaleString("es-UY")}
+                        $${vuelto.toLocaleString(
+                            "es-UY"
+                        )}
                     </strong>
 
                 </div>
@@ -224,6 +574,7 @@ function crearTarjetaPedido(pedido) {
             `;
 
         }
+
     }
 
 
@@ -243,19 +594,28 @@ function crearTarjetaPedido(pedido) {
 
                 ${
                     pedido.estado === "nuevo"
+
                     ? `
+
                         <span class="new-label">
                             🔔 NUEVO PEDIDO
                         </span>
+
                     `
+
                     : ""
+
                 }
 
             </div>
 
 
-            <span class="order-status ${claseEstado}">
+            <span
+                class="order-status ${claseEstado}"
+            >
+
                 ${estadoTexto}
+
             </span>
 
         </div>
@@ -271,10 +631,12 @@ function crearTarjetaPedido(pedido) {
                 </span>
 
                 <strong>
+
                     ${escaparHTML(
                         pedido.cliente_nombre ||
                         "Sin nombre"
                     )}
+
                 </strong>
 
             </div>
@@ -287,11 +649,13 @@ function crearTarjetaPedido(pedido) {
                 </span>
 
                 <strong>
+
                     ${escaparHTML(
                         pedido.cliente_telefono ||
                         pedido.telefono ||
                         "Sin teléfono"
                     )}
+
                 </strong>
 
             </div>
@@ -304,9 +668,11 @@ function crearTarjetaPedido(pedido) {
                 </span>
 
                 <strong>
+
                     ${obtenerTextoEntrega(
                         pedido.tipo_entrega
                     )}
+
                 </strong>
 
             </div>
@@ -319,11 +685,13 @@ function crearTarjetaPedido(pedido) {
                 </span>
 
                 <strong>
+
                     ${escaparHTML(
                         pedido.cliente_direccion ||
                         pedido.direccion ||
                         "—"
                     )}
+
                 </strong>
 
             </div>
@@ -336,9 +704,11 @@ function crearTarjetaPedido(pedido) {
                 </span>
 
                 <strong>
+
                     ${obtenerTextoPago(
                         pedido.forma_pago
                     )}
+
                 </strong>
 
             </div>
@@ -351,7 +721,9 @@ function crearTarjetaPedido(pedido) {
                 </span>
 
                 <strong>
+
                     ${estadoTexto}
+
                 </strong>
 
             </div>
@@ -376,7 +748,9 @@ function crearTarjetaPedido(pedido) {
 
         ${
             pedido.observaciones
+
             ? `
+
                 <div class="order-observation">
 
                     <strong>
@@ -390,8 +764,11 @@ function crearTarjetaPedido(pedido) {
                     )}
 
                 </div>
+
             `
+
             : ""
+
         }
 
 
@@ -407,7 +784,9 @@ function crearTarjetaPedido(pedido) {
 
                     $${Number(
                         pedido.total || 0
-                    ).toLocaleString("es-UY")}
+                    ).toLocaleString(
+                        "es-UY"
+                    )}
 
                 </div>
 
@@ -416,7 +795,9 @@ function crearTarjetaPedido(pedido) {
 
             <div class="order-actions">
 
-                ${crearBotonesEstado(pedido)}
+                ${crearBotonesEstado(
+                    pedido
+                )}
 
             </div>
 
@@ -425,10 +806,13 @@ function crearTarjetaPedido(pedido) {
     `;
 
 
-    cargarDetallePedido(pedido.id);
+    cargarDetallePedido(
+        pedido.id
+    );
 
 
     return tarjeta;
+
 }
 
 
@@ -462,7 +846,10 @@ function crearBotonesEstado(pedido) {
     `;
 
 
-    if (pedido.estado === "cancelado") {
+    if (
+        pedido.estado ===
+        "cancelado"
+    ) {
 
         return `
 
@@ -472,9 +859,14 @@ function crearBotonesEstado(pedido) {
 
             <button
                 class="btn-confirm"
-                onclick="cambiarEstado(${pedido.id}, 'nuevo')"
+                onclick="cambiarEstado(
+                    ${pedido.id},
+                    'nuevo'
+                )"
             >
+
                 ↩️ Reactivar
+
             </button>
 
         `;
@@ -482,7 +874,10 @@ function crearBotonesEstado(pedido) {
     }
 
 
-    if (pedido.estado === "entregado") {
+    if (
+        pedido.estado ===
+        "entregado"
+    ) {
 
         return `
 
@@ -492,9 +887,14 @@ function crearBotonesEstado(pedido) {
 
             <button
                 class="btn-cancel"
-                onclick="cambiarEstado(${pedido.id}, 'cancelado')"
+                onclick="cambiarEstado(
+                    ${pedido.id},
+                    'cancelado'
+                )"
             >
+
                 ❌ Cancelar
+
             </button>
 
         `;
@@ -502,7 +902,10 @@ function crearBotonesEstado(pedido) {
     }
 
 
-    if (pedido.estado === "nuevo") {
+    if (
+        pedido.estado ===
+        "nuevo"
+    ) {
 
         return `
 
@@ -512,16 +915,27 @@ function crearBotonesEstado(pedido) {
 
             <button
                 class="btn-preparing"
-                onclick="cambiarEstado(${pedido.id}, 'preparando')"
+                onclick="cambiarEstado(
+                    ${pedido.id},
+                    'preparando'
+                )"
             >
+
                 👨‍🍳 Comenzar a preparar
+
             </button>
+
 
             <button
                 class="btn-cancel"
-                onclick="cambiarEstado(${pedido.id}, 'cancelado')"
+                onclick="cambiarEstado(
+                    ${pedido.id},
+                    'cancelado'
+                )"
             >
+
                 ❌ Cancelar
+
             </button>
 
         `;
@@ -529,7 +943,10 @@ function crearBotonesEstado(pedido) {
     }
 
 
-    if (pedido.estado === "preparando") {
+    if (
+        pedido.estado ===
+        "preparando"
+    ) {
 
         return `
 
@@ -539,16 +956,27 @@ function crearBotonesEstado(pedido) {
 
             <button
                 class="btn-ready"
-                onclick="cambiarEstado(${pedido.id}, 'listo')"
+                onclick="cambiarEstado(
+                    ${pedido.id},
+                    'listo'
+                )"
             >
+
                 🍔 Listo
+
             </button>
+
 
             <button
                 class="btn-cancel"
-                onclick="cambiarEstado(${pedido.id}, 'cancelado')"
+                onclick="cambiarEstado(
+                    ${pedido.id},
+                    'cancelado'
+                )"
             >
+
                 ❌ Cancelar
+
             </button>
 
         `;
@@ -556,7 +984,10 @@ function crearBotonesEstado(pedido) {
     }
 
 
-    if (pedido.estado === "listo") {
+    if (
+        pedido.estado ===
+        "listo"
+    ) {
 
         return `
 
@@ -566,16 +997,27 @@ function crearBotonesEstado(pedido) {
 
             <button
                 class="btn-delivered"
-                onclick="cambiarEstado(${pedido.id}, 'entregado')"
+                onclick="cambiarEstado(
+                    ${pedido.id},
+                    'entregado'
+                )"
             >
+
                 🛵 Entregado
+
             </button>
+
 
             <button
                 class="btn-cancel"
-                onclick="cambiarEstado(${pedido.id}, 'cancelado')"
+                onclick="cambiarEstado(
+                    ${pedido.id},
+                    'cancelado'
+                )"
             >
+
                 ❌ Cancelar
+
             </button>
 
         `;
@@ -584,9 +1026,13 @@ function crearBotonesEstado(pedido) {
 
 
     return `
+
         ${botonImprimir}
+
         ${botonPDF}
+
     `;
+
 }
 
 
@@ -594,7 +1040,9 @@ function crearBotonesEstado(pedido) {
 // DETALLE DEL PEDIDO
 // =====================================================
 
-async function cargarDetallePedido(pedidoId) {
+async function cargarDetallePedido(
+    pedidoId
+) {
 
     try {
 
@@ -624,76 +1072,100 @@ async function cargarDetallePedido(pedidoId) {
 
 
         if (!contenedor) {
+
             return;
+
         }
 
 
         if (
+
             !resultado.productos ||
+
             resultado.productos.length === 0
+
         ) {
 
             contenedor.innerHTML = `
+
                 <div>
                     Sin productos
                 </div>
+
             `;
 
             return;
+
         }
 
 
         contenedor.innerHTML = "";
 
 
-        resultado.productos.forEach(producto => {
+        resultado.productos.forEach(
+            producto => {
 
-            const elemento =
-                document.createElement("div");
+                const elemento =
+                    document.createElement(
+                        "div"
+                    );
 
 
-            elemento.className =
-                "order-product";
+                elemento.className =
+                    "order-product";
 
 
-            elemento.innerHTML = `
+                elemento.innerHTML = `
 
-                <div>
+                    <div>
+
+                        <strong>
+
+                            ${escaparHTML(
+                                producto.nombre ||
+                                "Producto"
+                            )}
+
+                        </strong>
+
+                        <small>
+
+                            ${producto.cantidad}
+
+                            x
+
+                            $${Number(
+                                producto.precio_unitario ||
+                                0
+                            ).toLocaleString(
+                                "es-UY"
+                            )}
+
+                        </small>
+
+                    </div>
+
 
                     <strong>
-                        ${escaparHTML(
-                            producto.nombre ||
-                            "Producto"
+
+                        $${Number(
+                            producto.subtotal ||
+                            0
+                        ).toLocaleString(
+                            "es-UY"
                         )}
+
                     </strong>
 
-                    <small>
-
-                        ${producto.cantidad}
-                        x
-                        $${Number(
-                            producto.precio_unitario || 0
-                        ).toLocaleString("es-UY")}
-
-                    </small>
-
-                </div>
+                `;
 
 
-                <strong>
+                contenedor.appendChild(
+                    elemento
+                );
 
-                    $${Number(
-                        producto.subtotal || 0
-                    ).toLocaleString("es-UY")}
-
-                </strong>
-
-            `;
-
-
-            contenedor.appendChild(elemento);
-
-        });
+            }
+        );
 
 
     } catch (error) {
@@ -713,14 +1185,17 @@ async function cargarDetallePedido(pedidoId) {
         if (contenedor) {
 
             contenedor.innerHTML = `
+
                 <div>
                     ⚠️ No se pudo cargar el detalle
                 </div>
+
             `;
 
         }
 
     }
+
 }
 
 
@@ -728,11 +1203,16 @@ async function cargarDetallePedido(pedidoId) {
 // OBTENER DATOS DEL PEDIDO
 // =====================================================
 
-async function obtenerDatosPedido(pedidoId) {
+async function obtenerDatosPedido(
+    pedidoId
+) {
 
-    const pedido = pedidos.find(
-        p => Number(p.id) === Number(pedidoId)
-    );
+    const pedido =
+        pedidos.find(
+            p =>
+                Number(p.id) ===
+                Number(pedidoId)
+        );
 
 
     if (!pedido) {
@@ -744,9 +1224,10 @@ async function obtenerDatosPedido(pedidoId) {
     }
 
 
-    const respuesta = await fetch(
-        `${API_PEDIDOS}/${pedidoId}`
-    );
+    const respuesta =
+        await fetch(
+            `${API_PEDIDOS}/${pedidoId}`
+        );
 
 
     if (!respuesta.ok) {
@@ -763,9 +1244,14 @@ async function obtenerDatosPedido(pedidoId) {
 
 
     return {
+
         pedido: pedido,
-        productos: resultado.productos || []
+
+        productos:
+            resultado.productos || []
+
     };
+
 }
 
 
@@ -773,69 +1259,99 @@ async function obtenerDatosPedido(pedidoId) {
 // CREAR CONTENIDO DEL TICKET
 // =====================================================
 
-function crearTicketHTML(pedido, productos) {
+function crearTicketHTML(
+    pedido,
+    productos
+) {
 
     let productosHTML = "";
 
 
-    productos.forEach(producto => {
+    productos.forEach(
+        producto => {
 
-        productosHTML += `
+            productosHTML += `
 
-            <div class="producto">
+                <div class="producto">
 
-                <div class="producto-nombre">
+                    <div class="producto-nombre">
 
-                    <strong>
-                        ${escaparHTML(
-                            producto.nombre ||
-                            "Producto"
+                        <strong>
+
+                            ${escaparHTML(
+                                producto.nombre ||
+                                "Producto"
+                            )}
+
+                        </strong>
+
+                        <br>
+
+                        ${producto.cantidad}
+
+                        x
+
+                        $${Number(
+                            producto.precio_unitario ||
+                            0
+                        ).toLocaleString(
+                            "es-UY"
                         )}
+
+                    </div>
+
+
+                    <strong
+                        class="producto-precio"
+                    >
+
+                        $${Number(
+                            producto.subtotal ||
+                            0
+                        ).toLocaleString(
+                            "es-UY"
+                        )}
+
                     </strong>
-
-                    <br>
-
-                    ${producto.cantidad}
-                    x
-                    $${Number(
-                        producto.precio_unitario || 0
-                    ).toLocaleString("es-UY")}
 
                 </div>
 
+            `;
 
-                <strong class="producto-precio">
-
-                    $${Number(
-                        producto.subtotal || 0
-                    ).toLocaleString("es-UY")}
-
-                </strong>
-
-            </div>
-
-        `;
-
-    });
+        }
+    );
 
 
     let cambioHTML = "";
 
 
     if (
-        pedido.forma_pago === "efectivo" &&
+
+        pedido.forma_pago ===
+            "efectivo" &&
+
         (
-            pedido.necesita_cambio === true ||
-            pedido.necesita_cambio === "true"
+
+            pedido.necesita_cambio ===
+                true ||
+
+            pedido.necesita_cambio ===
+                "true"
+
         )
+
     ) {
 
         const pagaCon =
-            Number(pedido.cambio_de || 0);
+            Number(
+                pedido.cambio_de || 0
+            );
 
 
         const total =
-            Number(pedido.total || 0);
+            Number(
+                pedido.total || 0
+            );
 
 
         const vuelto =
@@ -850,7 +1366,9 @@ function crearTicketHTML(pedido, productos) {
                     PAGA CON:
                 </strong>
 
-                $${pagaCon.toLocaleString("es-UY")}
+                $${pagaCon.toLocaleString(
+                    "es-UY"
+                )}
 
                 <br>
 
@@ -858,7 +1376,9 @@ function crearTicketHTML(pedido, productos) {
                     VUELTO:
                 </strong>
 
-                $${vuelto.toLocaleString("es-UY")}
+                $${vuelto.toLocaleString(
+                    "es-UY"
+                )}
 
             </div>
 
@@ -871,8 +1391,6 @@ function crearTicketHTML(pedido, productos) {
 
         <div class="ticket">
 
-
-            <!-- LOGO -->
 
             <div class="logo-container">
 
@@ -951,8 +1469,11 @@ function crearTicketHTML(pedido, productos) {
 
 
                 ${
-                    pedido.tipo_entrega === "delivery"
+                    pedido.tipo_entrega ===
+                    "delivery"
+
                     ? `
+
                         <strong>
                             DIRECCIÓN:
                         </strong>
@@ -964,8 +1485,11 @@ function crearTicketHTML(pedido, productos) {
                         )}
 
                         <br>
+
                     `
+
                     : ""
+
                 }
 
 
@@ -993,6 +1517,7 @@ function crearTicketHTML(pedido, productos) {
 
             ${
                 pedido.observaciones
+
                 ? `
 
                     <div class="linea"></div>
@@ -1012,7 +1537,9 @@ function crearTicketHTML(pedido, productos) {
                     </div>
 
                 `
+
                 : ""
+
             }
 
 
@@ -1029,9 +1556,13 @@ function crearTicketHTML(pedido, productos) {
                 </span>
 
                 <span>
+
                     $${Number(
                         pedido.total || 0
-                    ).toLocaleString("es-UY")}
+                    ).toLocaleString(
+                        "es-UY"
+                    )}
+
                 </span>
 
             </div>
@@ -1053,7 +1584,9 @@ function crearTicketHTML(pedido, productos) {
                     class="boton"
                     onclick="window.print()"
                 >
+
                     🖨️ IMPRIMIR TICKET
+
                 </button>
 
 
@@ -1061,7 +1594,9 @@ function crearTicketHTML(pedido, productos) {
                     class="boton pdf"
                     onclick="window.print()"
                 >
+
                     📄 GUARDAR PDF
+
                 </button>
 
             </div>
@@ -1070,6 +1605,7 @@ function crearTicketHTML(pedido, productos) {
         </div>
 
     `;
+
 }
 
 
@@ -1077,12 +1613,16 @@ function crearTicketHTML(pedido, productos) {
 // ABRIR TICKET
 // =====================================================
 
-async function abrirTicket(pedidoId) {
+async function abrirTicket(
+    pedidoId
+) {
 
     try {
 
         const datos =
-            await obtenerDatosPedido(pedidoId);
+            await obtenerDatosPedido(
+                pedidoId
+            );
 
 
         const ventana =
@@ -1100,6 +1640,7 @@ async function abrirTicket(pedidoId) {
             );
 
             return;
+
         }
 
 
@@ -1493,9 +2034,13 @@ window.onafterprint = function() {
 // IMPRIMIR TICKET
 // =====================================================
 
-async function imprimirPedido(pedidoId) {
+async function imprimirPedido(
+    pedidoId
+) {
 
-    await abrirTicket(pedidoId);
+    await abrirTicket(
+        pedidoId
+    );
 
 }
 
@@ -1504,9 +2049,13 @@ async function imprimirPedido(pedidoId) {
 // GUARDAR PDF
 // =====================================================
 
-async function guardarPDF(pedidoId) {
+async function guardarPDF(
+    pedidoId
+) {
 
-    await abrirTicket(pedidoId);
+    await abrirTicket(
+        pedidoId
+    );
 
 }
 
@@ -1524,12 +2073,16 @@ async function cambiarEstado(
 
         const confirmar =
             confirm(
-                `¿Cambiar el pedido #${pedidoId} a "${obtenerTextoEstado(nuevoEstado)}"?`
+                `¿Cambiar el pedido #${pedidoId} a "${obtenerTextoEstado(
+                    nuevoEstado
+                )}"?`
             );
 
 
         if (!confirmar) {
+
             return;
+
         }
 
 
@@ -1537,18 +2090,24 @@ async function cambiarEstado(
             await fetch(
                 `${API_PEDIDOS}/${pedidoId}/estado`,
                 {
+
                     method: "PATCH",
 
                     headers: {
+
                         "Content-Type":
                             "application/json"
+
                     },
 
                     body:
                         JSON.stringify({
+
                             estado:
                                 nuevoEstado
+
                         })
+
                 }
             );
 
@@ -1608,43 +2167,58 @@ async function cambiarEstado(
 // =====================================================
 
 document
-    .querySelectorAll(".order-filter")
-    .forEach(boton => {
+    .querySelectorAll(
+        ".order-filter"
+    )
+    .forEach(
+        boton => {
 
-        boton.addEventListener(
-            "click",
-            () => {
+            boton.addEventListener(
+                "click",
+                () => {
 
-                document
-                    .querySelectorAll(".order-filter")
-                    .forEach(b =>
-                        b.classList.remove("active")
+                    document
+                        .querySelectorAll(
+                            ".order-filter"
+                        )
+                        .forEach(
+                            b =>
+                                b.classList.remove(
+                                    "active"
+                                )
+                        );
+
+
+                    boton.classList.add(
+                        "active"
                     );
 
 
-                boton.classList.add("active");
+                    filtroActual =
+                        boton.dataset.filter;
 
 
-                filtroActual =
-                    boton.dataset.filter;
+                    mostrarPedidos();
 
+                }
+            );
 
-                mostrarPedidos();
-
-            }
-        );
-
-    });
+        }
+    );
 
 
 // =====================================================
 // FECHA
 // =====================================================
 
-function formatearFecha(fecha) {
+function formatearFecha(
+    fecha
+) {
 
     if (!fecha) {
+
         return "";
+
     }
 
 
@@ -1676,7 +2250,9 @@ function formatearFecha(fecha) {
 // ESTADO
 // =====================================================
 
-function obtenerTextoEstado(estado) {
+function obtenerTextoEstado(
+    estado
+) {
 
     const estados = {
 
@@ -1712,16 +2288,24 @@ function obtenerTextoEstado(estado) {
 // ENTREGA
 // =====================================================
 
-function obtenerTextoEntrega(entrega) {
+function obtenerTextoEntrega(
+    entrega
+) {
 
-    if (entrega === "delivery") {
+    if (
+        entrega ===
+        "delivery"
+    ) {
 
         return "🛵 Delivery";
 
     }
 
 
-    if (entrega === "retiro") {
+    if (
+        entrega ===
+        "retiro"
+    ) {
 
         return "🏪 Retiro";
 
@@ -1737,16 +2321,24 @@ function obtenerTextoEntrega(entrega) {
 // PAGO
 // =====================================================
 
-function obtenerTextoPago(pago) {
+function obtenerTextoPago(
+    pago
+) {
 
-    if (pago === "efectivo") {
+    if (
+        pago ===
+        "efectivo"
+    ) {
 
         return "💵 Efectivo";
 
     }
 
 
-    if (pago === "mercado_pago") {
+    if (
+        pago ===
+        "mercado_pago"
+    ) {
 
         return "💳 Mercado Pago";
 
@@ -1762,10 +2354,14 @@ function obtenerTextoPago(pago) {
 // ESCAPAR HTML
 // =====================================================
 
-function escaparHTML(texto) {
+function escaparHTML(
+    texto
+) {
 
     const div =
-        document.createElement("div");
+        document.createElement(
+            "div"
+        );
 
 
     div.textContent =
@@ -1792,3 +2388,4 @@ setInterval(
 // =====================================================
 
 cargarPedidos();
+```
