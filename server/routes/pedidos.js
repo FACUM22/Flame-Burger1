@@ -4,11 +4,26 @@ const router = express.Router();
 
 const pool = require("../database");
 const { esMiercolesEnMontevideo } = require("../utils/horario");
+
 // =====================================================
-// COMPROBAR SI LA PÁGINA ESTÁ ACTIVA
+// COMPROBAR SI SE PUEDEN RECIBIR PEDIDOS
+// =====================================================
+// Fuente única de verdad: el switch "Encender/Apagar página"
+// del panel admin (tabla configuracion.pagina_activa), con
+// el agregado de que los miércoles se fuerza a cerrado sin
+// importar lo que diga la base (mismo criterio que usa
+// GET /api/configuracion/estado).
 // =====================================================
 
 async function paginaEstaActiva() {
+
+    if (esMiercolesEnMontevideo()) {
+
+        // Cierre automático de los miércoles
+        return false;
+
+    }
+
 
     const resultado = await pool.query(`
         SELECT pagina_activa
@@ -30,43 +45,6 @@ async function paginaEstaActiva() {
 
     return resultado.rows[0].pagina_activa === true;
 
-}
-
-// =====================================================
-// HORARIO DEL RESTAURANTE
-// =====================================================
-// Flame Burger:
-// Lunes, martes y jueves a domingo: 20:00 a 00:00
-// Miércoles: cerrado
-//
-// Zona horaria: Montevideo
-// =====================================================
-
-function restauranteEstaAbierto() {
-    const ahora = new Date();
-
-    const partes = new Intl.DateTimeFormat("es-UY", {
-        timeZone: "America/Montevideo",
-        hour: "2-digit",
-        minute: "2-digit",
-        hourCycle: "h23"
-    }).formatToParts(ahora);
-
-    const hora = Number(partes.find(p => p.type === "hour")?.value);
-
-    // Miércoles cerrado (mismo criterio que usa el
-    // encendido/apagado automático de la página)
-    if (esMiercolesEnMontevideo(ahora)) {
-        return false;
-    }
-
-    // Abierto de 20:00 a 23:59
-    if (hora >= 20 && hora <= 23) {
-        return true;
-    }
-
-    // 00:00 cerrado
-    return false;
 }
 
 
@@ -98,7 +76,7 @@ router.post("/", async (req, res) => {
         // HORARIO
         // =====================================================
 
-        if (!restauranteEstaAbierto()) {
+        if (!(await paginaEstaActiva())) {
 
             return res.status(400).json({
                 ok: false,
