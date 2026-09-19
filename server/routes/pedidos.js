@@ -3,6 +3,33 @@ const express = require("express");
 const router = express.Router();
 
 const pool = require("../database");
+// =====================================================
+// COMPROBAR SI LA PÁGINA ESTÁ ACTIVA
+// =====================================================
+
+async function paginaEstaActiva() {
+
+    const resultado = await pool.query(`
+        SELECT pagina_activa
+        FROM configuracion
+        WHERE id = 1
+        LIMIT 1
+    `);
+
+
+    if (resultado.rows.length === 0) {
+
+        // Si no existe la configuración,
+        // por seguridad dejamos la página activa.
+
+        return true;
+
+    }
+
+
+    return resultado.rows[0].pagina_activa === true;
+
+}
 
 // =====================================================
 // HORARIO DEL RESTAURANTE
