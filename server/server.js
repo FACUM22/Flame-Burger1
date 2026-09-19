@@ -16,7 +16,7 @@ const dashboardRoutes = require("./routes/dashboard");
 const ventasRoutes = require("./routes/ventas");
 const categoriasRoutes = require("./routes/categorias");
 const pagosRoutes = require("./routes/pagos");
-
+const configuracionRoutes = require("./routes/configuracion");
 const app = express();
 
 
@@ -72,6 +72,7 @@ app.use(
 );
 
 
+
 // =====================================================
 // RUTAS DE CARPETAS
 // =====================================================
@@ -84,6 +85,7 @@ const adminPath =
 
 const uploadsPath =
     path.join(__dirname, "uploads");
+
 
 
 // =====================================================
@@ -151,6 +153,7 @@ app.use(
     "/api/pagos",
     pagosRoutes
 );
+app.use("/api/configuracion", configuracionRoutes);
 
 
 // =====================================================
