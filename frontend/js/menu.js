@@ -1,14 +1,21 @@
+
 // =====================================================
 // CONFIGURACIÓN API
 // =====================================================
 
-const API_BASE = "https://flame-burger1.onrender.com";
+// El frontend se sirve desde el mismo servidor que la API
+// (server.js sirve /frontend como estático), por eso usamos
+// rutas relativas en vez de una URL fija.
+const API_BASE = "";
 
 const API_PRODUCTOS =
     `${API_BASE}/api/productos`;
 
 const API_CATEGORIAS =
     `${API_BASE}/api/categorias`;
+
+const API_CONFIGURACION =
+    `${API_BASE}/api/configuracion`;
 
 
 // =====================================================
@@ -58,6 +65,14 @@ const botonCerrarCarrito =
 const botonCheckout =
     document.getElementById("irCheckout");
 
+const estadoLocalTexto =
+    document.querySelector(".estado-local span:last-child");
+
+const estadoLocalPunto =
+    document.querySelector(".estado-punto");
+
+let localAbierto = true;
+
 
 // =====================================================
 // ESCAPAR HTML
@@ -72,7 +87,6 @@ function escaparHTML(texto) {
         texto ?? "";
 
     return div.innerHTML;
-
 }
 
 
@@ -87,7 +101,6 @@ function formatearPrecio(precio) {
             minimumFractionDigits: 0,
             maximumFractionDigits: 2
         });
-
 }
 
 
@@ -136,14 +149,9 @@ async function cargarCategorias() {
             error
         );
 
-        if (contenedorCategorias) {
+        contenedorCategorias.innerHTML = "";
 
-            contenedorCategorias.innerHTML =
-                "";
-
-            crearBotonTodos();
-
-        }
+        crearBotonTodos();
 
     }
 
@@ -155,12 +163,6 @@ async function cargarCategorias() {
 // =====================================================
 
 function crearBotonTodos() {
-
-    if (!contenedorCategorias) {
-
-        return;
-
-    }
 
     const boton =
         document.createElement("button");
@@ -204,12 +206,6 @@ function crearBotonTodos() {
 // =====================================================
 
 function mostrarCategorias() {
-
-    if (!contenedorCategorias) {
-
-        return;
-
-    }
 
     contenedorCategorias.innerHTML =
         "";
@@ -356,12 +352,6 @@ async function cargarProductos() {
 
 function mostrarCargando() {
 
-    if (!contenedorProductos) {
-
-        return;
-
-    }
-
     contenedorProductos.innerHTML = `
 
         <div class="loading-productos">
@@ -386,12 +376,6 @@ function mostrarCargando() {
 // =====================================================
 
 function mostrarErrorProductos() {
-
-    if (!contenedorProductos) {
-
-        return;
-
-    }
 
     contenedorProductos.innerHTML = `
 
@@ -442,12 +426,6 @@ function mostrarErrorProductos() {
 // =====================================================
 
 function mostrarProductos() {
-
-    if (!contenedorProductos) {
-
-        return;
-
-    }
 
     contenedorProductos.innerHTML =
         "";
@@ -751,29 +729,21 @@ function crearTarjetaProducto(
             ".agregar-btn"
         );
 
-    if (botonAgregar) {
+    botonAgregar.addEventListener(
+        "click",
+        () => {
 
-        botonAgregar.addEventListener(
-            "click",
-            () => {
+            agregarAlCarrito(
+                producto
+            );
 
-                agregarAlCarrito(
-                    producto
-                );
-
-            }
-        );
-
-    }
+        }
+    );
 
 
-    if (contenedorProductos) {
-
-        contenedorProductos.appendChild(
-            tarjeta
-        );
-
-    }
+    contenedorProductos.appendChild(
+        tarjeta
+    );
 
 }
 
@@ -787,18 +757,14 @@ function imagenFallback(
 ) {
 
     if (!imagen) {
-
         return;
-
     }
 
     const contenedor =
         imagen.parentElement;
 
     if (!contenedor) {
-
         return;
-
     }
 
     contenedor.innerHTML = `
@@ -889,9 +855,7 @@ function guardarCarrito() {
 function actualizarCarrito() {
 
     if (!itemsCarrito) {
-
         return;
-
     }
 
     itemsCarrito.innerHTML =
@@ -1019,21 +983,17 @@ function actualizarCarrito() {
                     ".menos"
                 );
 
-            if (botonMenos) {
+            botonMenos.addEventListener(
+                "click",
+                () => {
 
-                botonMenos.addEventListener(
-                    "click",
-                    () => {
+                    cambiarCantidad(
+                        item.producto_id,
+                        -1
+                    );
 
-                        cambiarCantidad(
-                            item.producto_id,
-                            -1
-                        );
-
-                    }
-                );
-
-            }
+                }
+            );
 
 
             // MÁS
@@ -1043,21 +1003,17 @@ function actualizarCarrito() {
                     ".mas"
                 );
 
-            if (botonMas) {
+            botonMas.addEventListener(
+                "click",
+                () => {
 
-                botonMas.addEventListener(
-                    "click",
-                    () => {
+                    cambiarCantidad(
+                        item.producto_id,
+                        1
+                    );
 
-                        cambiarCantidad(
-                            item.producto_id,
-                            1
-                        );
-
-                    }
-                );
-
-            }
+                }
+            );
 
 
             itemsCarrito.appendChild(
@@ -1117,9 +1073,7 @@ function cambiarCantidad(
 
 
     if (!item) {
-
         return;
-
     }
 
 
@@ -1163,9 +1117,7 @@ function cambiarCantidad(
 function abrirCarrito() {
 
     if (!carritoOverlay) {
-
         return;
-
     }
 
     carritoOverlay.classList.add(
@@ -1185,9 +1137,7 @@ function abrirCarrito() {
 function cerrarCarrito() {
 
     if (!carritoOverlay) {
-
         return;
-
     }
 
     carritoOverlay.classList.remove(
@@ -1233,11 +1183,7 @@ if (botonAbrirCarrito) {
 
     botonAbrirCarrito.addEventListener(
         "click",
-        () => {
-
-            abrirCarrito();
-
-        }
+        abrirCarrito
     );
 
 }
@@ -1278,6 +1224,55 @@ document.addEventListener(
 
 
 // =====================================================
+// ESTADO DEL LOCAL (ABIERTO / CERRADO)
+// =====================================================
+
+async function cargarEstadoLocal() {
+
+    try {
+
+        const respuesta =
+            await fetch(API_CONFIGURACION);
+
+        if (!respuesta.ok) {
+            throw new Error(
+                "No se pudo obtener el estado del local."
+            );
+        }
+
+        const datos = await respuesta.json();
+
+        localAbierto = datos.abierto === true;
+
+        if (estadoLocalTexto) {
+
+            estadoLocalTexto.textContent =
+                localAbierto ? "Abierto" : "Cerrado";
+
+        }
+
+        if (estadoLocalPunto) {
+
+            estadoLocalPunto.classList.toggle(
+                "cerrado",
+                !localAbierto
+            );
+
+        }
+
+    } catch (error) {
+
+        console.error(
+            "❌ ERROR CARGANDO ESTADO DEL LOCAL:",
+            error
+        );
+
+    }
+
+}
+
+
+// =====================================================
 // CONTINUAR AL CHECKOUT
 // =====================================================
 
@@ -1293,6 +1288,17 @@ if (botonCheckout) {
 
                 alert(
                     "El carrito está vacío."
+                );
+
+                return;
+
+            }
+
+
+            if (!localAbierto) {
+
+                alert(
+                    "En este momento estamos cerrados. No se pueden realizar pedidos."
                 );
 
                 return;
@@ -1320,6 +1326,8 @@ async function iniciar() {
     await cargarCategorias();
 
     await cargarProductos();
+
+    await cargarEstadoLocal();
 
 }
 

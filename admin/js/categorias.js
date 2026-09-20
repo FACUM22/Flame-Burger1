@@ -1,5 +1,4 @@
-const API_URL =
-    "/api/categorias";
+const API_URL = "/api/categorias";
 
 
 let categorias = [];

@@ -1,8 +1,6 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
-const http = require("http");
-const { Server } = require("socket.io");
 
 require("dotenv").config();
 
@@ -17,44 +15,8 @@ const ventasRoutes = require("./routes/ventas");
 const categoriasRoutes = require("./routes/categorias");
 const pagosRoutes = require("./routes/pagos");
 const configuracionRoutes = require("./routes/configuracion");
+
 const app = express();
-
-
-// =====================================================
-// SERVIDOR HTTP + SOCKET.IO
-// =====================================================
-// Se usa http.createServer en vez de app.listen directo
-// porque Socket.IO necesita "engancharse" al servidor HTTP
-// para poder mantener conexiones abiertas (WebSocket).
-// El agente de impresión (en el local) se conecta acá.
-
-const server = http.createServer(app);
-
-const io = new Server(server, {
-    cors: {
-        origin: "*"
-    }
-});
-
-// Se guarda "io" en la app para poder usarlo desde
-// cualquier ruta con: req.app.get("io")
-app.set("io", io);
-
-io.on("connection", (socket) => {
-
-    console.log(
-        `🔌 Agente de impresión conectado (${socket.id})`
-    );
-
-    socket.on("disconnect", () => {
-
-        console.log(
-            `🔌 Agente de impresión desconectado (${socket.id})`
-        );
-
-    });
-
-});
 
 
 // =====================================================
@@ -72,7 +34,6 @@ app.use(
 );
 
 
-
 // =====================================================
 // RUTAS DE CARPETAS
 // =====================================================
@@ -85,7 +46,6 @@ const adminPath =
 
 const uploadsPath =
     path.join(__dirname, "uploads");
-
 
 
 // =====================================================
@@ -153,7 +113,10 @@ app.use(
     "/api/pagos",
     pagosRoutes
 );
-app.use("/api/configuracion", configuracionRoutes);
+app.use(
+    "/api/configuracion",
+    configuracionRoutes
+);
 
 
 // =====================================================
@@ -270,6 +233,22 @@ app.get(
 );
 
 
+// Configuración
+app.get(
+    "/admin/configuracion.html",
+    (req, res) => {
+
+        res.sendFile(
+            path.join(
+                adminPath,
+                "configuracion.html"
+            )
+        );
+
+    }
+);
+
+
 // =====================================================
 // PRUEBA DEL SERVIDOR
 // =====================================================
@@ -335,81 +314,6 @@ app.get(
                 error:
                     error.message
 
-            });
-
-        }
-
-    }
-);
-
-
-// =====================================================
-// PRUEBA TEMPORAL DE SUPABASE STORAGE
-// =====================================================
-// TODO: borrar esta ruta una vez resuelto el problema de imágenes
-
-app.get(
-    "/api/test-storage",
-    async (req, res) => {
-
-        try {
-
-            const { createClient } = require("@supabase/supabase-js");
-
-            res.json({
-
-                SUPABASE_URL: process.env.SUPABASE_URL || "NO DEFINIDA",
-
-                SUPABASE_BUCKET: process.env.SUPABASE_BUCKET || "NO DEFINIDA",
-
-                SUPABASE_SERVICE_KEY_presente: !!process.env.SUPABASE_SERVICE_KEY,
-
-                SUPABASE_SERVICE_KEY_inicio:
-                    process.env.SUPABASE_SERVICE_KEY
-                        ? process.env.SUPABASE_SERVICE_KEY.substring(0, 12) + "..."
-                        : "NO DEFINIDA"
-
-            });
-
-        } catch (error) {
-
-            res.status(500).json({
-                error: error.message
-            });
-
-        }
-
-    }
-);
-
-app.get(
-    "/api/test-storage-upload",
-    async (req, res) => {
-
-        try {
-
-            const { createClient } = require("@supabase/supabase-js");
-
-            const supabase = createClient(
-                process.env.SUPABASE_URL,
-                process.env.SUPABASE_SERVICE_KEY
-            );
-
-            const nombreArchivo = "test-" + Date.now() + ".txt";
-
-            const resultado = await supabase
-                .storage
-                .from(process.env.SUPABASE_BUCKET || "productos")
-                .upload(nombreArchivo, Buffer.from("hola mundo"), {
-                    contentType: "text/plain"
-                });
-
-            res.json(resultado);
-
-        } catch (error) {
-
-            res.status(500).json({
-                errorCapturado: error.message
             });
 
         }
@@ -594,7 +498,7 @@ const PORT =
 // INICIAR SERVIDOR
 // =====================================================
 
-server.listen(
+app.listen(
     PORT,
     () => {
 

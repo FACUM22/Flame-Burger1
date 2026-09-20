@@ -1,149 +1,72 @@
+
 const API_PEDIDOS = "/api/pedidos";
 const API_PAGOS = "/api/pagos/crear";
-const API_PRODUCTOS_CHECKOUT = "/api/productos";
+const API_CONFIGURACION = "/api/configuracion";
 
-/* =========================================================
-   CONFIGURACIÓN DE FLAME BURGER
-========================================================= */
+const carrito = JSON.parse(localStorage.getItem("flameCarrito")) || [];
 
-// Dirección del local
-const DIRECCION_FLAME_BURGER =
-    "Av. Gral. San Martín 5306, Montevideo, Uruguay";
+// =====================================================
+// CONFIGURACIÓN DEL LOCAL (abierto/cerrado + envío)
+// =====================================================
 
-// Coordenadas del local.
-// IMPORTANTE: verificar estas coordenadas antes de producción.
-const FLAME_BURGER_COORDENADAS = {
-    lat: -34.8358,
-    lon: -56.1627
+let configuracionLocal = {
+    abierto: true,
+    local_lat: -34.8266368,
+    local_lng: -56.16827,
+    envio_gratis_hasta_km: 3,
+    envio_costo: 100,
+    envio_maximo_km: 6
 };
 
-// Reglas de delivery
-const DISTANCIA_ENVIO_GRATIS = 3;
-const DISTANCIA_MAXIMA_DELIVERY = 6;
-const PRECIO_ENVIO = 100;
+// Ubicación elegida por el cliente (GPS o mapa)
+let ubicacionCliente = { lat: null, lng: null };
+
+// Resultado del cálculo de distancia/envío (se recalcula en el
+// servidor al confirmar, esto es solo una vista previa)
+let envioPreview = { distanciaKm: null, costo: 0, bloqueado: false };
+
+let mapaEntrega = null;
+let marcadorEntrega = null;
 
 
-/* =========================================================
-   DATOS DEL CARRITO
-========================================================= */
+// =====================================================
+// DISTANCIA RECTA (HAVERSINE) — VISTA PREVIA EN EL CLIENTE
+// =====================================================
 
-const carrito =
-    JSON.parse(localStorage.getItem("flameCarrito")) || [];
+function calcularDistanciaKm(lat1, lng1, lat2, lng2) {
 
+    const RADIO_TIERRA_KM = 6371;
 
-/* =========================================================
-   SINCRONIZAR CARRITO CON PRODUCTOS REALES
-   Evita el error "El producto X no existe" cuando el
-   cliente tenía guardado en el navegador un producto que
-   ya fue borrado o modificado desde el panel admin.
-========================================================= */
+    const rad = (grados) => (grados * Math.PI) / 180;
 
-async function sincronizarCarritoConProductos() {
+    const dLat = rad(lat2 - lat1);
+    const dLng = rad(lng2 - lng1);
 
-    if (!carrito.length) {
-        return;
-    }
+    const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(rad(lat1)) *
+            Math.cos(rad(lat2)) *
+            Math.sin(dLng / 2) ** 2;
 
-    try {
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-        const respuesta =
-            await fetch(API_PRODUCTOS_CHECKOUT);
-
-        if (!respuesta.ok) {
-            return;
-        }
-
-        const productos =
-            await respuesta.json();
-
-        const idsValidos =
-            new Set(
-                productos.map((p) => Number(p.id))
-            );
-
-        const cantidadOriginal =
-            carrito.length;
-
-        for (let i = carrito.length - 1; i >= 0; i--) {
-
-            const id =
-                Number(carrito[i].producto_id);
-
-            if (!idsValidos.has(id)) {
-                carrito.splice(i, 1);
-            }
-
-        }
-
-        if (carrito.length !== cantidadOriginal) {
-
-            localStorage.setItem(
-                "flameCarrito",
-                JSON.stringify(carrito)
-            );
-
-            mostrarMensaje(
-                "Algunos productos de tu carrito ya no están disponibles y fueron quitados. Por favor, revisá tu pedido.",
-                "error"
-            );
-
-        }
-
-    } catch (error) {
-
-        console.error(
-            "⚠️ No se pudo validar el carrito contra los productos actuales:",
-            error
-        );
-
-    }
-
+    return Number((RADIO_TIERRA_KM * c).toFixed(2));
 }
-
-
-/* =========================================================
-   ELEMENTOS DEL HTML
-========================================================= */
 
 const nombreInput = document.getElementById("nombre");
 const telefonoInput = document.getElementById("telefono");
 const direccionInput = document.getElementById("direccion");
 const comentariosInput = document.getElementById("comentarios");
 
-const confirmarPedidoBtn =
-    document.getElementById("confirmarPedido");
-
-const mensaje =
-    document.getElementById("mensaje");
-
-const resumenProductos =
-    document.getElementById("resumenProductos");
-
-const totalElemento =
-    document.getElementById("total");
-
-const opcionCambio =
-    document.getElementById("opcionCambio");
-
-const campoCambio =
-    document.getElementById("campoCambio");
-
-const cambioInput =
-    document.getElementById("cambio");
+const confirmarPedidoBtn = document.getElementById("confirmarPedido");
+const mensaje = document.getElementById("mensaje");
+const resumenProductos = document.getElementById("resumenProductos");
+const totalElemento = document.getElementById("total");
 
 
-/* =========================================================
-   VARIABLES DELIVERY
-========================================================= */
-
-let costoEnvio = 0;
-let distanciaDelivery = null;
-let calculandoDistancia = false;
-
-
-/* =========================================================
-   ESCAPAR HTML
-========================================================= */
+// =====================================================
+// ESCAPAR HTML
+// =====================================================
 
 function escaparHTML(texto) {
     const div = document.createElement("div");
@@ -152,16 +75,14 @@ function escaparHTML(texto) {
 }
 
 
-/* =========================================================
-   MENSAJES
-========================================================= */
+// =====================================================
+// MOSTRAR MENSAJE
+// =====================================================
 
 function mostrarMensaje(texto, tipo = "error") {
-
     if (!mensaje) return;
 
     mensaje.textContent = texto;
-
     mensaje.className = "";
 
     if (tipo) {
@@ -170,198 +91,98 @@ function mostrarMensaje(texto, tipo = "error") {
 }
 
 
-/* =========================================================
-   OBTENER FORMA DE ENTREGA
-========================================================= */
+// =====================================================
+// OBTENER ENTREGA
+// =====================================================
 
 function obtenerEntrega() {
+    const seleccionado = document.querySelector(
+        'input[name="entrega"]:checked'
+    );
 
-    const seleccionado =
-        document.querySelector(
-            'input[name="entrega"]:checked'
-        );
-
-    return seleccionado
-        ? seleccionado.value
-        : null;
+    return seleccionado ? seleccionado.value : null;
 }
 
 
-/* =========================================================
-   OBTENER FORMA DE PAGO
-========================================================= */
+// =====================================================
+// OBTENER PAGO
+// =====================================================
 
 function obtenerPago() {
+    const seleccionado = document.querySelector(
+        'input[name="pago"]:checked'
+    );
 
-    const seleccionado =
-        document.querySelector(
-            'input[name="pago"]:checked'
-        );
-
-    return seleccionado
-        ? seleccionado.value
-        : null;
+    return seleccionado ? seleccionado.value : null;
 }
 
 
-/* =========================================================
-   OBTENER SI NECESITA CAMBIO
-========================================================= */
-
-function obtenerNecesitaCambio() {
-
-    const seleccionado =
-        document.querySelector(
-            'input[name="necesitaCambio"]:checked'
-        );
-
-    return seleccionado
-        ? seleccionado.value
-        : "no";
-}
-
-
-/* =========================================================
-   OBTENER SUBTOTAL
-========================================================= */
-
-function obtenerSubtotal() {
-
-    return carrito.reduce((total, producto) => {
-
-        const precio =
-            Number(producto.precio) || 0;
-
-        const cantidad =
-            Number(producto.cantidad) || 0;
-
-        return total + precio * cantidad;
-
-    }, 0);
-}
-
-
-/* =========================================================
-   OBTENER TOTAL FINAL
-========================================================= */
-
-function obtenerTotalFinal() {
-
-    return obtenerSubtotal() + Number(costoEnvio || 0);
-}
-
-
-/* =========================================================
-   ACTUALIZAR DIRECCIÓN SEGÚN ENTREGA
-========================================================= */
+// =====================================================
+// ACTUALIZAR DIRECCIÓN
+// =====================================================
 
 function actualizarDireccion() {
-
     const entrega = obtenerEntrega();
 
-    if (!direccionInput) return;
+    const ubicacionEntregaDiv =
+        document.getElementById("ubicacionEntrega");
 
-    if (entrega === "retiro") {
+    if (direccionInput) {
 
-        direccionInput.value = "";
+        if (entrega === "retiro") {
 
-        direccionInput.disabled = true;
+            direccionInput.value = "";
+            direccionInput.disabled = true;
+            direccionInput.required = false;
 
-        direccionInput.required = false;
+            direccionInput.placeholder =
+                "No necesaria para retiro";
 
-        direccionInput.placeholder =
-            "No necesaria para retiro";
+        } else {
 
-        // Resetear delivery
-        distanciaDelivery = null;
-        costoEnvio = 0;
+            direccionInput.disabled = false;
+            direccionInput.required = true;
 
-        actualizarResumenTotal();
-
-    } else {
-
-        direccionInput.disabled = false;
-
-        direccionInput.required = true;
-
-        direccionInput.placeholder =
-            "Ej: Av. Italia 1234, apto 302";
+            direccionInput.placeholder =
+                "Ej: Av. Italia 1234, apto 302";
+        }
     }
+
+    if (ubicacionEntregaDiv) {
+
+        if (entrega === "delivery") {
+
+            ubicacionEntregaDiv.classList.add("activa");
+
+            // El mapa necesita que su contenedor sea visible
+            // antes de inicializarse, por eso lo hacemos acá.
+            setTimeout(inicializarMapaEntrega, 50);
+
+        } else {
+
+            ubicacionEntregaDiv.classList.remove("activa");
+
+        }
+
+    }
+
+    actualizarTotalConEnvio();
 }
 
 
-/* =========================================================
-   ACTUALIZAR CAMBIO
-========================================================= */
-
-function actualizarCambio() {
-
-    const pago = obtenerPago();
-
-    if (pago !== "efectivo") {
-
-        if (opcionCambio) {
-            opcionCambio.style.display = "none";
-        }
-
-        if (campoCambio) {
-            campoCambio.style.display = "none";
-        }
-
-        if (cambioInput) {
-
-            cambioInput.value = "";
-
-            cambioInput.required = false;
-        }
-
-        return;
-    }
-
-    if (opcionCambio) {
-        opcionCambio.style.display = "block";
-    }
-
-    const necesitaCambio =
-        obtenerNecesitaCambio();
-
-    if (necesitaCambio === "si") {
-
-        if (campoCambio) {
-            campoCambio.style.display = "block";
-        }
-
-        if (cambioInput) {
-            cambioInput.required = true;
-        }
-
-    } else {
-
-        if (campoCambio) {
-            campoCambio.style.display = "none";
-        }
-
-        if (cambioInput) {
-
-            cambioInput.value = "";
-
-            cambioInput.required = false;
-        }
-    }
-}
-
-
-/* =========================================================
-   TELÉFONO
-========================================================= */
+// =====================================================
+// LIMPIAR TELÉFONO
+// =====================================================
 
 function limpiarTelefono() {
 
     if (!telefonoInput) return;
 
+    // Solo números
     telefonoInput.value =
         telefonoInput.value.replace(/\D/g, "");
 
+    // Máximo 9 dígitos
     if (telefonoInput.value.length > 9) {
 
         telefonoInput.value =
@@ -369,6 +190,10 @@ function limpiarTelefono() {
     }
 }
 
+
+// =====================================================
+// EVENTO TELÉFONO
+// =====================================================
 
 if (telefonoInput) {
 
@@ -382,9 +207,7 @@ if (telefonoInput) {
         () => {
 
             setTimeout(() => {
-
                 limpiarTelefono();
-
             }, 0);
 
         }
@@ -392,9 +215,9 @@ if (telefonoInput) {
 }
 
 
-/* =========================================================
-   EVENTOS ENTREGA
-========================================================= */
+// =====================================================
+// EVENTOS ENTREGA
+// =====================================================
 
 document
     .querySelectorAll('input[name="entrega"]')
@@ -402,77 +225,37 @@ document
 
         radio.addEventListener(
             "change",
-            async () => {
-
-                actualizarDireccion();
-
-                if (
-                    obtenerEntrega() === "delivery" &&
-                    direccionInput &&
-                    direccionInput.value.trim()
-                ) {
-
-                    await calcularEnvio();
-                }
-            }
+            actualizarDireccion
         );
 
     });
 
 
-/* =========================================================
-   EVENTOS PAGO
-========================================================= */
-
-document
-    .querySelectorAll('input[name="pago"]')
-    .forEach((radio) => {
-
-        radio.addEventListener(
-            "change",
-            actualizarCambio
-        );
-
-    });
-
-
-/* =========================================================
-   EVENTOS CAMBIO
-========================================================= */
-
-document
-    .querySelectorAll('input[name="necesitaCambio"]')
-    .forEach((radio) => {
-
-        radio.addEventListener(
-            "change",
-            actualizarCambio
-        );
-
-    });
-
-
-/* =========================================================
-   VALIDAR DIRECCIÓN
-========================================================= */
+// =====================================================
+// VALIDAR DIRECCIÓN
+// =====================================================
 
 function validarDireccion(direccion) {
 
+    // Eliminar espacios al principio/final
     direccion = direccion.trim();
 
+    // Mínimo razonable
     if (direccion.length < 5) {
         return false;
     }
 
-    const tieneNumero =
-        /\d/.test(direccion);
+    // Debe contener al menos un número
+    const tieneNumero = /\d/.test(direccion);
 
     if (!tieneNumero) {
         return false;
     }
 
-    const tieneLetras =
-        /[a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(direccion);
+    // Debe contener letras
+    const tieneLetras = /[a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(
+        direccion
+    );
 
     if (!tieneLetras) {
         return false;
@@ -482,9 +265,9 @@ function validarDireccion(direccion) {
 }
 
 
-/* =========================================================
-   RENDERIZAR CARRITO
-========================================================= */
+// =====================================================
+// RENDERIZAR CARRITO
+// =====================================================
 
 function renderizarCarrito() {
 
@@ -496,10 +279,11 @@ function renderizarCarrito() {
 
     if (!carrito.length) {
 
-        resumenProductos.innerHTML =
-            `<p class="carrito-vacio">
+        resumenProductos.innerHTML = `
+            <p class="carrito-vacio">
                 Tu carrito está vacío.
-            </p>`;
+            </p>
+        `;
 
         totalElemento.textContent = "$0";
 
@@ -544,429 +328,334 @@ function renderizarCarrito() {
         `;
 
         resumenProductos.appendChild(div);
+
     });
 
-    actualizarResumenTotal();
+    totalProductos = total;
+
+    actualizarTotalConEnvio();
 }
 
 
-/* =========================================================
-   ACTUALIZAR TOTAL DEL CHECKOUT
-========================================================= */
+// =====================================================
+// TOTAL PRODUCTOS + ENVÍO
+// =====================================================
 
-function actualizarResumenTotal() {
+let totalProductos = 0;
+
+function actualizarTotalConEnvio() {
 
     if (!totalElemento) return;
 
-    const subtotal =
-        obtenerSubtotal();
+    const entrega = obtenerEntrega();
 
-    const total =
-        obtenerTotalFinal();
+    const costoEnvio =
+        entrega === "delivery"
+            ? (envioPreview.costo || 0)
+            : 0;
 
-    let lineaEnvio =
-        document.getElementById(
-            "lineaEnvioCheckout"
-        );
-
-    if (!lineaEnvio) {
-
-        lineaEnvio =
-            document.createElement("div");
-
-        lineaEnvio.id =
-            "lineaEnvioCheckout";
-
-        lineaEnvio.className =
-            "resumen-envio";
-
-        const linea =
-            document.querySelector(
-                ".resumen-card .linea"
-            );
-
-        if (linea) {
-
-            linea.parentNode.insertBefore(
-                lineaEnvio,
-                linea
-            );
-        }
-    }
-
-    const entrega =
-        obtenerEntrega();
-
-    if (entrega === "retiro") {
-
-        lineaEnvio.innerHTML = `
-            <span>Envío</span>
-            <strong>$0</strong>
-        `;
-
-    } else if (
-        distanciaDelivery !== null
-    ) {
-
-        if (costoEnvio === 0) {
-
-            lineaEnvio.innerHTML = `
-                <span>
-                    Envío
-                    (${distanciaDelivery.toFixed(2)} km)
-                </span>
-
-                <strong>
-                    GRATIS
-                </strong>
-            `;
-
-        } else {
-
-            lineaEnvio.innerHTML = `
-                <span>
-                    Envío
-                    (${distanciaDelivery.toFixed(2)} km)
-                </span>
-
-                <strong>
-                    $${costoEnvio.toFixed(2)}
-                </strong>
-            `;
-        }
-
-    } else {
-
-        lineaEnvio.innerHTML = `
-            <span>Envío</span>
-            <strong>--</strong>
-        `;
-    }
+    const total = totalProductos + costoEnvio;
 
     totalElemento.textContent =
         `$${total.toFixed(2)}`;
 }
 
 
-/* =========================================================
-   GEOCODIFICAR DIRECCIÓN DEL CLIENTE
-========================================================= */
+// =====================================================
+// MAPA DE ENTREGA (LEAFLET) + CÁLCULO DE DISTANCIA
+// =====================================================
 
-async function geocodificarDireccion(direccion) {
+function inicializarMapaEntrega() {
 
-    const url =
-        "https://nominatim.openstreetmap.org/search?" +
-        new URLSearchParams({
-            q: `${direccion}, Montevideo, Uruguay`,
-            format: "json",
-            limit: "1",
-            countrycodes: "uy"
-        });
+    const contenedor =
+        document.getElementById("mapaEntrega");
 
-    const respuesta =
-        await fetch(url, {
-            headers: {
-                "Accept": "application/json"
+    if (!contenedor || typeof L === "undefined") {
+        return;
+    }
+
+    // Ya inicializado: solo refrescamos el tamaño
+    if (mapaEntrega) {
+
+        mapaEntrega.invalidateSize();
+        return;
+    }
+
+    const centroInicial = [
+        configuracionLocal.local_lat,
+        configuracionLocal.local_lng
+    ];
+
+    mapaEntrega = L.map(contenedor).setView(
+        centroInicial,
+        14
+    );
+
+    L.tileLayer(
+        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        {
+            attribution: "&copy; OpenStreetMap",
+            maxZoom: 19
+        }
+    ).addTo(mapaEntrega);
+
+    // Marcador del local (referencia, no se puede mover)
+    L.marker(centroInicial, {
+        opacity: 0.6
+    })
+        .addTo(mapaEntrega)
+        .bindPopup("Flame Burger 🔥");
+
+    marcadorEntrega = L.marker(centroInicial, {
+        draggable: true
+    }).addTo(mapaEntrega);
+
+    marcadorEntrega.on("dragend", () => {
+
+        const posicion =
+            marcadorEntrega.getLatLng();
+
+        establecerUbicacionCliente(
+            posicion.lat,
+            posicion.lng
+        );
+
+    });
+
+    mapaEntrega.on("click", (evento) => {
+
+        marcadorEntrega.setLatLng(evento.latlng);
+
+        establecerUbicacionCliente(
+            evento.latlng.lat,
+            evento.latlng.lng
+        );
+
+    });
+
+    mapaEntrega.invalidateSize();
+}
+
+
+function establecerUbicacionCliente(lat, lng) {
+
+    ubicacionCliente = { lat, lng };
+
+    const distanciaKm = calcularDistanciaKm(
+        configuracionLocal.local_lat,
+        configuracionLocal.local_lng,
+        lat,
+        lng
+    );
+
+    const gratisHastaKm =
+        Number(configuracionLocal.envio_gratis_hasta_km);
+
+    const maximoKm =
+        Number(configuracionLocal.envio_maximo_km);
+
+    const estadoUbicacion =
+        document.getElementById("estadoUbicacion");
+
+    if (distanciaKm > maximoKm) {
+
+        envioPreview = {
+            distanciaKm,
+            costo: 0,
+            bloqueado: true
+        };
+
+        if (estadoUbicacion) {
+
+            estadoUbicacion.textContent =
+                `📍 Estás a ${distanciaKm} km del local. ` +
+                `Por ahora el delivery llega hasta ${maximoKm} km. ` +
+                `Elegí "Retiro en el local" o probá con otra dirección.`;
+
+            estadoUbicacion.className =
+                "estado-ubicacion bloqueado";
+        }
+
+    } else {
+
+        const costo =
+            distanciaKm <= gratisHastaKm
+                ? 0
+                : Number(configuracionLocal.envio_costo);
+
+        envioPreview = {
+            distanciaKm,
+            costo,
+            bloqueado: false
+        };
+
+        if (estadoUbicacion) {
+
+            estadoUbicacion.textContent =
+                costo > 0
+                    ? `📍 Distancia: ${distanciaKm} km · Envío: $${costo}`
+                    : `📍 Distancia: ${distanciaKm} km · ¡Envío gratis!`;
+
+            estadoUbicacion.className =
+                "estado-ubicacion ok";
+        }
+
+    }
+
+    actualizarTotalConEnvio();
+}
+
+
+// =====================================================
+// BOTÓN "USAR MI UBICACIÓN" (GPS)
+// =====================================================
+
+const btnUsarGPS =
+    document.getElementById("btnUsarGPS");
+
+if (btnUsarGPS) {
+
+    btnUsarGPS.addEventListener("click", () => {
+
+        if (!navigator.geolocation) {
+
+            mostrarMensaje(
+                "Tu navegador no permite obtener la ubicación por GPS. Marcala en el mapa."
+            );
+
+            return;
+        }
+
+        btnUsarGPS.disabled = true;
+        btnUsarGPS.textContent = "Buscando ubicación...";
+
+        navigator.geolocation.getCurrentPosition(
+
+            (posicion) => {
+
+                const { latitude, longitude } =
+                    posicion.coords;
+
+                if (mapaEntrega && marcadorEntrega) {
+
+                    marcadorEntrega.setLatLng([
+                        latitude,
+                        longitude
+                    ]);
+
+                    mapaEntrega.setView(
+                        [latitude, longitude],
+                        16
+                    );
+
+                }
+
+                establecerUbicacionCliente(
+                    latitude,
+                    longitude
+                );
+
+                btnUsarGPS.disabled = false;
+                btnUsarGPS.textContent =
+                    "📍 Usar mi ubicación (GPS)";
+
+            },
+
+            (error) => {
+
+                console.error(
+                    "❌ ERROR GEOLOCALIZACIÓN:",
+                    error
+                );
+
+                mostrarMensaje(
+                    "No pudimos obtener tu ubicación por GPS. Marcala manualmente en el mapa."
+                );
+
+                btnUsarGPS.disabled = false;
+                btnUsarGPS.textContent =
+                    "📍 Usar mi ubicación (GPS)";
+
+            },
+
+            {
+                enableHighAccuracy: true,
+                timeout: 10000
             }
-        });
-
-    if (!respuesta.ok) {
-        throw new Error(
-            "No se pudo consultar la dirección."
         );
-    }
 
-    const resultados =
-        await respuesta.json();
+    });
 
-    if (!resultados.length) {
-
-        throw new Error(
-            "No se pudo localizar la dirección ingresada."
-        );
-    }
-
-    return {
-        lat: Number(resultados[0].lat),
-        lon: Number(resultados[0].lon)
-    };
 }
 
 
-/* =========================================================
-   CALCULAR DISTANCIA POR CALLES CON OSRM
-========================================================= */
+// =====================================================
+// CARGAR CONFIGURACIÓN DEL LOCAL (ABIERTO/CERRADO + ENVÍO)
+// =====================================================
 
-async function obtenerDistanciaPorCalles(
-    origen,
-    destino
-) {
-
-    const url =
-        `https://router.project-osrm.org/route/v1/driving/` +
-        `${origen.lon},${origen.lat};` +
-        `${destino.lon},${destino.lat}` +
-        `?overview=false`;
-
-    const respuesta =
-        await fetch(url);
-
-    if (!respuesta.ok) {
-
-        throw new Error(
-            "No se pudo calcular la distancia."
-        );
-    }
-
-    const datos =
-        await respuesta.json();
-
-    if (
-        datos.code !== "Ok" ||
-        !datos.routes ||
-        !datos.routes.length
-    ) {
-
-        throw new Error(
-            "No se pudo calcular la ruta."
-        );
-    }
-
-    const distanciaMetros =
-        datos.routes[0].distance;
-
-    return distanciaMetros / 1000;
-}
-
-
-/* =========================================================
-   CALCULAR ENVÍO
-========================================================= */
-
-async function calcularEnvio() {
-
-    const entrega =
-        obtenerEntrega();
-
-    if (entrega !== "delivery") {
-
-        distanciaDelivery = null;
-
-        costoEnvio = 0;
-
-        actualizarResumenTotal();
-
-        return true;
-    }
-
-    const direccion =
-        direccionInput?.value.trim() || "";
-
-    if (!direccion) {
-
-        distanciaDelivery = null;
-
-        costoEnvio = 0;
-
-        actualizarResumenTotal();
-
-        return false;
-    }
-
-    if (!validarDireccion(direccion)) {
-
-        mostrarMensaje(
-            "Ingresá una dirección válida con calle y número.",
-            "error"
-        );
-
-        return false;
-    }
-
-    if (calculandoDistancia) {
-        return false;
-    }
+async function cargarConfiguracionLocal() {
 
     try {
 
-        calculandoDistancia = true;
+        const respuesta =
+            await fetch(API_CONFIGURACION);
 
-        if (confirmarPedidoBtn) {
+        if (!respuesta.ok) {
+            throw new Error(
+                "No se pudo obtener la configuración."
+            );
+        }
+
+        const datos = await respuesta.json();
+
+        configuracionLocal = {
+            abierto: datos.abierto,
+            local_lat: Number(datos.local_lat),
+            local_lng: Number(datos.local_lng),
+            envio_gratis_hasta_km:
+                Number(datos.envio_gratis_hasta_km),
+            envio_costo: Number(datos.envio_costo),
+            envio_maximo_km: Number(datos.envio_maximo_km)
+        };
+
+        const overlay =
+            document.getElementById("localCerradoOverlay");
+
+        if (overlay) {
+
+            overlay.classList.toggle(
+                "visible",
+                configuracionLocal.abierto !== true
+            );
+
+        }
+
+        if (
+            configuracionLocal.abierto !== true &&
+            confirmarPedidoBtn
+        ) {
 
             confirmarPedidoBtn.disabled = true;
 
-            confirmarPedidoBtn.textContent =
-                "Calculando envío...";
         }
-
-        mostrarMensaje(
-            "Calculando distancia de delivery...",
-            "success"
-        );
-
-        console.log(
-            "📍 Dirección cliente:",
-            direccion
-        );
-
-        console.log(
-            "📍 Local Flame Burger:",
-            DIRECCION_FLAME_BURGER
-        );
-
-        const destino =
-            await geocodificarDireccion(
-                direccion
-            );
-
-        const origen = {
-            lat: FLAME_BURGER_COORDENADAS.lat,
-            lon: FLAME_BURGER_COORDENADAS.lon
-        };
-
-        console.log(
-            "📍 Coordenadas cliente:",
-            destino
-        );
-
-        console.log(
-            "📍 Coordenadas Flame Burger:",
-            origen
-        );
-
-        const distancia =
-            await obtenerDistanciaPorCalles(
-                origen,
-                destino
-            );
-
-        distanciaDelivery =
-            Number(distancia.toFixed(2));
-
-        console.log(
-            "🚗 Distancia por calles:",
-            distanciaDelivery,
-            "km"
-        );
-
-        if (
-            distanciaDelivery <=
-            DISTANCIA_ENVIO_GRATIS
-        ) {
-
-            costoEnvio = 0;
-
-            mostrarMensaje(
-                `Delivery gratis. Estás a ${distanciaDelivery.toFixed(2)} km.`,
-                "success"
-            );
-
-        } else if (
-            distanciaDelivery <=
-            DISTANCIA_MAXIMA_DELIVERY
-        ) {
-
-            costoEnvio =
-                PRECIO_ENVIO;
-
-            mostrarMensaje(
-                `El envío cuesta $${PRECIO_ENVIO}. Distancia: ${distanciaDelivery.toFixed(2)} km.`,
-                "success"
-            );
-
-        } else {
-
-            costoEnvio = 0;
-
-            mostrarMensaje(
-                `No realizamos delivery a más de ${DISTANCIA_MAXIMA_DELIVERY} km. La distancia calculada es ${distanciaDelivery.toFixed(2)} km.`
-            );
-
-            actualizarResumenTotal();
-
-            return false;
-        }
-
-        actualizarResumenTotal();
-
-        return true;
 
     } catch (error) {
 
+        // Si falla, seguimos con los valores por defecto
+        // (no bloqueamos el checkout por un error de red)
         console.error(
-            "❌ ERROR CALCULANDO ENVÍO:",
+            "❌ ERROR CARGANDO CONFIGURACIÓN:",
             error
         );
 
-        distanciaDelivery = null;
-
-        costoEnvio = 0;
-
-        actualizarResumenTotal();
-
-        mostrarMensaje(
-            error.message ||
-            "No se pudo calcular el costo del envío."
-        );
-
-        return false;
-
-    } finally {
-
-        calculandoDistancia = false;
-
-        if (confirmarPedidoBtn) {
-
-            confirmarPedidoBtn.disabled = false;
-
-            confirmarPedidoBtn.textContent =
-                "Confirmar pedido";
-        }
     }
+
 }
 
 
-/* =========================================================
-   CUANDO TERMINA DE ESCRIBIR LA DIRECCIÓN
-========================================================= */
-
-if (direccionInput) {
-
-    direccionInput.addEventListener(
-        "blur",
-        async () => {
-
-            if (
-                obtenerEntrega() ===
-                "delivery"
-            ) {
-
-                await calcularEnvio();
-            }
-
-        }
-    );
-
-    direccionInput.addEventListener(
-        "change",
-        async () => {
-
-            if (
-                obtenerEntrega() ===
-                "delivery"
-            ) {
-
-                await calcularEnvio();
-            }
-
-        }
-    );
-}
-
-
-/* =========================================================
-   VALIDAR FORMULARIO
-========================================================= */
+// =====================================================
+// VALIDAR FORMULARIO
+// =====================================================
 
 function validarFormulario() {
 
@@ -986,12 +675,14 @@ function validarFormulario() {
         obtenerPago();
 
 
-    /* NOMBRE */
+    // =================================================
+    // NOMBRE
+    // =================================================
 
     if (!nombre) {
 
         mostrarMensaje(
-            "Por favor, ingresá tu nombre."
+            "Por favor, ingresa tu nombre."
         );
 
         nombreInput?.focus();
@@ -1012,12 +703,14 @@ function validarFormulario() {
     }
 
 
-    /* TELÉFONO */
+    // =================================================
+    // TELÉFONO
+    // =================================================
 
     if (!telefono) {
 
         mostrarMensaje(
-            "Por favor, ingresá tu número de teléfono."
+            "Por favor, ingresa tu número de teléfono."
         );
 
         telefonoInput?.focus();
@@ -1038,26 +731,30 @@ function validarFormulario() {
     }
 
 
-    /* ENTREGA */
+    // =================================================
+    // ENTREGA
+    // =================================================
 
     if (!entrega) {
 
         mostrarMensaje(
-            "Seleccioná si querés delivery o retirar el pedido."
+            "Selecciona si quieres delivery o retirar el pedido."
         );
 
         return false;
     }
 
 
-    /* DELIVERY */
+    // =================================================
+    // DIRECCIÓN DELIVERY
+    // =================================================
 
     if (entrega === "delivery") {
 
         if (!direccion) {
 
             mostrarMensaje(
-                "Por favor, ingresá tu dirección."
+                "Por favor, ingresa tu dirección."
             );
 
             direccionInput?.focus();
@@ -1069,7 +766,7 @@ function validarFormulario() {
         if (!validarDireccion(direccion)) {
 
             mostrarMensaje(
-                "Ingresá una dirección válida con calle y número de puerta. Ej: Av. Italia 1234."
+                "Ingresa una dirección válida con calle y número de puerta. Ej: Av. Italia 1234."
             );
 
             direccionInput?.focus();
@@ -1078,95 +775,52 @@ function validarFormulario() {
         }
 
 
+        // =============================================
+        // UBICACIÓN EN EL MAPA (GPS o marcador)
+        // =============================================
+
         if (
-            distanciaDelivery === null
+            ubicacionCliente.lat === null ||
+            ubicacionCliente.lng === null
         ) {
 
             mostrarMensaje(
-                "Esperá a que se calcule la distancia del delivery."
+                "Marcá tu ubicación en el mapa o usá el botón de GPS para calcular el envío."
             );
 
             return false;
         }
 
 
-        if (
-            distanciaDelivery >
-            DISTANCIA_MAXIMA_DELIVERY
-        ) {
+        if (envioPreview.bloqueado) {
 
             mostrarMensaje(
-                `No realizamos delivery a más de ${DISTANCIA_MAXIMA_DELIVERY} km.`
+                `Estás fuera de nuestra zona de delivery (máximo ${configuracionLocal.envio_maximo_km} km). Elegí "Retiro en el local".`
             );
 
             return false;
         }
+
     }
 
 
-    /* PAGO */
+    // =================================================
+    // PAGO
+    // =================================================
 
     if (!pago) {
 
         mostrarMensaje(
-            "Seleccioná una forma de pago."
+            "Selecciona una forma de pago."
         );
 
         return false;
     }
 
 
-    /* EFECTIVO */
-
-    let necesitaCambio = false;
-    let cambio = null;
-
-    if (pago === "efectivo") {
-
-        necesitaCambio =
-            obtenerNecesitaCambio() === "si";
-
-
-        if (necesitaCambio) {
-
-            cambio =
-                Number(cambioInput?.value);
-
-
-            if (
-                !Number.isFinite(cambio) ||
-                cambio <= 0
-            ) {
-
-                mostrarMensaje(
-                    "Ingresá con cuánto vas a pagar."
-                );
-
-                cambioInput?.focus();
-
-                return false;
-            }
-
-
-            const totalFinal =
-                obtenerTotalFinal();
-
-
-            if (cambio < totalFinal) {
-
-                mostrarMensaje(
-                    `El monto ingresado debe ser igual o mayor al total de $${totalFinal.toFixed(2)}.`
-                );
-
-                cambioInput?.focus();
-
-                return false;
-            }
-        }
-    }
-
-
-    /* CARRITO */
+    // =================================================
+    // CARRITO
+    // =================================================
 
     if (!carrito.length) {
 
@@ -1182,83 +836,33 @@ function validarFormulario() {
 }
 
 
-/* =========================================================
-   CONFIRMAR PEDIDO
-========================================================= */
+// =====================================================
+// CONFIRMAR PEDIDO
+// =====================================================
 
 async function confirmarPedido() {
 
     try {
 
-        mostrarMensaje(
-            "",
-            null
-        );
+        // Limpiar mensaje
+        mostrarMensaje("", null);
 
 
-        /* -----------------------------------------
-           SI ES DELIVERY, CALCULAMOS ANTES
-        ----------------------------------------- */
-
-        if (
-            obtenerEntrega() ===
-            "delivery"
-        ) {
-
-            const direccion =
-                direccionInput?.value.trim() || "";
-
-            if (!direccion) {
-
-                mostrarMensaje(
-                    "Por favor, ingresá tu dirección."
-                );
-
-                direccionInput?.focus();
-
-                return;
-            }
-
-            if (
-                distanciaDelivery === null
-            ) {
-
-                const envioCalculado =
-                    await calcularEnvio();
-
-                if (!envioCalculado) {
-                    return;
-                }
-            }
-        }
-
-
-        /* -----------------------------------------
-           VALIDAR
-        ----------------------------------------- */
-
+        // Validar
         if (!validarFormulario()) {
             return;
         }
 
 
-        /* -----------------------------------------
-           DESACTIVAR BOTÓN
-        ----------------------------------------- */
-
+        // Desactivar botón
         if (confirmarPedidoBtn) {
 
-            confirmarPedidoBtn.disabled =
-                true;
+            confirmarPedidoBtn.disabled = true;
 
             confirmarPedidoBtn.textContent =
                 "Procesando...";
         }
 
-
-        /* -----------------------------------------
-           DATOS
-        ----------------------------------------- */
 
         const nombre =
             nombreInput.value.trim();
@@ -1281,50 +885,38 @@ async function confirmarPedido() {
             obtenerPago();
 
 
-        const necesitaCambio =
-            pago === "efectivo" &&
-            obtenerNecesitaCambio() === "si";
-
-
-        const cambio =
-            necesitaCambio
-                ? Number(cambioInput.value)
-                : null;
-
-
-        /* -----------------------------------------
-           PEDIDO
-        ----------------------------------------- */
+        // =================================================
+        // PREPARAR PEDIDO
+        // =================================================
 
         const pedido = {
 
             cliente: {
+
                 nombre,
+
                 telefono,
+
                 direccion,
+
                 comentarios
+
             },
 
             entrega,
 
             pago,
 
-            necesitaCambio,
-
-            cambio,
-
-            costo_envio:
-                Number(costoEnvio || 0),
-
-            distancia_delivery:
-                distanciaDelivery !== null
-                    ? Number(
-                        distanciaDelivery.toFixed(2)
-                    )
+            ubicacion:
+                entrega === "delivery"
+                    ? {
+                        lat: ubicacionCliente.lat,
+                        lng: ubicacionCliente.lng
+                    }
                     : null,
 
-            productos:
-                carrito.map((producto) => ({
+            productos: carrito.map(
+                (producto) => ({
 
                     producto_id:
                         producto.producto_id,
@@ -1332,7 +924,9 @@ async function confirmarPedido() {
                     cantidad:
                         Number(producto.cantidad)
 
-                }))
+                })
+            )
+
         };
 
 
@@ -1342,25 +936,26 @@ async function confirmarPedido() {
         );
 
 
-        /* -----------------------------------------
-           CREAR PEDIDO
-        ----------------------------------------- */
+        // =================================================
+        // CREAR PEDIDO
+        // =================================================
 
         const respuesta =
-            await fetch(
-                API_PEDIDOS,
-                {
-                    method: "POST",
+            await fetch(API_PEDIDOS, {
 
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
+                method: "POST",
 
-                    body:
-                        JSON.stringify(pedido)
-                }
-            );
+                headers: {
+
+                    "Content-Type":
+                        "application/json"
+
+                },
+
+                body:
+                    JSON.stringify(pedido)
+
+            });
 
 
         const resultado =
@@ -1385,9 +980,9 @@ async function confirmarPedido() {
         }
 
 
-        /* -----------------------------------------
-           GUARDAR PEDIDO
-        ----------------------------------------- */
+        // =================================================
+        // GUARDAR PEDIDO ACTUAL
+        // =================================================
 
         localStorage.setItem(
             "flamePedidoActual",
@@ -1395,9 +990,9 @@ async function confirmarPedido() {
         );
 
 
-        /* =================================================
-           MERCADO PAGO
-        ================================================= */
+        // =================================================
+        // MERCADO PAGO
+        // =================================================
 
         if (pago === "mercado_pago") {
 
@@ -1407,28 +1002,41 @@ async function confirmarPedido() {
             );
 
 
+            console.log(
+                "🟡 CREANDO PREFERENCIA DE MERCADO PAGO..."
+            );
+
+
             const respuestaPago =
-                await fetch(
-                    API_PAGOS,
-                    {
-                        method: "POST",
+                await fetch(API_PAGOS, {
 
-                        headers: {
-                            "Content-Type":
-                                "application/json"
-                        },
+                    method: "POST",
 
-                        body:
-                            JSON.stringify({
-                                pedidoId:
-                                    resultado.id
-                            })
-                    }
-                );
+                    headers: {
+
+                        "Content-Type":
+                            "application/json"
+
+                    },
+
+                    body: JSON.stringify({
+
+                        pedidoId:
+                            resultado.id
+
+                    })
+
+                });
 
 
             const resultadoPago =
                 await respuestaPago.json();
+
+
+            console.log(
+                "🟢 RESPUESTA MERCADO PAGO:",
+                resultadoPago
+            );
 
 
             if (
@@ -1451,17 +1059,20 @@ async function confirmarPedido() {
             }
 
 
+            // Guardar pago
             localStorage.setItem(
                 "flamePagoActual",
                 JSON.stringify(resultadoPago)
             );
 
 
+            // Vaciar carrito
             localStorage.removeItem(
                 "flameCarrito"
             );
 
 
+            // Ir a Mercado Pago
             window.location.href =
                 resultadoPago.initPoint;
 
@@ -1469,22 +1080,24 @@ async function confirmarPedido() {
         }
 
 
-        /* =================================================
-           EFECTIVO / POS
-        ================================================= */
+        // =================================================
+        // EFECTIVO
+        // =================================================
 
-        if (
-            pago === "efectivo" ||
-            pago === "pos"
-        ) {
+        if (pago === "efectivo") {
 
             localStorage.removeItem(
                 "flameCarrito"
             );
 
 
+            const infoEnvio =
+                resultado.costo_envio > 0
+                    ? ` (incluye $${resultado.costo_envio} de envío, ${resultado.distancia_km} km)`
+                    : "";
+
             mostrarMensaje(
-                `¡Pedido realizado correctamente! Número de pedido: #${resultado.id}`,
+                `¡Pedido realizado correctamente! Número de pedido: #${resultado.id}${infoEnvio}`,
                 "success"
             );
 
@@ -1528,13 +1141,15 @@ async function confirmarPedido() {
             confirmarPedidoBtn.textContent =
                 "Confirmar pedido";
         }
+
     }
+
 }
 
 
-/* =========================================================
-   BOTÓN CONFIRMAR
-========================================================= */
+// =====================================================
+// BOTÓN CONFIRMAR
+// =====================================================
 
 if (confirmarPedidoBtn) {
 
@@ -1542,12 +1157,13 @@ if (confirmarPedidoBtn) {
         "click",
         confirmarPedido
     );
+
 }
 
 
-/* =========================================================
-   RESULTADO MERCADO PAGO
-========================================================= */
+// =====================================================
+// RESULTADO MERCADO PAGO
+// =====================================================
 
 function procesarResultadoMercadoPago() {
 
@@ -1565,6 +1181,10 @@ function procesarResultadoMercadoPago() {
     }
 
 
+    // =================================================
+    // APROBADO
+    // =================================================
+
     if (estado === "success") {
 
         mostrarMensaje(
@@ -1580,6 +1200,10 @@ function procesarResultadoMercadoPago() {
     }
 
 
+    // =================================================
+    // PENDIENTE
+    // =================================================
+
     if (estado === "pending") {
 
         mostrarMensaje(
@@ -1591,33 +1215,31 @@ function procesarResultadoMercadoPago() {
     }
 
 
+    // =================================================
+    // FALLIDO
+    // =================================================
+
     if (estado === "failure") {
 
         mostrarMensaje(
-            "El pago no pudo completarse. Podés intentarlo nuevamente."
+            "El pago no pudo completarse. Puedes intentarlo nuevamente."
         );
 
         return;
     }
+
 }
 
 
-/* =========================================================
-   INICIALIZACIÓN
-========================================================= */
+// =====================================================
+// INICIO
+// =====================================================
 
-(async () => {
-
-    await sincronizarCarritoConProductos();
-
-    renderizarCarrito();
-
-})();
+renderizarCarrito();
 
 actualizarDireccion();
 
-actualizarCambio();
-
 procesarResultadoMercadoPago();
 
-actualizarResumenTotal();
+cargarConfiguracionLocal();
+

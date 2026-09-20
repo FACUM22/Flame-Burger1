@@ -1,8 +1,6 @@
-const API_PRODUCTOS =
-    "/api/productos";
+const API_PRODUCTOS = "/api/productos";
 
-const API_CATEGORIAS =
-    "/api/categorias";
+const API_CATEGORIAS = "/api/categorias";
 
 let productos = [];
 let categorias = [];
@@ -312,16 +310,13 @@ function crearURLImagen(
         imagen.startsWith("/")
     ) {
 
-        return (
-            window.location.origin +
-            imagen
-        );
+        return imagen;
 
     }
 
 
     return (
-        window.location.origin + "/" +
+        "/" +
         imagen
     );
 

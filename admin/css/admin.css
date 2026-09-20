@@ -133,6 +133,21 @@ button {
     height: 9px;
     border-radius: 50%;
     background: #22c55e;
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.8);
+    transition: background 0.2s, box-shadow 0.2s;
+}
+
+.store-status {
+    transition: background 0.2s;
+}
+
+.store-status:hover {
+    background: #262626;
+}
+
+.store-status.cerrado .status-dot {
+    background: #ef4444;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.8);
 }
 
 .store-status strong {
@@ -666,6 +681,88 @@ button {
     font-weight: bold;
 }
 
+.form-message.error {
+    color: #dc2626;
+}
+
+.form-message.success {
+    color: #16a34a;
+}
+
+
+/* =====================================================
+   PÁGINA DE CONFIGURACIÓN
+===================================================== */
+
+.config-estado-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+
+    padding: 18px;
+}
+
+.config-estado-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.config-estado-info .status-dot {
+    width: 12px;
+    height: 12px;
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.8);
+}
+
+.config-estado-info .status-dot.cerrado {
+    background: #ef4444;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.8);
+}
+
+.config-estado-info strong {
+    display: block;
+    font-size: 15px;
+}
+
+.config-estado-info small {
+    display: block;
+    color: #8e8e8e;
+    margin-top: 2px;
+}
+
+.config-form {
+    padding: 18px;
+
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+
+    max-width: 420px;
+}
+
+.config-form .form-group small {
+    display: block;
+    margin-top: 5px;
+    color: #8e8e8e;
+    font-size: 11px;
+}
+
+.config-ubicacion-info {
+    padding: 18px;
+}
+
+.config-ubicacion-info p {
+    font-size: 13px;
+    margin-bottom: 8px;
+}
+
+.config-ubicacion-info small {
+    color: #8e8e8e;
+    font-size: 11px;
+}
+
 
 /* MOBILE */
 
@@ -691,27 +788,6 @@ button {
 
     .sidebar {
         transform: translateX(-100%);
-        transition: transform 0.25s ease;
-        z-index: 1000;
-    }
-
-    .sidebar.sidebar-abierto {
-        transform: translateX(0);
-    }
-
-    .sidebar-overlay {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 999;
-    }
-
-    .sidebar-overlay.activo {
-        display: block;
     }
 
     .main {
@@ -893,7 +969,6 @@ button {
     padding: 14px 0;
     border-bottom: 1px solid #eee;
 }
-
 
 .dashboard-row:last-child {
     border-bottom: none;
@@ -1161,96 +1236,6 @@ button {
 
     .sale-detail-grid {
         grid-template-columns: 1fr;
-    }
-
-}
-/* =====================================================
-   CONTROL DE ESTADO DE LA PÁGINA
-===================================================== */
-
-.page-control-panel {
-    margin-bottom: 20px;
-}
-
-.page-control {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 20px;
-    padding: 18px;
-    background: #fafafa;
-    border-radius: 12px;
-}
-
-.page-status {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.page-status-dot {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    display: block;
-    background: #999;
-}
-
-.page-status-dot.active {
-    background: #16a34a;
-    box-shadow: 0 0 0 5px rgba(22, 163, 74, 0.12);
-}
-
-.page-status-dot.inactive {
-    background: #dc2626;
-    box-shadow: 0 0 0 5px rgba(220, 38, 38, 0.12);
-}
-
-.page-status strong {
-    display: block;
-    font-size: 14px;
-}
-
-.page-status small {
-    display: block;
-    color: #888;
-    font-size: 11px;
-    margin-top: 4px;
-}
-
-.page-toggle-btn {
-    border: none;
-    padding: 11px 18px;
-    border-radius: 9px;
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 800;
-    transition: .2s;
-}
-
-.page-toggle-btn:hover {
-    transform: translateY(-1px);
-}
-
-.page-toggle-btn.turn-off {
-    background: #fef2f2;
-    color: #b91c1c;
-}
-
-.page-toggle-btn.turn-on {
-    background: #ecfdf5;
-    color: #047857;
-}
-
-@media (max-width: 600px) {
-
-    .page-control {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .page-toggle-btn {
-        width: 100%;
     }
 
 }
