@@ -1,5 +1,6 @@
 const API_PEDIDOS = "/api/pedidos";
 const API_PAGOS = "/api/pagos/crear";
+const API_PRODUCTOS_CHECKOUT = "/api/productos";
 
 /* =========================================================
    CONFIGURACIÓN DE FLAME BURGER
@@ -28,6 +29,76 @@ const PRECIO_ENVIO = 100;
 
 const carrito =
     JSON.parse(localStorage.getItem("flameCarrito")) || [];
+
+
+/* =========================================================
+   SINCRONIZAR CARRITO CON PRODUCTOS REALES
+   Evita el error "El producto X no existe" cuando el
+   cliente tenía guardado en el navegador un producto que
+   ya fue borrado o modificado desde el panel admin.
+========================================================= */
+
+async function sincronizarCarritoConProductos() {
+
+    if (!carrito.length) {
+        return;
+    }
+
+    try {
+
+        const respuesta =
+            await fetch(API_PRODUCTOS_CHECKOUT);
+
+        if (!respuesta.ok) {
+            return;
+        }
+
+        const productos =
+            await respuesta.json();
+
+        const idsValidos =
+            new Set(
+                productos.map((p) => Number(p.id))
+            );
+
+        const cantidadOriginal =
+            carrito.length;
+
+        for (let i = carrito.length - 1; i >= 0; i--) {
+
+            const id =
+                Number(carrito[i].producto_id);
+
+            if (!idsValidos.has(id)) {
+                carrito.splice(i, 1);
+            }
+
+        }
+
+        if (carrito.length !== cantidadOriginal) {
+
+            localStorage.setItem(
+                "flameCarrito",
+                JSON.stringify(carrito)
+            );
+
+            mostrarMensaje(
+                "Algunos productos de tu carrito ya no están disponibles y fueron quitados. Por favor, revisá tu pedido.",
+                "error"
+            );
+
+        }
+
+    } catch (error) {
+
+        console.error(
+            "⚠️ No se pudo validar el carrito contra los productos actuales:",
+            error
+        );
+
+    }
+
+}
 
 
 /* =========================================================
@@ -1535,7 +1606,13 @@ function procesarResultadoMercadoPago() {
    INICIALIZACIÓN
 ========================================================= */
 
-renderizarCarrito();
+(async () => {
+
+    await sincronizarCarritoConProductos();
+
+    renderizarCarrito();
+
+})();
 
 actualizarDireccion();
 
