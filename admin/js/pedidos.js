@@ -1310,6 +1310,8 @@ async function cargarDetallePedido(
         const resultado =
             await respuesta.json();
 
+        const pedidoDetalle =
+            resultado.pedido || resultado;
 
         const contenedor =
             document.getElementById(
@@ -1326,9 +1328,9 @@ async function cargarDetallePedido(
 
         if (
 
-            !resultado.productos ||
+            !pedidoDetalle.productos ||
 
-            resultado.productos.length === 0
+            pedidoDetalle.productos.length === 0
 
         ) {
 
@@ -1348,7 +1350,7 @@ async function cargarDetallePedido(
         contenedor.innerHTML = "";
 
 
-        resultado.productos.forEach(
+        pedidoDetalle.productos.forEach(
             producto => {
 
                 const elemento =
@@ -1501,6 +1503,9 @@ async function obtenerDatosPedido(
     const resultado =
         await respuesta.json();
 
+    const pedidoDetalle =
+        resultado.pedido || resultado;
+
 
     return {
 
@@ -1508,7 +1513,7 @@ async function obtenerDatosPedido(
             pedido,
 
         productos:
-            resultado.productos || []
+            pedidoDetalle.productos || []
 
     };
 
